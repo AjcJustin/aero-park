@@ -58,10 +58,10 @@ class SensorUpdateRequest(BaseModel):
 class SensorUpdateResponse(BaseModel):
     """Réponse après mise à jour du capteur."""
     success: bool
-    message: str
     place_id: str
-    etat: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    new_etat: str
+    message: str
+    timestamp: str
 
 
 class ParkingStatusResponse(BaseModel):
@@ -90,8 +90,8 @@ class ReservationResponse(BaseModel):
     """Réponse après une réservation."""
     success: bool
     message: str
-    place: Optional[ParkingSpot] = None
-    expires_at: Optional[datetime] = None
+    place_id: Optional[str] = None
+    reservation_end: Optional[datetime] = None
 
 
 class ReleaseRequest(BaseModel):

@@ -89,15 +89,28 @@ class ReservationScheduler:
         """
         try:
             # Import here to avoid circular imports
-            from services.parking_service import get_parking_service
             from services.websocket_service import get_websocket_manager
+            from database.firebase_db import get_db
             
-            service = get_parking_service()
+            db = get_db()
             manager = get_websocket_manager()
             
             if manager.get_connection_count() > 0:
-                status = await service.get_parking_status()
-                await manager.broadcast_parking_status(status.model_dump())
+                places = await db.get_all_places()
+                total = len(places)
+                free = sum(1 for p in places if p.get("etat") == "free")
+                occupied = sum(1 for p in places if p.get("etat") == "occupied")
+                reserved = sum(1 for p in places if p.get("etat") == "reserved")
+                
+                status = {
+                    "type": "status_update",
+                    "total_places": total,
+                    "libres": free,
+                    "occupees": occupied,
+                    "reservees": reserved,
+                    "places": places
+                }
+                await manager.broadcast_parking_status(status)
                 
         except Exception as e:
             logger.error(f"Error broadcasting status: {e}")

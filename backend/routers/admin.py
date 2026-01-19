@@ -1,22 +1,15 @@
 """
 AeroPark Smart System - Admin Router
-Handles administrative operations for parking management.
+Gère les opérations administratives du parking.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List, Optional
+from typing import Optional
 import logging
+from datetime import datetime
 
-from models.parking import (
-    ParkingSpot,
-    ParkingSpotCreate,
-    ParkingSpotUpdate,
-    ParkingStatusResponse,
-)
 from models.user import UserProfile
 from security.firebase_auth import get_current_admin
-from security.api_key import verify_admin_api_key
-from services.parking_service import get_parking_service
 from database.firebase_db import get_db
 
 # Configure logging
@@ -27,307 +20,148 @@ router = APIRouter(
     prefix="/admin/parking",
     tags=["Admin"],
     responses={
-        401: {"description": "Unauthorized"},
-        403: {"description": "Forbidden - Admin access required"}
+        401: {"description": "Non autorisé"},
+        403: {"description": "Interdit - Accès admin requis"}
     }
 )
 
 
 @router.get(
     "/all",
-    response_model=List[ParkingSpot],
-    summary="Get All Parking Spots (Admin)",
-    description="Returns all parking spots with full details. Admin access required."
+    summary="Toutes les Places (Admin)",
+    description="Retourne toutes les places avec leurs détails. Accès admin requis."
 )
-async def get_all_spots(
+async def get_all_places(
     admin: UserProfile = Depends(get_current_admin)
-) -> List[ParkingSpot]:
-    """
-    Get all parking spots with full administrative details.
-    
-    Requires admin authentication.
-    Returns complete spot information including reservation details.
-    """
+):
+    """Récupère toutes les places avec détails administratifs complets."""
     try:
-        service = get_parking_service()
-        return await service.get_all_spots()
+        db = get_db()
+        places = await db.get_all_places()
+        
+        return {
+            "total": len(places),
+            "places": places,
+            "admin": admin.email,
+            "timestamp": datetime.utcnow().isoformat()
+        }
         
     except Exception as e:
-        logger.error(f"Admin error fetching spots: {e}")
+        logger.error(f"Erreur récupération places: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error fetching parking spots"
+            detail="Erreur récupération des places"
         )
 
 
 @router.get(
     "/stats",
-    summary="Get Parking Statistics (Admin)",
-    description="Returns detailed statistics about parking usage."
+    summary="Statistiques Parking (Admin)",
+    description="Retourne les statistiques détaillées du parking."
 )
 async def get_parking_stats(
     admin: UserProfile = Depends(get_current_admin)
 ):
-    """
-    Get detailed parking statistics.
-    
-    Returns:
-    - Spot counts by status
-    - Reservation metrics
-    - Occupancy rates
-    """
+    """Récupère les statistiques détaillées du parking."""
     try:
-        service = get_parking_service()
-        status_response = await service.get_parking_status()
+        db = get_db()
+        places = await db.get_all_places()
         
-        total = status_response.total_spots
-        occupied = status_response.occupied
-        reserved = status_response.reserved
+        total = len(places)
+        free = sum(1 for p in places if p.get("etat") == "free")
+        occupied = sum(1 for p in places if p.get("etat") == "occupied")
+        reserved = sum(1 for p in places if p.get("etat") == "reserved")
         
         occupancy_rate = ((occupied + reserved) / total * 100) if total > 0 else 0
         
         return {
-            "total_spots": total,
-            "available": status_response.available,
-            "reserved": reserved,
-            "occupied": occupied,
-            "occupancy_rate": round(occupancy_rate, 2),
-            "timestamp": status_response.timestamp
+            "total_places": total,
+            "libres": free,
+            "occupees": occupied,
+            "reservees": reserved,
+            "taux_occupation": round(occupancy_rate, 2),
+            "timestamp": datetime.utcnow().isoformat()
         }
         
     except Exception as e:
-        logger.error(f"Error fetching stats: {e}")
+        logger.error(f"Erreur statistiques: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error fetching statistics"
+            detail="Erreur récupération statistiques"
         )
 
 
 @router.post(
-    "/add",
-    response_model=ParkingSpot,
-    status_code=status.HTTP_201_CREATED,
-    summary="Add Parking Spot (Admin)",
-    description="Add a new parking spot to the system."
+    "/force-release/{place_id}",
+    summary="Forcer Libération (Admin)",
+    description="Force la libération d'une place."
 )
-async def add_parking_spot(
-    spot: ParkingSpotCreate,
-    admin: UserProfile = Depends(get_current_admin)
-) -> ParkingSpot:
-    """
-    Add a new parking spot.
-    
-    Creates a new parking spot with the specified configuration.
-    Requires admin authentication.
-    
-    Args:
-        spot: Parking spot creation data
-        
-    Returns:
-        ParkingSpot: The created parking spot
-    """
-    try:
-        service = get_parking_service()
-        created_spot = await service.create_spot(spot)
-        
-        logger.info(f"Admin {admin.uid} created spot {created_spot.id}")
-        return created_spot
-        
-    except Exception as e:
-        logger.error(f"Error creating spot: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error creating parking spot"
-        )
-
-
-@router.put(
-    "/{spot_id}",
-    response_model=ParkingSpot,
-    summary="Update Parking Spot (Admin)",
-    description="Update an existing parking spot's configuration."
-)
-async def update_parking_spot(
-    spot_id: str,
-    updates: ParkingSpotUpdate,
-    admin: UserProfile = Depends(get_current_admin)
-) -> ParkingSpot:
-    """
-    Update a parking spot.
-    
-    Updates spot configuration (number, zone, floor, sensor_id).
-    Cannot change status or reservation info through this endpoint.
-    
-    Args:
-        spot_id: The parking spot ID
-        updates: Fields to update
-        
-    Returns:
-        ParkingSpot: The updated parking spot
-    """
-    try:
-        db = get_db()
-        service = get_parking_service()
-        
-        # Check spot exists
-        existing = await service.get_spot_by_id(spot_id)
-        if not existing:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Parking spot {spot_id} not found"
-            )
-        
-        # Apply updates
-        update_data = updates.model_dump(exclude_unset=True)
-        if update_data:
-            await db.update_spot(spot_id, update_data)
-        
-        # Return updated spot
-        updated = await service.get_spot_by_id(spot_id)
-        
-        logger.info(f"Admin {admin.uid} updated spot {spot_id}")
-        return updated
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating spot: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error updating parking spot"
-        )
-
-
-@router.delete(
-    "/{spot_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete Parking Spot (Admin)",
-    description="Remove a parking spot from the system."
-)
-async def delete_parking_spot(
-    spot_id: str,
-    admin: UserProfile = Depends(get_current_admin)
-):
-    """
-    Delete a parking spot.
-    
-    Removes a parking spot from the system.
-    Cannot delete spots that are currently reserved or occupied.
-    
-    Args:
-        spot_id: The parking spot ID to delete
-    """
-    try:
-        service = get_parking_service()
-        await service.delete_spot(spot_id)
-        
-        logger.info(f"Admin {admin.uid} deleted spot {spot_id}")
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Error deleting spot: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error deleting parking spot"
-        )
-
-
-@router.post(
-    "/force-release/{spot_id}",
-    summary="Force Release Spot (Admin)",
-    description="Force release any parking spot regardless of reservation."
-)
-async def force_release_spot(
-    spot_id: str,
+async def force_release_place(
+    place_id: str,
     reason: Optional[str] = None,
     admin: UserProfile = Depends(get_current_admin)
 ):
-    """
-    Force release a parking spot.
-    
-    Allows admins to release any spot regardless of who reserved it.
-    Useful for emergency situations or maintenance.
-    
-    Args:
-        spot_id: The parking spot ID
-        reason: Optional reason for force release
-    """
+    """Force la libération d'une place de parking."""
     try:
         db = get_db()
-        service = get_parking_service()
         
-        spot = await service.get_spot_by_id(spot_id)
-        if not spot:
+        place = await db.get_place_by_id(place_id)
+        if not place:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Parking spot {spot_id} not found"
+                detail=f"Place {place_id} non trouvée"
             )
         
-        await db.release_spot(
-            spot_id,
-            reason=f"Admin force release: {reason or 'No reason provided'}"
-        )
+        await db.release_place(place_id)
         
-        logger.warning(f"Admin {admin.uid} force released spot {spot_id}: {reason}")
+        logger.warning(f"Admin {admin.email} a forcé la libération de {place_id}")
         
         return {
             "success": True,
-            "message": "Parking spot force released"
+            "message": f"Place {place_id} libérée",
+            "admin": admin.email
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error force releasing spot: {e}")
+        logger.error(f"Erreur libération: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error force releasing spot"
+            detail="Erreur lors de la libération"
         )
 
 
 @router.post(
     "/initialize",
-    summary="Initialize Default Spots (Admin)",
-    description="Initialize the system with default parking spots."
+    summary="Initialiser Places (Admin)",
+    description="Initialise les places par défaut."
 )
-async def initialize_spots(
-    count: int = 5,
+async def initialize_places(
+    count: int = 6,
     admin: UserProfile = Depends(get_current_admin)
 ):
-    """
-    Initialize default parking spots.
-    
-    Creates initial parking spots if none exist.
-    Will not create spots if spots already exist.
-    
-    Args:
-        count: Number of spots to create (default 5)
-    """
+    """Initialise les places de parking par défaut."""
     try:
         db = get_db()
-        created_ids = await db.initialize_default_spots(count)
+        created_ids = await db.initialize_default_places(count)
         
         if created_ids:
-            logger.info(f"Admin {admin.uid} initialized {len(created_ids)} spots")
             return {
                 "success": True,
-                "message": f"Created {len(created_ids)} parking spots",
-                "spot_ids": created_ids
+                "message": f"{len(created_ids)} places créées",
+                "place_ids": created_ids
             }
         else:
             return {
                 "success": True,
-                "message": "Spots already exist, no new spots created",
-                "spot_ids": []
+                "message": "Places déjà existantes",
+                "place_ids": []
             }
         
     except Exception as e:
-        logger.error(f"Error initializing spots: {e}")
+        logger.error(f"Erreur initialisation: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error initializing parking spots"
+            detail="Erreur lors de l'initialisation"
         )

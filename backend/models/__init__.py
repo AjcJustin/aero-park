@@ -1,17 +1,18 @@
 """
 AeroPark Smart System - Models Package
-Contains all Pydantic models for the application.
+Contient tous les modèles Pydantic pour l'application.
 """
 
 from models.parking import (
     ParkingSpotStatus,
     ParkingSpot,
-    ParkingSpotCreate,
-    ParkingSpotUpdate,
+    SensorUpdateRequest,
+    SensorUpdateResponse,
+    ParkingStatusResponse,
     ReservationRequest,
     ReservationResponse,
-    SensorUpdateRequest,
-    ParkingStatusResponse,
+    ReleaseRequest,
+    WebSocketMessage,
 )
 from models.user import (
     UserProfile,
@@ -22,13 +23,15 @@ __all__ = [
     # Parking Models
     "ParkingSpotStatus",
     "ParkingSpot",
-    "ParkingSpotCreate",
-    "ParkingSpotUpdate",
+    "SensorUpdateRequest",
+    "SensorUpdateResponse",
+    "ParkingStatusResponse",
     "ReservationRequest",
     "ReservationResponse",
-    "SensorUpdateRequest",
-    "ParkingStatusResponse",
+    "ReleaseRequest",
+    "WebSocketMessage",
     # User Models
     "UserProfile",
     "UserRole",
 ]
+

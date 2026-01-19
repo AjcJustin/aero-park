@@ -10,7 +10,6 @@ from security.firebase_auth import (
 )
 from security.api_key import (
     verify_sensor_api_key,
-    verify_admin_api_key,
 )
 
 __all__ = [
@@ -18,5 +17,4 @@ __all__ = [
     "get_current_user",
     "get_current_admin",
     "verify_sensor_api_key",
-    "verify_admin_api_key",
 ]
