@@ -1,103 +1,284 @@
 # AeroPark Smart System
 
-A comprehensive, production-ready airport parking management system featuring IoT integration with ESP32 sensors, real-time updates via WebSocket, and Firebase authentication.
+Système de gestion de parking aéroportuaire intelligent avec intégration IoT ESP32, mises à jour en temps réel via WebSocket, et authentification Firebase.
 
-## 🚀 Features
+## 🚀 Fonctionnalités
 
-- **Real-time Parking Monitoring**: ESP32 sensors detect vehicle presence using ultrasonic sensors
-- **Smart Reservations**: Users can reserve spots for specified durations with automatic expiry
-- **Live Updates**: WebSocket endpoint broadcasts parking status changes instantly
-- **Secure Authentication**: Firebase Authentication for users, API keys for sensors
-- **Concurrent Handling**: Firestore transactions prevent race conditions
-- **Background Tasks**: Automatic reservation expiry handling
-- **Admin Dashboard API**: Manage spots, view statistics, force releases
+- **Monitoring en Temps Réel**: 6 capteurs IR ESP32 détectent la présence des véhicules
+- **Réservations Intelligentes**: Les utilisateurs réservent des places avec expiration automatique
+- **Mises à Jour Live**: WebSocket diffuse les changements d'état instantanément
+- **Barrière Automatique**: Servo-moteur contrôlé par l'ESP32
+- **Affichage LCD**: Écran I2C affichant l'état du parking
+- **Authentification Sécurisée**: Firebase Auth pour les utilisateurs, clé API pour les capteurs
 
-## 📁 Project Structure
+## 📁 Structure du Projet
 
 ```
 aeropack/
-├── backend/                    # FastAPI Backend
-│   ├── main.py                 # Application entry point
-│   ├── config.py               # Configuration management
-│   ├── requirements.txt        # Python dependencies
-│   ├── .env.example            # Environment template
-│   ├── routers/                # API route handlers
-│   │   ├── auth.py             # User authentication routes
-│   │   ├── parking.py          # Parking operations routes
-│   │   ├── admin.py            # Admin management routes
-│   │   ├── sensor.py           # ESP32 sensor routes
-│   │   └── websocket.py        # WebSocket handler
-│   ├── services/               # Business logic layer
-│   │   ├── parking_service.py  # Parking operations
-│   │   ├── reservation_service.py # Reservation handling
-│   │   └── websocket_service.py # WebSocket management
-│   ├── models/                 # Pydantic data models
-│   │   ├── parking.py          # Parking spot models
-│   │   └── user.py             # User profile models
-│   ├── security/               # Authentication & authorization
-│   │   ├── firebase_auth.py    # Firebase token verification
-│   │   └── api_key.py          # API key validation
-│   ├── database/               # Database layer
-│   │   └── firebase_db.py      # Firestore operations
-│   └── utils/                  # Utility modules
-│       ├── scheduler.py        # Background task scheduler
-│       └── helpers.py          # Helper functions
-├── esp32/                      # ESP32 Sensor Client
-│   └── parking_sensor/
-│       └── parking_sensor.ino  # Arduino sketch
-└── README.md                   # This file
+├── backend/                    # Backend FastAPI
+│   ├── main.py                 # Point d'entrée
+│   ├── config.py               # Configuration
+│   ├── requirements.txt        # Dépendances Python
+│   ├── .env                    # Variables d'environnement
+│   ├── routers/                # Routes API
+│   │   ├── auth.py             # Authentification utilisateurs
+│   │   ├── parking.py          # Opérations parking
+│   │   ├── admin.py            # Administration
+│   │   ├── sensor.py           # Routes capteurs ESP32
+│   │   └── websocket.py        # Gestionnaire WebSocket
+│   ├── services/               # Logique métier
+│   │   ├── parking_service.py
+│   │   ├── reservation_service.py
+│   │   └── websocket_service.py
+│   ├── models/                 # Modèles Pydantic
+│   │   ├── parking.py          # place_id, etat, force_signal
+│   │   └── user.py
+│   ├── security/               # Sécurité
+│   │   ├── firebase_auth.py
+│   │   └── api_key.py          # Validation clé API
+│   ├── database/               # Couche base de données
+│   │   └── firebase_db.py      # Opérations Firestore
+│   └── utils/
+│       ├── scheduler.py
+│       └── helpers.py
+├── esp32/                      # Client ESP32
+│   └── aeropark_sensor/
+│       └── aeropark_sensor.ino # Code Arduino
+└── README.md
 ```
 
-## 🛠️ Tech Stack
+## 🔌 Matériel ESP32
 
-### Backend
-- **Python 3.10+**
-- **FastAPI** - Modern async web framework
-- **Firebase Admin SDK** - Authentication & Firestore
-- **Pydantic** - Data validation
-- **APScheduler** - Background task scheduling
-- **Uvicorn** - ASGI server
+### Composants
+- **ESP32 DevKit** - Microcontrôleur principal
+- **6 Capteurs IR** - Détection places (a1-a6)
+- **2 Capteurs IR** - Entrée/Sortie
+- **1 Servo SG90** - Barrière
+- **1 LCD I2C 16x2** - Affichage
 
-### IoT Client
-- **ESP-32D** microcontroller
-- **HC-SR04** ultrasonic sensor
-- **Arduino IDE** compatible
+### Branchements
+| Composant | GPIO ESP32 |
+|-----------|------------|
+| IR Place a1 | GPIO 13 |
+| IR Place a2 | GPIO 14 |
+| IR Place a3 | GPIO 25 |
+| IR Place a4 | GPIO 26 |
+| IR Place a5 | GPIO 27 |
+| IR Place a6 | GPIO 34 |
+| IR Entrée | GPIO 32 |
+| IR Sortie | GPIO 33 |
+| Servo | GPIO 4 |
+| LCD SDA | GPIO 21 |
+| LCD SCL | GPIO 22 |
 
-## 🚀 Quick Start
+## 🚀 Installation Rapide
 
-### Backend Setup
+### 1. Backend Setup
 
-1. **Clone and navigate to backend:**
+```bash
+cd aeropack/backend
+
+# Créer environnement virtuel
+python -m venv venv
+
+# Activer (Windows)
+venv\Scripts\activate
+
+# Installer dépendances
+pip install -r requirements.txt
+```
+
+### 2. Configuration Firebase
+
+Votre `.env` est déjà configuré. Vérifiez que les valeurs sont correctes:
+
+```env
+FIREBASE_PROJECT_ID="aeropark-a191e"
+FIREBASE_PRIVATE_KEY="..." 
+FIREBASE_CLIENT_EMAIL="..."
+
+# Clé API ESP32 (IDENTIQUE dans le code Arduino)
+SENSOR_API_KEY=aeropark-sensor-key-2024
+
+# Paramètres
+TOTAL_PARKING_SLOTS=6
+```
+
+### 3. Lancer le Backend
+
+```bash
+# Depuis le dossier backend
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Le serveur démarre sur `http://localhost:8000`
+
+### 4. Vérification
+
+- Documentation Swagger: http://localhost:8000/docs
+- Health check: http://localhost:8000/health
+
+## 📡 Endpoints ESP32
+
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/v1/sensor/update` | POST | Mise à jour état place |
+| `/api/v1/sensor/health` | GET | Vérification connexion |
+| `/ws/parking` | WebSocket | Notifications réservations |
+
+### Format de Requête (ESP32 → Backend)
+
+```json
+{
+    "place_id": "a1",
+    "etat": "occupied",
+    "force_signal": -55
+}
+```
+
+### Headers Requis
+```
+Content-Type: application/json
+X-API-Key: aeropark-sensor-key-2024
+```
+
+### Format WebSocket (Backend → ESP32)
+
+Notification de réservation:
+```json
+{
+    "type": "reservation",
+    "donnees": {
+        "place_id": 1,
+        "action": "create"
+    }
+}
+```
+
+## 🔧 Configuration ESP32
+
+Dans `esp32/aeropark_sensor/aeropark_sensor.ino`, modifiez:
+
+```cpp
+// WiFi
+const char* ssid = "VOTRE_SSID";
+const char* password = "VOTRE_MOT_DE_PASSE";
+
+// Serveur (IP de votre PC sur le même réseau)
+const char* serverHost = "192.168.1.100";
+const int serverPort = 8000;
+
+// Clé API (doit correspondre au backend)
+const char* apiKey = "aeropark-sensor-key-2024";
+```
+
+### Bibliothèques Arduino Requises
+
+Dans Arduino IDE, installer via Library Manager:
+- `ArduinoJson` (by Benoit Blanchon)
+- `WebSockets` (by Markus Sattler)
+- `ESP32Servo`
+- `LiquidCrystal I2C`
+
+## 📱 API Utilisateurs (Mobile/Web)
+
+### Voir l'état du parking
+```
+GET /parking/status
+```
+
+### Réserver une place (authentifié)
+```
+POST /parking/reserve
+Authorization: Bearer <firebase_id_token>
+
+{
+    "place_id": "a1",
+    "duration_minutes": 60
+}
+```
+
+### Libérer une place
+```
+POST /parking/release/a1
+Authorization: Bearer <firebase_id_token>
+```
+
+## 🔐 Sécurité
+
+- **Capteurs ESP32**: Clé API dans header `X-API-Key`
+- **Utilisateurs**: Token Firebase dans header `Authorization: Bearer <token>`
+- **CORS**: Configuré pour accepter toutes les origines (`*`)
+
+## 🧪 Test Rapide
+
+1. Démarrer le backend:
    ```bash
-   cd aeropack/backend
+   cd backend && uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
-2. **Create virtual environment:**
+2. Tester l'endpoint sensor avec curl:
    ```bash
-   python -m venv venv
-   
-   # Windows
-   venv\Scripts\activate
-   
-   # Linux/Mac
-   source venv/bin/activate
+   curl -X POST http://localhost:8000/api/v1/sensor/update \
+     -H "Content-Type: application/json" \
+     -H "X-API-Key: aeropark-sensor-key-2024" \
+     -d '{"place_id": "a1", "etat": "occupied", "force_signal": -50}'
    ```
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
+3. Vérifier la réponse:
+   ```json
+   {
+     "success": true,
+     "place_id": "a1",
+     "new_etat": "occupied",
+     "message": "Place a1 mise à jour",
+     "timestamp": "2024-..."
+   }
    ```
 
-4. **Configure Firebase:**
-   - Go to [Firebase Console](https://console.firebase.google.com/)
-   - Create a new project (or use existing)
-   - Enable Authentication (Email/Password provider)
-   - Create Firestore Database
-   - Generate service account key:
-     - Project Settings → Service Accounts → Generate New Private Key
-   - Copy `.env.example` to `.env` and fill in your credentials
+## 📊 Collection Firestore
 
-5. **Configure environment:**
+Le backend crée automatiquement la collection `parking_places` avec les documents:
+
+```
+parking_places/
+├── a1: { place_id: "a1", etat: "free", ... }
+├── a2: { place_id: "a2", etat: "free", ... }
+├── a3: { place_id: "a3", etat: "free", ... }
+├── a4: { place_id: "a4", etat: "free", ... }
+├── a5: { place_id: "a5", etat: "free", ... }
+└── a6: { place_id: "a6", etat: "free", ... }
+```
+
+## 🐳 Docker (Optionnel)
+
+```bash
+cd backend
+docker build -t aeropark-backend .
+docker run -p 8000:8000 --env-file .env aeropark-backend
+```
+
+## ⚠️ Dépannage
+
+### ESP32 ne se connecte pas au WiFi
+- Vérifier SSID et mot de passe
+- ESP32 supporte uniquement WiFi 2.4GHz
+
+### Erreur 401 Unauthorized
+- Vérifier que `X-API-Key` est exactement `aeropark-sensor-key-2024`
+- Vérifier que `SENSOR_API_KEY` dans `.env` correspond
+
+### WebSocket ne se connecte pas
+- Vérifier que le port 8000 est ouvert
+- Utiliser l'IP locale du serveur (pas localhost)
+
+### Firebase Connection Error
+- Vérifier les credentials Firebase dans `.env`
+- S'assurer que Firestore est activé dans la console Firebase
+
+---
+
+**AeroPark Smart System** - Projet de fin d'études
    ```bash
    cp .env.example .env
    # Edit .env with your Firebase credentials and API keys
