@@ -55,10 +55,21 @@ async def parking_websocket(
             db = get_db()
             places = await db.get_all_places()
             
+            # Convertir les timestamps Firebase en strings
+            safe_places = []
+            for p in places:
+                safe_place = {}
+                for k, v in p.items():
+                    if hasattr(v, 'isoformat'):
+                        safe_place[k] = v.isoformat()
+                    else:
+                        safe_place[k] = v
+                safe_places.append(safe_place)
+            
             await websocket.send_json({
                 "type": "connected",
                 "message": "Connexion établie à AeroPark",
-                "places": places,
+                "places": safe_places,
                 "timestamp": datetime.utcnow().isoformat()
             })
         except Exception as e:

@@ -142,6 +142,29 @@ class WebSocketManager:
     def get_connection_count(self) -> int:
         """Retourne le nombre de connexions actives."""
         return len(self.active_connections)
+    
+    async def broadcast_parking_status(self, status: Dict[str, Any]):
+        """
+        Diffuse le statut complet du parking à tous les clients.
+        
+        Args:
+            status: Dictionnaire avec le statut du parking
+        """
+        # Convertir les timestamps Firebase en strings
+        if "places" in status:
+            safe_places = []
+            for p in status["places"]:
+                safe_place = {}
+                for k, v in p.items():
+                    if hasattr(v, 'isoformat'):
+                        safe_place[k] = v.isoformat()
+                    else:
+                        safe_place[k] = v
+                safe_places.append(safe_place)
+            status["places"] = safe_places
+        
+        status["timestamp"] = datetime.utcnow().isoformat()
+        await self.broadcast(status)
 
 
 # Instance singleton
