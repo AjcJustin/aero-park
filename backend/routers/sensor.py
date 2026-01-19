@@ -1,28 +1,26 @@
 """
 AeroPark Smart System - Sensor Router
-Handles ESP32 sensor updates and communications.
+Gère les mises à jour des capteurs ESP32.
+Endpoints utilisés: /update et /health
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status
 import logging
 from datetime import datetime
 
 from models.parking import SensorUpdateRequest, SensorUpdateResponse
 from security.api_key import verify_sensor_api_key
-from services.parking_service import get_parking_service
 from database.firebase_db import get_db
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Create router
+# Créer le router - Note: le préfixe /api/v1/sensor est ajouté dans main.py
 router = APIRouter(
-    prefix="/sensor",
     tags=["Sensor"],
     responses={
-        401: {"description": "Unauthorized - Invalid API key"},
-        400: {"description": "Bad Request"}
+        401: {"description": "Non autorisé - Clé API invalide"},
+        400: {"description": "Requête invalide"}
     }
 )
 
@@ -30,53 +28,55 @@ router = APIRouter(
 @router.post(
     "/update",
     response_model=SensorUpdateResponse,
-    summary="Update Spot Status from Sensor",
-    description="Receive parking spot status update from ESP32 sensor."
+    summary="Mise à jour depuis capteur ESP32",
+    description="Reçoit les mises à jour d'état des places de parking depuis l'ESP32."
 )
 async def sensor_update(
     request: SensorUpdateRequest,
-    sensor_auth: dict = Depends(verify_sensor_api_key)
+    _: dict = Depends(verify_sensor_api_key)
 ) -> SensorUpdateResponse:
     """
-    Receive and process sensor status update.
+    Reçoit et traite les mises à jour de capteur.
     
-    ESP32 sensors call this endpoint to report parking spot occupancy.
-    The endpoint is secured with an API key that must be included
-    in the X-API-Key header.
+    L'ESP32 appelle cet endpoint pour signaler l'occupation d'une place.
+    L'endpoint est sécurisé avec une clé API dans le header X-API-Key.
     
-    When a sensor reports:
-    - 'occupied': If spot was RESERVED → changes to OCCUPIED
-                  If spot was AVAILABLE → changes to OCCUPIED (unauthorized parking)
-    - 'free': If spot was OCCUPIED → changes to AVAILABLE
+    Transitions gérées:
+    - 'occupied': Si place FREE → OCCUPIED, Si place RESERVED → OCCUPIED
+    - 'free': Si place OCCUPIED → FREE
     
-    Args:
-        request: Sensor update with spot_id and status
-        sensor_auth: Verified sensor authentication
-        
+    Format de requête ESP32:
+    {
+        "place_id": "a1",
+        "etat": "occupied" ou "free",
+        "force_signal": -55
+    }
+    
     Returns:
-        SensorUpdateResponse: Confirmation of status update
+        SensorUpdateResponse: Confirmation de la mise à jour
     """
     try:
-        service = get_parking_service()
+        db = get_db()
         
-        # Determine if occupied based on sensor reading
-        is_occupied = request.status.lower() == "occupied"
-        
-        # Use sensor_id from request or from auth header
-        sensor_id = request.sensor_id or sensor_auth.get("sensor_id")
-        
-        result = await service.update_from_sensor(
-            spot_id=request.spot_id,
-            is_occupied=is_occupied,
-            sensor_id=sensor_id
+        # Mettre à jour l'état de la place dans Firestore
+        result = await db.update_place_status(
+            place_id=request.place_id,
+            etat=request.etat,
+            force_signal=request.force_signal
         )
         
         logger.info(
-            f"Sensor update: spot={request.spot_id}, "
-            f"status={request.status}, sensor={sensor_id}"
+            f"Capteur: place={request.place_id}, "
+            f"etat={request.etat}, signal={request.force_signal}"
         )
         
-        return result
+        return SensorUpdateResponse(
+            success=True,
+            place_id=request.place_id,
+            new_etat=result.get("etat"),
+            message=f"Place {request.place_id} mise à jour",
+            timestamp=datetime.utcnow().isoformat()
+        )
         
     except ValueError as e:
         raise HTTPException(
@@ -84,163 +84,92 @@ async def sensor_update(
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"Sensor update error: {e}")
+        logger.error(f"Erreur capteur: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error processing sensor update"
-        )
-
-
-@router.post(
-    "/heartbeat",
-    summary="Sensor Heartbeat",
-    description="Register sensor heartbeat for monitoring."
-)
-async def sensor_heartbeat(
-    sensor_id: str,
-    sensor_auth: dict = Depends(verify_sensor_api_key)
-):
-    """
-    Register sensor heartbeat.
-    
-    ESP32 sensors can call this endpoint periodically to indicate
-    they are online and functioning. Useful for monitoring sensor health.
-    
-    Args:
-        sensor_id: The sensor's identifier
-        
-    Returns:
-        Acknowledgment of heartbeat
-    """
-    try:
-        db = get_db()
-        
-        # Log heartbeat (could be stored in a separate collection for monitoring)
-        logger.debug(f"Heartbeat received from sensor: {sensor_id}")
-        
-        return {
-            "success": True,
-            "message": "Heartbeat registered",
-            "sensor_id": sensor_id,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"Heartbeat error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error processing heartbeat"
+            detail="Erreur lors du traitement de la mise à jour"
         )
 
 
 @router.get(
-    "/config/{sensor_id}",
-    summary="Get Sensor Configuration",
-    description="Get configuration for a specific sensor."
+    "/health",
+    summary="Vérification de santé du backend",
+    description="Endpoint appelé par l'ESP32 pour vérifier la connexion au serveur."
 )
-async def get_sensor_config(
-    sensor_id: str,
-    sensor_auth: dict = Depends(verify_sensor_api_key)
+async def sensor_health(
+    _: dict = Depends(verify_sensor_api_key)
 ):
     """
-    Get sensor configuration.
+    Endpoint de vérification de santé.
     
-    Returns configuration parameters for the sensor,
-    including the spot it monitors and update interval.
+    L'ESP32 appelle cet endpoint pour vérifier que le serveur est accessible.
+    Utilisé pour le monitoring de la connexion.
     
-    Args:
-        sensor_id: The sensor's identifier
-        
     Returns:
-        Sensor configuration
+        État de santé du serveur
     """
     try:
         db = get_db()
         
-        # Find spot associated with this sensor
-        spot = await db.get_spot_by_sensor_id(sensor_id)
+        # Vérifier la connexion Firestore
+        places = await db.get_all_places()
+        places_count = len(places)
         
-        if not spot:
-            return {
-                "configured": False,
-                "sensor_id": sensor_id,
-                "message": "Sensor not assigned to any spot"
-            }
+        free_count = sum(1 for p in places if p.get("etat") == "free")
+        occupied_count = sum(1 for p in places if p.get("etat") == "occupied")
+        reserved_count = sum(1 for p in places if p.get("etat") == "reserved")
         
         return {
-            "configured": True,
-            "sensor_id": sensor_id,
-            "spot_id": spot.get("id"),
-            "spot_number": spot.get("spot_number"),
-            "update_interval_ms": 5000,  # 5 seconds
-            "distance_threshold_cm": 50,  # Object closer than 50cm = occupied
-            "timestamp": datetime.utcnow().isoformat()
+            "status": "healthy",
+            "server_time": datetime.utcnow().isoformat(),
+            "parking": {
+                "total": places_count,
+                "free": free_count,
+                "occupied": occupied_count,
+                "reserved": reserved_count
+            }
         }
         
     except Exception as e:
-        logger.error(f"Config fetch error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error fetching configuration"
-        )
+        logger.error(f"Erreur health check: {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "server_time": datetime.utcnow().isoformat()
+        }
 
 
-@router.post(
-    "/batch-update",
-    summary="Batch Sensor Update",
-    description="Process multiple sensor updates in one request."
+@router.get(
+    "/places",
+    summary="Récupérer toutes les places",
+    description="Récupère l'état de toutes les places de parking."
 )
-async def batch_sensor_update(
-    updates: list[SensorUpdateRequest],
-    sensor_auth: dict = Depends(verify_sensor_api_key)
+async def get_all_places(
+    _: dict = Depends(verify_sensor_api_key)
 ):
     """
-    Process batch sensor updates.
+    Récupère toutes les places de parking.
     
-    Allows a central controller or gateway to report multiple
-    sensor readings in a single request.
+    Peut être utilisé par l'ESP32 pour synchroniser l'état initial.
     
-    Args:
-        updates: List of sensor updates
-        
     Returns:
-        Results of all updates
+        Liste de toutes les places avec leur état
     """
     try:
-        service = get_parking_service()
-        results = []
-        
-        for update in updates:
-            try:
-                is_occupied = update.status.lower() == "occupied"
-                result = await service.update_from_sensor(
-                    spot_id=update.spot_id,
-                    is_occupied=is_occupied,
-                    sensor_id=update.sensor_id
-                )
-                results.append({
-                    "spot_id": update.spot_id,
-                    "success": True,
-                    "new_status": result.new_status.value
-                })
-            except Exception as e:
-                results.append({
-                    "spot_id": update.spot_id,
-                    "success": False,
-                    "error": str(e)
-                })
-        
-        logger.info(f"Batch update processed: {len(updates)} sensors")
+        db = get_db()
+        places = await db.get_all_places()
         
         return {
-            "processed": len(updates),
-            "results": results,
+            "success": True,
+            "places": places,
+            "count": len(places),
             "timestamp": datetime.utcnow().isoformat()
         }
         
     except Exception as e:
-        logger.error(f"Batch update error: {e}")
+        logger.error(f"Erreur récupération places: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error processing batch update"
+            detail="Erreur lors de la récupération des places"
         )
+

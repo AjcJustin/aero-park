@@ -1,11 +1,11 @@
 """
-AeroPark Smart System - WebSocket Service
-Manages WebSocket connections for real-time parking updates.
+AeroPark Smart System - Service WebSocket
+Gère les connexions WebSocket pour les mises à jour en temps réel.
+Notifie l'ESP32 des nouvelles réservations.
 """
 
 from fastapi import WebSocket
 from typing import List, Dict, Any, Optional
-import json
 import asyncio
 import logging
 from datetime import datetime
@@ -16,55 +16,49 @@ logger = logging.getLogger(__name__)
 
 class WebSocketManager:
     """
-    Manages WebSocket connections and broadcasting.
-    Provides real-time updates to all connected clients.
+    Gestionnaire de connexions WebSocket.
+    Fournit des mises à jour en temps réel à tous les clients connectés.
+    Envoie les notifications de réservation à l'ESP32.
     """
     
     def __init__(self):
-        # Active WebSocket connections
+        # Connexions WebSocket actives
         self.active_connections: List[WebSocket] = []
-        # Lock for thread-safe operations
+        # Lock pour les opérations thread-safe
         self._lock = asyncio.Lock()
     
     async def connect(self, websocket: WebSocket):
         """
-        Accept and register a new WebSocket connection.
+        Accepte et enregistre une nouvelle connexion WebSocket.
         
         Args:
-            websocket: The WebSocket connection to register
+            websocket: La connexion WebSocket à enregistrer
         """
         await websocket.accept()
         async with self._lock:
             self.active_connections.append(websocket)
         
-        logger.info(f"New WebSocket connection. Total: {len(self.active_connections)}")
-        
-        # Send welcome message
-        await self._send_to_socket(websocket, {
-            "type": "connected",
-            "message": "Connected to AeroPark real-time updates",
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        logger.info(f"Nouvelle connexion WebSocket. Total: {len(self.active_connections)}")
     
     async def disconnect(self, websocket: WebSocket):
         """
-        Remove a WebSocket connection.
+        Supprime une connexion WebSocket.
         
         Args:
-            websocket: The WebSocket connection to remove
+            websocket: La connexion WebSocket à supprimer
         """
         async with self._lock:
             if websocket in self.active_connections:
                 self.active_connections.remove(websocket)
         
-        logger.info(f"WebSocket disconnected. Total: {len(self.active_connections)}")
+        logger.info(f"WebSocket déconnecté. Total: {len(self.active_connections)}")
     
     async def broadcast(self, message: Dict[str, Any]):
         """
-        Broadcast a message to all connected clients.
+        Diffuse un message à tous les clients connectés.
         
         Args:
-            message: Message dictionary to broadcast
+            message: Dictionnaire du message à diffuser
         """
         if not self.active_connections:
             return
@@ -76,85 +70,90 @@ class WebSocketManager:
                 try:
                     await self._send_to_socket(websocket, message)
                 except Exception as e:
-                    logger.error(f"Error sending to websocket: {e}")
+                    logger.error(f"Erreur d'envoi websocket: {e}")
                     disconnected.append(websocket)
         
-        # Clean up disconnected clients
+        # Nettoyer les clients déconnectés
         for ws in disconnected:
             await self.disconnect(ws)
     
-    async def send_to_user(self, user_id: str, message: Dict[str, Any]):
+    async def notify_reservation(self, place_id: str, action: str):
         """
-        Send a message to a specific user.
-        Note: Requires user tracking implementation.
+        Notifie l'ESP32 d'une nouvelle réservation ou annulation.
         
-        Args:
-            user_id: Target user ID
-            message: Message to send
-        """
-        # For now, broadcast to all
-        # TODO: Implement user-specific messaging with authenticated connections
-        await self.broadcast(message)
-    
-    async def broadcast_parking_status(self, status_data: Dict[str, Any]):
-        """
-        Broadcast full parking status update.
-        
-        Args:
-            status_data: Complete parking status
-        """
-        message = {
-            "type": "parking_status",
-            "data": status_data,
-            "timestamp": datetime.utcnow().isoformat()
+        Format envoyé (compris par l'ESP32):
+        {
+            "type": "reservation",
+            "donnees": {
+                "place_id": 1,
+                "action": "create" ou "cancel"
+            }
         }
-        await self.broadcast(message)
-    
-    async def broadcast_spot_update(self, spot_data: Dict[str, Any], event_type: str):
-        """
-        Broadcast a single spot update.
         
         Args:
-            spot_data: Updated spot data
-            event_type: Type of update (reserved, released, occupied, etc.)
+            place_id: ID de la place (ex: "a1", "a2")
+            action: "create" ou "cancel"
+        """
+        # Extraire le numéro de place (a1 -> 1, a2 -> 2, etc.)
+        try:
+            place_number = int(place_id.replace("a", ""))
+        except ValueError:
+            place_number = 0
+        
+        message = {
+            "type": "reservation",
+            "donnees": {
+                "place_id": place_number,
+                "action": action
+            }
+        }
+        
+        logger.info(f"Notification réservation: place {place_id}, action {action}")
+        await self.broadcast(message)
+    
+    async def broadcast_place_update(self, place_data: Dict[str, Any]):
+        """
+        Diffuse une mise à jour de place.
+        
+        Args:
+            place_data: Données de la place mise à jour
         """
         message = {
-            "type": "spot_update",
-            "event": event_type,
-            "data": spot_data,
+            "type": "place_update",
+            "place": place_data,
             "timestamp": datetime.utcnow().isoformat()
         }
         await self.broadcast(message)
     
     async def _send_to_socket(self, websocket: WebSocket, message: Dict[str, Any]):
         """
-        Send a message to a specific WebSocket.
+        Envoie un message à un WebSocket spécifique.
         
         Args:
-            websocket: Target WebSocket
-            message: Message to send
+            websocket: WebSocket cible
+            message: Message à envoyer
         """
         try:
             await websocket.send_json(message)
         except Exception as e:
-            logger.error(f"Failed to send WebSocket message: {e}")
+            logger.error(f"Échec d'envoi du message WebSocket: {e}")
             raise
     
     def get_connection_count(self) -> int:
-        """Get the number of active connections."""
+        """Retourne le nombre de connexions actives."""
         return len(self.active_connections)
 
 
-# Singleton instance
+# Instance singleton
 _websocket_manager: Optional[WebSocketManager] = None
 
 
 def get_websocket_manager() -> WebSocketManager:
     """
-    Get the WebSocketManager singleton instance.
+    Obtient l'instance singleton du WebSocketManager.
     
     Returns:
-        WebSocketManager: The global WebSocket manager
+        WebSocketManager: Le gestionnaire WebSocket global
     """
     global _websocket_manager
     if _websocket_manager is None:

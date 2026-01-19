@@ -1,15 +1,17 @@
 """
 AeroPark Smart System - WebSocket Router
-Handles real-time WebSocket connections for parking updates.
+Gère les connexions WebSocket en temps réel pour les mises à jour du parking.
+L'ESP32 se connecte sur /ws/parking pour recevoir les notifications de réservation.
 """
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from typing import Optional
 import logging
 import json
+from datetime import datetime
 
 from services.websocket_service import get_websocket_manager
-from services.parking_service import get_parking_service
+from database.firebase_db import get_db
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -26,140 +28,131 @@ async def parking_websocket(
     token: Optional[str] = Query(None)
 ):
     """
-    WebSocket endpoint for real-time parking updates.
+    Point de terminaison WebSocket pour les mises à jour en temps réel.
     
-    Clients connect to this endpoint to receive live updates about:
-    - Parking spot status changes
-    - New reservations
-    - Reservation expirations
-    - Sensor updates
+    L'ESP32 se connecte ici pour recevoir:
+    - Notifications de réservation (pour afficher sur LCD et ouvrir barrière)
+    - Changements d'état des places
     
-    Query Parameters:
-        token: Optional Firebase auth token for authenticated sessions
-        
-    Message Types Received:
-        - connected: Initial connection confirmation
-        - parking_status: Full parking status update
-        - spot_update: Individual spot status change
-        - reservation_created: New reservation made
-        - reservation_expired: Reservation timeout
-        - sensor_update: ESP32 sensor status change
+    Format des messages envoyés à l'ESP32:
+    {
+        "type": "reservation",
+        "donnees": {
+            "place_id": 1,  // Numéro de place (1-6)
+            "action": "create" ou "cancel"
+        }
+    }
     """
     manager = get_websocket_manager()
     
     try:
-        # Accept the connection
+        # Accepter la connexion
         await manager.connect(websocket)
+        logger.info("Nouvelle connexion WebSocket établie")
         
-        # Send initial parking status
+        # Envoyer l'état initial du parking
         try:
-            service = get_parking_service()
-            status = await service.get_parking_status()
+            db = get_db()
+            places = await db.get_all_places()
+            
             await websocket.send_json({
-                "type": "initial_status",
-                "data": status.model_dump(),
-                "message": "Current parking status"
+                "type": "connected",
+                "message": "Connexion établie à AeroPark",
+                "places": places,
+                "timestamp": datetime.utcnow().isoformat()
             })
         except Exception as e:
-            logger.error(f"Error sending initial status: {e}")
+            logger.error(f"Erreur envoi état initial: {e}")
         
-        # Keep connection alive and handle incoming messages
+        # Maintenir la connexion et gérer les messages
         while True:
             try:
-                # Wait for messages from client
                 data = await websocket.receive_text()
                 
-                # Parse and handle client messages
                 try:
                     message = json.loads(data)
                     await handle_client_message(websocket, message)
                 except json.JSONDecodeError:
                     await websocket.send_json({
                         "type": "error",
-                        "message": "Invalid JSON format"
+                        "message": "Format JSON invalide"
                     })
                     
             except WebSocketDisconnect:
                 break
                 
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.error(f"Erreur WebSocket: {e}")
         
     finally:
         await manager.disconnect(websocket)
+        logger.info("Connexion WebSocket fermée")
 
 
 async def handle_client_message(websocket: WebSocket, message: dict):
     """
-    Handle incoming messages from WebSocket clients.
+    Gère les messages entrants des clients WebSocket.
     
-    Supports commands like:
-    - ping: Keep-alive ping
-    - subscribe: Subscribe to specific spot updates
-    - get_status: Request current parking status
+    Commandes supportées:
+    - ping: Maintien de connexion
+    - get_status: Récupérer l'état actuel du parking
     
     Args:
-        websocket: The client WebSocket connection
-        message: Parsed message from client
+        websocket: La connexion WebSocket du client
+        message: Message parsé du client
     """
     msg_type = message.get("type", "unknown")
     
     if msg_type == "ping":
-        # Respond to keep-alive ping
+        # Répondre au ping keep-alive
         await websocket.send_json({
             "type": "pong",
-            "timestamp": message.get("timestamp")
+            "timestamp": datetime.utcnow().isoformat()
         })
         
     elif msg_type == "get_status":
-        # Send current parking status
+        # Envoyer l'état actuel du parking
         try:
-            service = get_parking_service()
-            status = await service.get_parking_status()
+            db = get_db()
+            places = await db.get_all_places()
+            
             await websocket.send_json({
                 "type": "parking_status",
-                "data": status.model_dump()
+                "places": places,
+                "timestamp": datetime.utcnow().isoformat()
             })
         except Exception as e:
-            logger.error(f"Error fetching status: {e}")
+            logger.error(f"Erreur récupération état: {e}")
             await websocket.send_json({
                 "type": "error",
-                "message": "Error fetching parking status"
+                "message": "Erreur récupération état parking"
             })
-            
-    elif msg_type == "subscribe":
-        # Handle subscription to specific spots
-        spot_ids = message.get("spot_ids", [])
-        await websocket.send_json({
-            "type": "subscribed",
-            "spot_ids": spot_ids,
-            "message": f"Subscribed to {len(spot_ids)} spots"
-        })
-        
     else:
-        # Unknown message type
+        # Type de message inconnu
         await websocket.send_json({
             "type": "error",
-            "message": f"Unknown message type: {msg_type}"
+            "message": f"Type de message inconnu: {msg_type}"
         })
 
 
 @router.get(
     "/ws/status",
     tags=["WebSocket"],
-    summary="WebSocket Status",
-    description="Get current WebSocket connection statistics."
+    summary="État des connexions WebSocket",
+    description="Obtenir les statistiques des connexions WebSocket."
 )
 async def websocket_status():
     """
-    Get WebSocket connection statistics.
+    Obtenir les statistiques de connexion WebSocket.
     
-    Returns the number of active WebSocket connections.
-    Useful for monitoring and debugging.
+    Retourne le nombre de connexions WebSocket actives.
+    Utile pour le monitoring.
     """
     manager = get_websocket_manager()
     
     return {
         "active_connections": manager.get_connection_count(),
-        "status": "operational"
+        "status": "operational",
+        "timestamp": datetime.utcnow().isoformat()
     }
+

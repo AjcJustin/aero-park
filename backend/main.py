@@ -1,6 +1,6 @@
 """
-AeroPark Smart System - Main Application
-FastAPI application entry point with all configurations.
+AeroPark Smart System - Application Principale
+Point d'entrée FastAPI avec toutes les configurations.
 """
 
 from fastapi import FastAPI, Request, status
@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
 import sys
+from datetime import datetime
 
 # Import routers
 from routers import (
@@ -39,77 +40,73 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Application lifespan manager.
-    Handles startup and shutdown events.
+    Gestionnaire du cycle de vie de l'application.
+    Gère les événements de démarrage et d'arrêt.
     """
-    # ===== STARTUP =====
-    logger.info("🚀 Starting AeroPark Smart System...")
+    # ===== DÉMARRAGE =====
+    logger.info("🚀 Démarrage d'AeroPark Smart System...")
     
     try:
-        # Initialize Firebase
-        logger.info("Initializing Firebase...")
+        # Initialiser Firebase
+        logger.info("Initialisation de Firebase...")
         init_firebase()
-        logger.info("✅ Firebase initialized")
+        logger.info("✅ Firebase initialisé")
         
-        # Initialize default parking spots
-        logger.info("Checking parking spots...")
+        # Initialiser les places de parking par défaut
+        logger.info("Vérification des places de parking...")
+        settings = get_settings()
         db = get_db()
-        await db.initialize_default_spots(count=5)
-        logger.info("✅ Parking spots ready")
+        await db.initialize_default_places(count=settings.total_parking_slots)
+        logger.info(f"✅ {settings.total_parking_slots} places de parking prêtes")
         
-        # Start background scheduler
-        logger.info("Starting background scheduler...")
+        # Démarrer le scheduler en arrière-plan
+        logger.info("Démarrage du scheduler...")
         start_scheduler()
-        logger.info("✅ Scheduler started")
+        logger.info("✅ Scheduler démarré")
         
-        logger.info("🎉 AeroPark Smart System is ready!")
+        logger.info("🎉 AeroPark Smart System est prêt!")
         
     except Exception as e:
-        logger.error(f"❌ Startup error: {e}")
+        logger.error(f"❌ Erreur de démarrage: {e}")
         raise
     
-    yield  # Application runs here
+    yield  # L'application s'exécute ici
     
-    # ===== SHUTDOWN =====
-    logger.info("🛑 Shutting down AeroPark Smart System...")
+    # ===== ARRÊT =====
+    logger.info("🛑 Arrêt d'AeroPark Smart System...")
     
     try:
-        # Stop scheduler
         stop_scheduler()
-        logger.info("✅ Scheduler stopped")
-        
+        logger.info("✅ Scheduler arrêté")
     except Exception as e:
-        logger.error(f"Shutdown error: {e}")
+        logger.error(f"Erreur d'arrêt: {e}")
     
-    logger.info("👋 AeroPark Smart System shutdown complete")
+    logger.info("👋 Arrêt d'AeroPark Smart System terminé")
 
 
-# Create FastAPI application
+# Créer l'application FastAPI
 app = FastAPI(
     title="AeroPark Smart System",
     description="""
-    ## Airport Parking Management System
+    ## Système de Gestion de Parking Aéroportuaire
     
-    A comprehensive IoT-enabled parking management solution featuring:
+    Une solution de gestion de parking IoT complète:
     
-    * **Real-time Monitoring**: ESP32 sensors detect vehicle presence
-    * **Smart Reservations**: Reserve spots with automatic timing
-    * **WebSocket Updates**: Live status updates for all clients
-    * **Firebase Integration**: Secure authentication and database
+    * **Monitoring en Temps Réel**: Capteurs ESP32 détectant la présence des véhicules
+    * **Réservations Intelligentes**: Réserver des places avec gestion automatique du temps
+    * **Mises à Jour WebSocket**: Actualisations en direct pour tous les clients
+    * **Intégration Firebase**: Authentification sécurisée et base de données
     
-    ### API Sections
+    ### Endpoints pour ESP32
     
-    * **Authentication**: User profile and authentication endpoints
-    * **Parking**: View status and manage reservations
-    * **Admin**: Manage parking spots and system configuration
-    * **Sensor**: ESP32 device communication endpoints
-    * **WebSocket**: Real-time updates at `/ws/parking`
+    * **POST /api/v1/sensor/update**: Mise à jour de l'état d'une place
+    * **GET /api/v1/sensor/health**: Vérification de la connexion au serveur
+    * **WebSocket /ws/parking**: Notifications de réservation en temps réel
     
-    ### Security
+    ### Sécurité
     
-    * User endpoints require Firebase ID token (Bearer authentication)
-    * Sensor endpoints require API key (X-API-Key header)
-    * Admin endpoints require both admin role and authentication
+    * Endpoints capteurs: Clé API dans le header X-API-Key
+    * Endpoints utilisateurs: Token Firebase (Bearer authentication)
     """,
     version="1.0.0",
     docs_url="/docs",
@@ -118,10 +115,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Get settings
+# Récupérer les settings
 settings = get_settings()
 
-# Configure CORS
+# Configurer CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -131,11 +128,11 @@ app.add_middleware(
 )
 
 
-# ==================== EXCEPTION HANDLERS ====================
+# ==================== GESTIONNAIRES D'EXCEPTIONS ====================
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle Pydantic validation errors."""
+    """Gère les erreurs de validation Pydantic."""
     errors = []
     for error in exc.errors():
         errors.append({
@@ -147,7 +144,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "detail": "Validation error",
+            "detail": "Erreur de validation",
             "errors": errors
         }
     )
@@ -155,59 +152,66 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected exceptions."""
-    logger.error(f"Unexpected error: {exc}", exc_info=True)
+    """Gère les exceptions inattendues."""
+    logger.error(f"Erreur inattendue: {exc}", exc_info=True)
     
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "detail": "An unexpected error occurred",
+            "detail": "Une erreur inattendue s'est produite",
             "type": type(exc).__name__
         }
     )
 
 
-# ==================== INCLUDE ROUTERS ====================
+# ==================== INCLUSION DES ROUTERS ====================
 
+# Routes API v1 pour les capteurs ESP32 (utilisé par l'ESP32)
+app.include_router(sensor_router, prefix="/api/v1/sensor")
+
+# Route WebSocket (sans préfixe - le chemin complet /ws/parking est dans le router)
+app.include_router(websocket_router)
+
+# Routes utilisateurs et parking
 app.include_router(auth_router)
 app.include_router(parking_router)
 app.include_router(admin_router)
-app.include_router(sensor_router)
-app.include_router(websocket_router)
 
 
-# ==================== ROOT ENDPOINTS ====================
+# ==================== ENDPOINTS RACINE ====================
 
 @app.get(
     "/",
     tags=["Health"],
-    summary="Root Endpoint",
-    description="Returns basic API information."
+    summary="Endpoint Racine",
+    description="Retourne les informations de base de l'API."
 )
 async def root():
     """
-    Root endpoint.
-    Returns basic API information and status.
+    Endpoint racine.
+    Retourne les informations de base et le statut de l'API.
     """
     return {
         "name": "AeroPark Smart System",
         "version": "1.0.0",
         "status": "operational",
         "documentation": "/docs",
-        "websocket": "/ws/parking"
+        "websocket": "/ws/parking",
+        "sensor_endpoint": "/api/v1/sensor/update",
+        "timestamp": datetime.utcnow().isoformat()
     }
 
 
 @app.get(
     "/health",
     tags=["Health"],
-    summary="Health Check",
-    description="Returns system health status."
+    summary="Vérification de Santé",
+    description="Retourne l'état de santé du système."
 )
 async def health_check():
     """
-    Health check endpoint.
-    Used for monitoring and load balancer health checks.
+    Endpoint de vérification de santé.
+    Utilisé pour le monitoring et les health checks des load balancers.
     """
     from services.websocket_service import get_websocket_manager
     from utils.scheduler import get_scheduler
@@ -221,47 +225,42 @@ async def health_check():
             "firebase": "connected",
             "scheduler": "running" if scheduler.is_running() else "stopped",
             "websocket_connections": manager.get_connection_count()
-        }
+        },
+        "timestamp": datetime.utcnow().isoformat()
     }
 
 
 @app.get(
     "/api/v1/info",
     tags=["Health"],
-    summary="API Information",
-    description="Returns detailed API information."
+    summary="Informations API",
+    description="Retourne les informations détaillées de l'API."
 )
 async def api_info():
     """
-    Detailed API information.
-    Returns version, endpoints, and configuration details.
+    Informations détaillées de l'API.
+    Retourne la version, les endpoints et les détails de configuration.
     """
     return {
         "name": "AeroPark Smart System API",
         "version": "1.0.0",
         "endpoints": {
+            "sensor_update": "/api/v1/sensor/update",
+            "sensor_health": "/api/v1/sensor/health",
+            "websocket": "/ws/parking",
             "auth": "/users",
             "parking": "/parking",
-            "admin": "/admin/parking",
-            "sensor": "/sensor",
-            "websocket": "/ws/parking"
+            "admin": "/admin/parking"
         },
-        "features": [
-            "Firebase Authentication",
-            "Real-time WebSocket updates",
-            "ESP32 sensor integration",
-            "Automatic reservation expiry",
-            "Concurrent reservation handling"
-        ],
+        "api_key": "Utiliser le header X-API-Key pour les endpoints /sensor",
         "documentation": {
             "swagger": "/docs",
-            "redoc": "/redoc",
-            "openapi": "/openapi.json"
+            "redoc": "/redoc"
         }
     }
 
 
-# ==================== MAIN ENTRY ====================
+# ==================== POINT D'ENTRÉE PRINCIPAL ====================
 
 if __name__ == "__main__":
     import uvicorn

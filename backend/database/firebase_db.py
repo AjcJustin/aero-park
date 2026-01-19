@@ -1,15 +1,13 @@
 """
 AeroPark Smart System - Firebase Database Module
-Handles all Firebase Firestore operations for parking management.
+Gestion des opérations Firebase Firestore pour le parking.
 """
 
 import firebase_admin
-from firebase_admin import credentials, firestore, auth
-from google.cloud.firestore_v1 import FieldFilter, Transaction
+from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1 import FieldFilter
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-import asyncio
-from functools import lru_cache
 import logging
 
 from config import get_settings
@@ -24,35 +22,32 @@ _firestore_client = None
 
 def init_firebase() -> firebase_admin.App:
     """
-    Initialize Firebase Admin SDK.
-    Should be called once at application startup.
+    Initialise Firebase Admin SDK.
+    Appelé une seule fois au démarrage de l'application.
     """
     global _firebase_app, _firestore_client
     
     if _firebase_app is not None:
-        logger.info("Firebase already initialized")
+        logger.info("Firebase déjà initialisé")
         return _firebase_app
     
     try:
         settings = get_settings()
         cred = credentials.Certificate(settings.get_firebase_credentials())
         
-        _firebase_app = firebase_admin.initialize_app(cred, {
-            'databaseURL': settings.firebase_database_url
-        })
-        
+        _firebase_app = firebase_admin.initialize_app(cred)
         _firestore_client = firestore.client()
-        logger.info("Firebase initialized successfully")
+        logger.info("Firebase initialisé avec succès")
         
         return _firebase_app
         
     except Exception as e:
-        logger.error(f"Failed to initialize Firebase: {e}")
+        logger.error(f"Échec de l'initialisation Firebase: {e}")
         raise
 
 
 def get_firestore_client():
-    """Get the Firestore client instance."""
+    """Obtient l'instance du client Firestore."""
     global _firestore_client
     if _firestore_client is None:
         init_firebase()
@@ -61,285 +56,202 @@ def get_firestore_client():
 
 class FirebaseDB:
     """
-    Firebase Firestore database handler.
-    Provides all CRUD operations for parking management.
+    Gestionnaire de base de données Firebase Firestore.
+    Fournit toutes les opérations CRUD pour la gestion du parking.
     """
     
-    COLLECTION_SPOTS = "parking_spots"
+    COLLECTION_PLACES = "parking_places"
     COLLECTION_RESERVATIONS = "reservations"
     COLLECTION_USERS = "users"
-    COLLECTION_SENSOR_LOGS = "sensor_logs"
     
     def __init__(self):
         self.db = get_firestore_client()
     
-    # ==================== PARKING SPOTS ====================
+    # ==================== PLACES DE PARKING ====================
     
-    async def get_all_spots(self) -> List[Dict[str, Any]]:
-        """Retrieve all parking spots."""
+    async def get_all_places(self) -> List[Dict[str, Any]]:
+        """Récupère toutes les places de parking."""
         try:
-            spots_ref = self.db.collection(self.COLLECTION_SPOTS)
-            docs = spots_ref.order_by("spot_number").stream()
+            places_ref = self.db.collection(self.COLLECTION_PLACES)
+            docs = places_ref.order_by("place_id").stream()
             
-            spots = []
+            places = []
             for doc in docs:
-                spot_data = doc.to_dict()
-                spot_data["id"] = doc.id
-                spots.append(spot_data)
+                place_data = doc.to_dict()
+                places.append(place_data)
             
-            return spots
+            return places
         except Exception as e:
-            logger.error(f"Error fetching spots: {e}")
+            logger.error(f"Erreur lors de la récupération des places: {e}")
             raise
     
-    async def get_spot_by_id(self, spot_id: str) -> Optional[Dict[str, Any]]:
-        """Get a single parking spot by ID."""
+    async def get_place_by_id(self, place_id: str) -> Optional[Dict[str, Any]]:
+        """Récupère une place par son ID (ex: a1, a2)."""
         try:
-            doc_ref = self.db.collection(self.COLLECTION_SPOTS).document(spot_id)
+            doc_ref = self.db.collection(self.COLLECTION_PLACES).document(place_id)
             doc = doc_ref.get()
             
             if doc.exists:
-                spot_data = doc.to_dict()
-                spot_data["id"] = doc.id
-                return spot_data
+                return doc.to_dict()
             return None
         except Exception as e:
-            logger.error(f"Error fetching spot {spot_id}: {e}")
+            logger.error(f"Erreur lors de la récupération de la place {place_id}: {e}")
             raise
     
-    async def get_spot_by_sensor_id(self, sensor_id: str) -> Optional[Dict[str, Any]]:
-        """Get parking spot by associated sensor ID."""
-        try:
-            spots_ref = self.db.collection(self.COLLECTION_SPOTS)
-            query = spots_ref.where(filter=FieldFilter("sensor_id", "==", sensor_id)).limit(1)
-            docs = query.stream()
-            
-            for doc in docs:
-                spot_data = doc.to_dict()
-                spot_data["id"] = doc.id
-                return spot_data
-            return None
-        except Exception as e:
-            logger.error(f"Error fetching spot by sensor {sensor_id}: {e}")
-            raise
-    
-    async def create_spot(self, spot_data: Dict[str, Any]) -> str:
-        """Create a new parking spot."""
-        try:
-            spot_data["created_at"] = datetime.utcnow()
-            spot_data["updated_at"] = datetime.utcnow()
-            spot_data["status"] = "AVAILABLE"
-            
-            doc_ref = self.db.collection(self.COLLECTION_SPOTS).document()
-            doc_ref.set(spot_data)
-            
-            logger.info(f"Created parking spot: {doc_ref.id}")
-            return doc_ref.id
-        except Exception as e:
-            logger.error(f"Error creating spot: {e}")
-            raise
-    
-    async def update_spot(self, spot_id: str, updates: Dict[str, Any]) -> bool:
-        """Update a parking spot."""
-        try:
-            updates["updated_at"] = datetime.utcnow()
-            
-            doc_ref = self.db.collection(self.COLLECTION_SPOTS).document(spot_id)
-            doc_ref.update(updates)
-            
-            logger.info(f"Updated parking spot: {spot_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Error updating spot {spot_id}: {e}")
-            raise
-    
-    async def delete_spot(self, spot_id: str) -> bool:
-        """Delete a parking spot."""
-        try:
-            doc_ref = self.db.collection(self.COLLECTION_SPOTS).document(spot_id)
-            doc_ref.delete()
-            
-            logger.info(f"Deleted parking spot: {spot_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Error deleting spot {spot_id}: {e}")
-            raise
-    
-    async def reserve_spot_transaction(
+    async def update_place_status(
         self,
-        spot_id: str,
+        place_id: str,
+        etat: str,
+        force_signal: int = None
+    ) -> Dict[str, Any]:
+        """
+        Met à jour l'état d'une place depuis le capteur ESP32.
+        Gère les transitions RESERVED → OCCUPIED et OCCUPIED → FREE.
+        """
+        try:
+            place = await self.get_place_by_id(place_id)
+            
+            if not place:
+                # Créer la place si elle n'existe pas
+                place = {
+                    "place_id": place_id,
+                    "etat": etat,
+                    "reserved_by": None,
+                    "reserved_by_email": None,
+                    "reservation_start_time": None,
+                    "reservation_end_time": None,
+                    "force_signal": force_signal,
+                    "last_update": datetime.utcnow()
+                }
+                self.db.collection(self.COLLECTION_PLACES).document(place_id).set(place)
+                logger.info(f"Place {place_id} créée avec état {etat}")
+                return {"etat": etat, "transition": "created"}
+            
+            current_etat = place.get("etat", "free")
+            now = datetime.utcnow()
+            
+            updates = {
+                "force_signal": force_signal,
+                "last_update": now
+            }
+            
+            transition = None
+            
+            if etat == "occupied":
+                if current_etat == "reserved":
+                    # Véhicule arrivé sur place réservée
+                    updates["etat"] = "occupied"
+                    transition = "reserved->occupied"
+                elif current_etat == "free":
+                    # Véhicule sans réservation
+                    updates["etat"] = "occupied"
+                    transition = "free->occupied"
+                # Si déjà occupied, pas de changement
+                    
+            elif etat == "free":
+                if current_etat == "occupied":
+                    # Véhicule parti
+                    updates["etat"] = "free"
+                    updates["reserved_by"] = None
+                    updates["reserved_by_email"] = None
+                    updates["reservation_start_time"] = None
+                    updates["reservation_end_time"] = None
+                    transition = "occupied->free"
+                elif current_etat == "reserved":
+                    # Place réservée mais pas de véhicule (normal)
+                    pass
+            
+            if updates:
+                self.db.collection(self.COLLECTION_PLACES).document(place_id).update(updates)
+            
+            new_etat = updates.get("etat", current_etat)
+            logger.info(f"Place {place_id}: {current_etat} -> {new_etat}")
+            
+            return {"etat": new_etat, "transition": transition}
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la mise à jour de la place: {e}")
+            raise
+    
+    async def reserve_place(
+        self,
+        place_id: str,
         user_id: str,
         user_email: str,
         duration_minutes: int
     ) -> Dict[str, Any]:
         """
-        Reserve a parking spot using a Firestore transaction.
-        Ensures atomic operation to prevent race conditions.
+        Réserve une place de parking.
+        Utilise une transaction Firestore pour éviter les conflits.
         """
         transaction = self.db.transaction()
-        spot_ref = self.db.collection(self.COLLECTION_SPOTS).document(spot_id)
+        place_ref = self.db.collection(self.COLLECTION_PLACES).document(place_id)
         
         @firestore.transactional
-        def reserve_in_transaction(transaction: Transaction) -> Dict[str, Any]:
-            # Read the current spot data
-            spot_doc = spot_ref.get(transaction=transaction)
+        def reserve_in_transaction(transaction) -> Dict[str, Any]:
+            place_doc = place_ref.get(transaction=transaction)
             
-            if not spot_doc.exists:
-                raise ValueError("Parking spot not found")
+            if not place_doc.exists:
+                raise ValueError(f"Place {place_id} non trouvée")
             
-            spot_data = spot_doc.to_dict()
+            place_data = place_doc.to_dict()
             
-            # Check if spot is available
-            if spot_data.get("status") != "AVAILABLE":
-                raise ValueError(f"Spot is not available. Current status: {spot_data.get('status')}")
+            if place_data.get("etat") != "free":
+                raise ValueError(f"Place non disponible. État actuel: {place_data.get('etat')}")
             
-            # Calculate reservation times
             now = datetime.utcnow()
             end_time = now + timedelta(minutes=duration_minutes)
             
-            # Update spot with reservation
             updates = {
-                "status": "RESERVED",
+                "etat": "reserved",
                 "reserved_by": user_id,
                 "reserved_by_email": user_email,
                 "reservation_start_time": now,
                 "reservation_end_time": end_time,
                 "reservation_duration_minutes": duration_minutes,
-                "updated_at": now
+                "last_update": now
             }
             
-            transaction.update(spot_ref, updates)
+            transaction.update(place_ref, updates)
             
-            # Create reservation record
-            reservation_ref = self.db.collection(self.COLLECTION_RESERVATIONS).document()
-            reservation_data = {
-                "id": reservation_ref.id,
-                "spot_id": spot_id,
-                "user_id": user_id,
-                "user_email": user_email,
-                "start_time": now,
-                "end_time": end_time,
-                "duration_minutes": duration_minutes,
-                "status": "active",
-                "created_at": now
-            }
-            transaction.set(reservation_ref, reservation_data)
-            
-            # Return updated spot data
-            updated_spot = {**spot_data, **updates, "id": spot_id}
-            return {
-                "spot": updated_spot,
-                "reservation_id": reservation_ref.id
-            }
+            return {**place_data, **updates}
         
         try:
             result = reserve_in_transaction(transaction)
-            logger.info(f"Reserved spot {spot_id} for user {user_id}")
+            logger.info(f"Place {place_id} réservée pour {user_id}")
             return result
         except Exception as e:
-            logger.error(f"Transaction failed for spot {spot_id}: {e}")
+            logger.error(f"Échec de la réservation: {e}")
             raise
     
-    async def release_spot(self, spot_id: str, reason: str = None) -> bool:
-        """Release a parking spot back to available status."""
+    async def release_place(self, place_id: str) -> bool:
+        """Libère une place de parking."""
         try:
             updates = {
-                "status": "AVAILABLE",
+                "etat": "free",
                 "reserved_by": None,
                 "reserved_by_email": None,
                 "reservation_start_time": None,
                 "reservation_end_time": None,
                 "reservation_duration_minutes": None,
-                "occupied_at": None,
-                "updated_at": datetime.utcnow()
+                "last_update": datetime.utcnow()
             }
             
-            await self.update_spot(spot_id, updates)
-            
-            # Log the release
-            if reason:
-                logger.info(f"Released spot {spot_id}: {reason}")
-            
+            self.db.collection(self.COLLECTION_PLACES).document(place_id).update(updates)
+            logger.info(f"Place {place_id} libérée")
             return True
         except Exception as e:
-            logger.error(f"Error releasing spot {spot_id}: {e}")
-            raise
-    
-    async def update_spot_from_sensor(
-        self,
-        spot_id: str,
-        is_occupied: bool,
-        sensor_id: str = None
-    ) -> Dict[str, Any]:
-        """
-        Update spot status based on sensor reading.
-        Handles the RESERVED → OCCUPIED and OCCUPIED → AVAILABLE transitions.
-        """
-        try:
-            spot = await self.get_spot_by_id(spot_id)
-            if not spot:
-                raise ValueError(f"Spot {spot_id} not found")
-            
-            current_status = spot.get("status")
-            now = datetime.utcnow()
-            
-            # Log sensor reading
-            log_ref = self.db.collection(self.COLLECTION_SENSOR_LOGS).document()
-            log_ref.set({
-                "spot_id": spot_id,
-                "sensor_id": sensor_id,
-                "is_occupied": is_occupied,
-                "previous_status": current_status,
-                "timestamp": now
-            })
-            
-            if is_occupied:
-                # Vehicle detected
-                if current_status == "RESERVED":
-                    # Reserved spot now occupied - vehicle arrived
-                    updates = {
-                        "status": "OCCUPIED",
-                        "occupied_at": now,
-                        "updated_at": now
-                    }
-                    await self.update_spot(spot_id, updates)
-                    return {"status": "OCCUPIED", "transition": "RESERVED->OCCUPIED"}
-                    
-                elif current_status == "AVAILABLE":
-                    # Unreserved spot now occupied (walk-in or unauthorized)
-                    updates = {
-                        "status": "OCCUPIED",
-                        "occupied_at": now,
-                        "updated_at": now
-                    }
-                    await self.update_spot(spot_id, updates)
-                    return {"status": "OCCUPIED", "transition": "AVAILABLE->OCCUPIED"}
-                    
-                else:
-                    # Already occupied, no change needed
-                    return {"status": "OCCUPIED", "transition": None}
-            else:
-                # No vehicle detected
-                if current_status == "OCCUPIED":
-                    # Vehicle left - return to available
-                    await self.release_spot(spot_id, "Vehicle departed (sensor)")
-                    return {"status": "AVAILABLE", "transition": "OCCUPIED->AVAILABLE"}
-                else:
-                    # No change needed
-                    return {"status": current_status, "transition": None}
-                    
-        except Exception as e:
-            logger.error(f"Error updating spot from sensor: {e}")
+            logger.error(f"Erreur lors de la libération de la place {place_id}: {e}")
             raise
     
     async def get_expired_reservations(self) -> List[Dict[str, Any]]:
-        """Get all reservations that have expired."""
+        """Récupère les réservations expirées."""
         try:
             now = datetime.utcnow()
             
-            spots_ref = self.db.collection(self.COLLECTION_SPOTS)
-            query = spots_ref.where(
-                filter=FieldFilter("status", "==", "RESERVED")
+            places_ref = self.db.collection(self.COLLECTION_PLACES)
+            query = places_ref.where(
+                filter=FieldFilter("etat", "==", "reserved")
             ).where(
                 filter=FieldFilter("reservation_end_time", "<", now)
             )
@@ -347,19 +259,53 @@ class FirebaseDB:
             docs = query.stream()
             expired = []
             for doc in docs:
-                spot_data = doc.to_dict()
-                spot_data["id"] = doc.id
-                expired.append(spot_data)
+                place_data = doc.to_dict()
+                expired.append(place_data)
             
             return expired
         except Exception as e:
-            logger.error(f"Error fetching expired reservations: {e}")
+            logger.error(f"Erreur lors de la récupération des réservations expirées: {e}")
             raise
     
-    # ==================== USERS ====================
+    async def initialize_default_places(self, count: int = 6) -> List[str]:
+        """
+        Initialise les places de parking par défaut.
+        Appelé au démarrage de l'application.
+        """
+        try:
+            existing = await self.get_all_places()
+            if existing:
+                logger.info(f"{len(existing)} places existantes, initialisation ignorée")
+                return []
+            
+            created_ids = []
+            
+            for i in range(1, count + 1):
+                place_id = f"a{i}"
+                place_data = {
+                    "place_id": place_id,
+                    "etat": "free",
+                    "reserved_by": None,
+                    "reserved_by_email": None,
+                    "reservation_start_time": None,
+                    "reservation_end_time": None,
+                    "force_signal": None,
+                    "last_update": datetime.utcnow()
+                }
+                self.db.collection(self.COLLECTION_PLACES).document(place_id).set(place_data)
+                created_ids.append(place_id)
+            
+            logger.info(f"{count} places de parking initialisées")
+            return created_ids
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de l'initialisation des places: {e}")
+            raise
+    
+    # ==================== UTILISATEURS ====================
     
     async def get_user_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
-        """Get user profile from Firestore."""
+        """Récupère le profil utilisateur."""
         try:
             doc_ref = self.db.collection(self.COLLECTION_USERS).document(user_id)
             doc = doc_ref.get()
@@ -368,11 +314,11 @@ class FirebaseDB:
                 return doc.to_dict()
             return None
         except Exception as e:
-            logger.error(f"Error fetching user {user_id}: {e}")
+            logger.error(f"Erreur lors de la récupération de l'utilisateur {user_id}: {e}")
             raise
     
     async def upsert_user_profile(self, user_id: str, profile_data: Dict[str, Any]) -> bool:
-        """Create or update user profile."""
+        """Crée ou met à jour le profil utilisateur."""
         try:
             profile_data["updated_at"] = datetime.utcnow()
             
@@ -381,69 +327,34 @@ class FirebaseDB:
             
             return True
         except Exception as e:
-            logger.error(f"Error upserting user {user_id}: {e}")
+            logger.error(f"Erreur lors de la mise à jour de l'utilisateur {user_id}: {e}")
             raise
     
     async def get_user_active_reservation(self, user_id: str) -> Optional[Dict[str, Any]]:
-        """Get user's current active reservation."""
+        """Récupère la réservation active de l'utilisateur."""
         try:
-            spots_ref = self.db.collection(self.COLLECTION_SPOTS)
-            query = spots_ref.where(
+            places_ref = self.db.collection(self.COLLECTION_PLACES)
+            query = places_ref.where(
                 filter=FieldFilter("reserved_by", "==", user_id)
             ).where(
-                filter=FieldFilter("status", "in", ["RESERVED", "OCCUPIED"])
+                filter=FieldFilter("etat", "in", ["reserved", "occupied"])
             ).limit(1)
             
             docs = query.stream()
             for doc in docs:
-                spot_data = doc.to_dict()
-                spot_data["id"] = doc.id
-                return spot_data
+                return doc.to_dict()
             return None
         except Exception as e:
-            logger.error(f"Error fetching user reservation: {e}")
-            raise
-    
-    # ==================== INITIALIZATION ====================
-    
-    async def initialize_default_spots(self, count: int = 5) -> List[str]:
-        """
-        Initialize default parking spots if none exist.
-        Called on application startup.
-        """
-        try:
-            existing = await self.get_all_spots()
-            if existing:
-                logger.info(f"Found {len(existing)} existing spots, skipping initialization")
-                return []
-            
-            created_ids = []
-            zones = ["Terminal 1", "Terminal 1", "Terminal 2", "Terminal 2", "VIP"]
-            
-            for i in range(1, count + 1):
-                spot_data = {
-                    "spot_number": f"A{i}",
-                    "zone": zones[i - 1] if i <= len(zones) else "General",
-                    "floor": 1,
-                    "sensor_id": f"ESP32-SENSOR-{i:03d}"
-                }
-                spot_id = await self.create_spot(spot_data)
-                created_ids.append(spot_id)
-            
-            logger.info(f"Initialized {count} default parking spots")
-            return created_ids
-            
-        except Exception as e:
-            logger.error(f"Error initializing default spots: {e}")
+            logger.error(f"Erreur lors de la récupération de la réservation: {e}")
             raise
 
 
-# Create a singleton instance
+# Instance singleton
 _db_instance: Optional[FirebaseDB] = None
 
 
 def get_db() -> FirebaseDB:
-    """Get the FirebaseDB singleton instance."""
+    """Obtient l'instance singleton de FirebaseDB."""
     global _db_instance
     if _db_instance is None:
         _db_instance = FirebaseDB()

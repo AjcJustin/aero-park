@@ -1,17 +1,16 @@
 """
 AeroPark Smart System - Configuration Module
-Handles all environment variables and application settings.
+Gère toutes les variables d'environnement et paramètres.
 """
 
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from typing import List
 from functools import lru_cache
-import json
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """Paramètres de l'application chargés depuis les variables d'environnement."""
     
     # Firebase Configuration
     firebase_project_id: str = Field(..., env="FIREBASE_PROJECT_ID")
@@ -32,18 +31,16 @@ class Settings(BaseSettings):
         env="FIREBASE_AUTH_PROVIDER_CERT_URL"
     )
     firebase_client_cert_url: str = Field(..., env="FIREBASE_CLIENT_CERT_URL")
-    firebase_database_url: str = Field(..., env="FIREBASE_DATABASE_URL")
     
-    # API Security
-    sensor_api_key: str = Field(..., env="SENSOR_API_KEY", min_length=32)
-    admin_api_key: str = Field(..., env="ADMIN_API_KEY", min_length=32)
+    # API Security - Clé API pour les capteurs ESP32
+    sensor_api_key: str = Field(
+        default="aeropark-sensor-key-2024",
+        env="SENSOR_API_KEY"
+    )
     
     # Application Settings
-    debug: bool = Field(default=False, env="DEBUG")
-    cors_origins: str = Field(
-        default="http://localhost:3000",
-        env="CORS_ORIGINS"
-    )
+    debug: bool = Field(default=True, env="DEBUG")
+    cors_origins: str = Field(default="*", env="CORS_ORIGINS")
     default_reservation_duration_minutes: int = Field(
         default=60,
         env="DEFAULT_RESERVATION_DURATION_MINUTES"
@@ -52,6 +49,7 @@ class Settings(BaseSettings):
         default=480,
         env="MAX_RESERVATION_DURATION_MINUTES"
     )
+    total_parking_slots: int = Field(default=6, env="TOTAL_PARKING_SLOTS")
     
     class Config:
         env_file = ".env"
@@ -61,6 +59,8 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string."""
+        if self.cors_origins == "*":
+            return ["*"]
         return [origin.strip() for origin in self.cors_origins.split(",")]
     
     def get_firebase_credentials(self) -> dict:

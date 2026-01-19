@@ -1,23 +1,21 @@
 """
 AeroPark Smart System - Parking Router
-Handles parking status, reservations, and releases.
+Gère l'état du parking, les réservations et les libérations.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 import logging
+from datetime import datetime
 
 from models.parking import (
-    ParkingSpot,
-    ParkingStatusResponse,
     ReservationRequest,
     ReservationResponse,
-    ReleaseRequest,
 )
 from models.user import UserProfile
 from security.firebase_auth import get_current_user
-from services.parking_service import get_parking_service
-from services.reservation_service import get_reservation_service
+from database.firebase_db import get_db
+from services.websocket_service import get_websocket_manager
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -26,249 +24,277 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/parking",
     tags=["Parking"],
-    responses={401: {"description": "Unauthorized"}}
+    responses={401: {"description": "Non autorisé"}}
 )
 
 
 @router.get(
     "/status",
-    response_model=ParkingStatusResponse,
-    summary="Get Parking Status",
-    description="Returns current status of all parking spots including availability counts."
+    summary="État du Parking",
+    description="Retourne l'état actuel de toutes les places de parking."
 )
-async def get_parking_status() -> ParkingStatusResponse:
+async def get_parking_status():
     """
-    Get the current status of all parking spots.
+    Obtenir l'état actuel de toutes les places de parking.
     
-    This endpoint is public and returns:
-    - Total number of spots
-    - Count of available, reserved, and occupied spots
-    - Full list of all spots with their current status
-    
-    No authentication required for viewing parking status.
+    Endpoint public qui retourne:
+    - Nombre total de places
+    - Compteurs: libres, réservées, occupées
+    - Liste complète de toutes les places
     """
     try:
-        service = get_parking_service()
-        return await service.get_parking_status()
+        db = get_db()
+        places = await db.get_all_places()
+        
+        free = sum(1 for p in places if p.get("etat") == "free")
+        reserved = sum(1 for p in places if p.get("etat") == "reserved")
+        occupied = sum(1 for p in places if p.get("etat") == "occupied")
+        
+        return {
+            "total": len(places),
+            "free": free,
+            "reserved": reserved,
+            "occupied": occupied,
+            "places": places,
+            "timestamp": datetime.utcnow().isoformat()
+        }
         
     except Exception as e:
-        logger.error(f"Error fetching parking status: {e}")
+        logger.error(f"Erreur récupération état parking: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error fetching parking status"
+            detail="Erreur récupération état parking"
         )
 
 
 @router.get(
     "/available",
-    response_model=List[ParkingSpot],
-    summary="Get Available Spots",
-    description="Returns only parking spots that are currently available for reservation."
+    summary="Places Disponibles",
+    description="Retourne les places disponibles pour réservation."
 )
-async def get_available_spots() -> List[ParkingSpot]:
+async def get_available_places():
     """
-    Get all available parking spots.
+    Obtenir toutes les places de parking disponibles.
     
-    Returns only spots with status AVAILABLE.
-    Useful for showing reservation options to users.
+    Retourne uniquement les places avec état 'free'.
     """
     try:
-        service = get_parking_service()
-        return await service.get_available_spots()
+        db = get_db()
+        places = await db.get_all_places()
+        
+        available = [p for p in places if p.get("etat") == "free"]
+        
+        return {
+            "available": available,
+            "count": len(available),
+            "timestamp": datetime.utcnow().isoformat()
+        }
         
     except Exception as e:
-        logger.error(f"Error fetching available spots: {e}")
+        logger.error(f"Erreur récupération places disponibles: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error fetching available spots"
+            detail="Erreur récupération places disponibles"
         )
 
 
 @router.get(
-    "/spot/{spot_id}",
-    response_model=ParkingSpot,
-    summary="Get Spot Details",
-    description="Returns detailed information about a specific parking spot."
+    "/place/{place_id}",
+    summary="Détails d'une Place",
+    description="Retourne les informations détaillées d'une place spécifique."
 )
-async def get_spot_details(spot_id: str) -> ParkingSpot:
+async def get_place_details(place_id: str):
     """
-    Get details of a specific parking spot.
+    Obtenir les détails d'une place de parking.
     
     Args:
-        spot_id: The parking spot ID
+        place_id: ID de la place (ex: a1, a2)
         
     Returns:
-        ParkingSpot: Full spot details
+        Détails complets de la place
     """
     try:
-        service = get_parking_service()
-        spot = await service.get_spot_by_id(spot_id)
+        db = get_db()
+        place = await db.get_place_by_id(place_id)
         
-        if not spot:
+        if not place:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Parking spot {spot_id} not found"
+                detail=f"Place {place_id} non trouvée"
             )
         
-        return spot
+        return place
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching spot {spot_id}: {e}")
+        logger.error(f"Erreur récupération place {place_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error fetching spot details"
+            detail="Erreur récupération détails place"
         )
 
 
 @router.post(
     "/reserve",
     response_model=ReservationResponse,
-    summary="Reserve Parking Spot",
-    description="Reserve an available parking spot for a specified duration."
+    summary="Réserver une Place",
+    description="Réserve une place de parking disponible."
 )
-async def reserve_spot(
+async def reserve_place(
     request: ReservationRequest,
     user: UserProfile = Depends(get_current_user)
 ) -> ReservationResponse:
     """
-    Reserve a parking spot.
+    Réserver une place de parking.
     
-    Authenticated users can reserve an available spot for a specified
-    duration (15 minutes to 8 hours). The reservation uses a Firestore
-    transaction to prevent race conditions when multiple users try to
-    reserve the same spot simultaneously.
+    Les utilisateurs authentifiés peuvent réserver une place disponible
+    pour une durée spécifiée (15 min à 8 heures).
+    
+    Cette action envoie une notification WebSocket à l'ESP32.
     
     Args:
-        request: Reservation request with spot_id and duration
-        user: Authenticated user making the reservation
+        request: Requête avec place_id et duration_minutes
+        user: Utilisateur authentifié
         
     Returns:
-        ReservationResponse: Reservation confirmation or error
+        ReservationResponse: Confirmation de réservation
     """
     try:
-        service = get_reservation_service()
-        result = await service.create_reservation(request, user)
+        db = get_db()
+        ws_manager = get_websocket_manager()
         
-        if not result.success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.message
+        # Vérifier la durée
+        if request.duration_minutes < 15 or request.duration_minutes > 480:
+            return ReservationResponse(
+                success=False,
+                message="Durée doit être entre 15 et 480 minutes"
             )
         
-        return result
+        # Réserver la place
+        result = await db.reserve_place(
+            place_id=request.place_id,
+            user_id=user.uid,
+            user_email=user.email,
+            duration_minutes=request.duration_minutes
+        )
         
-    except HTTPException:
-        raise
+        # Notifier l'ESP32 via WebSocket
+        await ws_manager.notify_reservation(request.place_id, "create")
+        
+        logger.info(f"Réservation créée: {request.place_id} pour {user.email}")
+        
+        return ReservationResponse(
+            success=True,
+            message=f"Place {request.place_id} réservée avec succès",
+            place_id=request.place_id,
+            reservation_end=result.get("reservation_end_time")
+        )
+        
+    except ValueError as e:
+        return ReservationResponse(
+            success=False,
+            message=str(e)
+        )
     except Exception as e:
-        logger.error(f"Error creating reservation: {e}")
+        logger.error(f"Erreur création réservation: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error processing reservation"
+            detail="Erreur lors de la réservation"
         )
 
 
 @router.post(
-    "/release",
-    summary="Release Parking Spot",
-    description="Manually release a reserved or occupied parking spot."
+    "/release/{place_id}",
+    summary="Libérer une Place",
+    description="Libère une place réservée ou occupée."
 )
-async def release_spot(
-    request: ReleaseRequest,
+async def release_place(
+    place_id: str,
     user: UserProfile = Depends(get_current_user)
 ):
     """
-    Release a parking spot.
+    Libérer une place de parking.
     
-    Allows users to manually release their reserved or occupied spot.
-    Users can only release spots that they have reserved.
+    Permet aux utilisateurs de libérer manuellement leur place.
+    Envoie une notification WebSocket à l'ESP32.
     
     Args:
-        request: Release request with spot_id
-        user: Authenticated user
+        place_id: ID de la place à libérer
+        user: Utilisateur authentifié
         
     Returns:
-        Success confirmation
+        Confirmation de libération
     """
     try:
-        service = get_parking_service()
-        await service.release_spot(
-            spot_id=request.spot_id,
-            user_id=user.uid,
-            reason=request.reason or "User requested release"
-        )
+        db = get_db()
+        ws_manager = get_websocket_manager()
+        
+        # Vérifier que la place appartient à l'utilisateur
+        place = await db.get_place_by_id(place_id)
+        
+        if not place:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Place {place_id} non trouvée"
+            )
+        
+        if place.get("reserved_by") != user.uid:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous ne pouvez libérer que vos propres réservations"
+            )
+        
+        # Libérer la place
+        await db.release_place(place_id)
+        
+        # Notifier l'ESP32
+        await ws_manager.notify_reservation(place_id, "cancel")
+        
+        logger.info(f"Place {place_id} libérée par {user.email}")
         
         return {
             "success": True,
-            "message": "Parking spot released successfully"
+            "message": f"Place {place_id} libérée avec succès"
         }
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Error releasing spot: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error releasing parking spot"
-        )
-
-
-@router.post(
-    "/extend",
-    response_model=ReservationResponse,
-    summary="Extend Reservation",
-    description="Extend an existing parking reservation."
-)
-async def extend_reservation(
-    spot_id: str,
-    additional_minutes: int,
-    user: UserProfile = Depends(get_current_user)
-) -> ReservationResponse:
-    """
-    Extend a parking reservation.
-    
-    Allows users to add time to their existing reservation.
-    Maximum total duration is 8 hours.
-    
-    Args:
-        spot_id: The parking spot ID
-        additional_minutes: Minutes to add (must be positive)
-        user: Authenticated user
-        
-    Returns:
-        ReservationResponse: Updated reservation details
-    """
-    if additional_minutes <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Additional minutes must be positive"
-        )
-    
-    try:
-        service = get_reservation_service()
-        result = await service.extend_reservation(
-            spot_id=spot_id,
-            user_id=user.uid,
-            additional_minutes=additional_minutes
-        )
-        
-        if not result.success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.message
-            )
-        
-        return result
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error extending reservation: {e}")
+        logger.error(f"Erreur libération place: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error extending reservation"
+            detail="Erreur lors de la libération"
+        )
+
+
+@router.get(
+    "/my-reservation",
+    summary="Ma Réservation",
+    description="Récupère la réservation active de l'utilisateur."
+)
+async def get_my_reservation(
+    user: UserProfile = Depends(get_current_user)
+):
+    """
+    Récupère la réservation active de l'utilisateur.
+    
+    Returns:
+        Détails de la réservation active ou null
+    """
+    try:
+        db = get_db()
+        reservation = await db.get_user_active_reservation(user.uid)
+        
+        return {
+            "has_reservation": reservation is not None,
+            "reservation": reservation,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Erreur récupération réservation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur récupération réservation"
         )
