@@ -407,6 +407,20 @@ class FirebaseDB:
         """Annule une réservation."""
         return await self.release_place(reservation_id)
     
+    async def update_reservation_status(self, reservation_id: str, status: str) -> bool:
+        """Met à jour le statut d'une réservation."""
+        try:
+            doc_ref = self.db.collection(self.COLLECTION_PLACES).document(reservation_id)
+            doc_ref.update({
+                "reservation_status": status,
+                "status_updated_at": datetime.utcnow().isoformat()
+            })
+            logger.info(f"Statut de la réservation {reservation_id} mis à jour: {status}")
+            return True
+        except Exception as e:
+            logger.error(f"Erreur mise à jour statut réservation {reservation_id}: {e}")
+            return False
+    
     # ==================== ACCESS CODES ====================
     
     async def save_access_code(self, code_data: Dict[str, Any]) -> str:

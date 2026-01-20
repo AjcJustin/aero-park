@@ -32,3 +32,6 @@ websockets==12.0
 
 # Utilities
 python-dateutil==2.8.2
+
+# test python 
+pytest==7.4.0

@@ -33,12 +33,6 @@ class AuditEventType(str, Enum):
     SENSOR_UPDATE = "sensor_update"
     SENSOR_INCONSISTENCY = "sensor_inconsistency"
     
-    # ESP32 Events
-    ESP32_HEARTBEAT = "esp32_heartbeat"
-    ESP32_CONNECTION = "esp32_connection"
-    ESP32_DISCONNECTION = "esp32_disconnection"
-    ESP32_ERROR = "esp32_error"
-    
     # Payment Events
     PAYMENT_SUCCESS = "payment_success"
     PAYMENT_FAILED = "payment_failed"
@@ -62,7 +56,6 @@ class AuditService:
     """Service de journalisation des audits."""
     
     COLLECTION_AUDIT_LOGS = "audit_logs"
-    COLLECTION_ESP32_DEVICES = "esp32_devices"
     
     def __init__(self):
         self.db = None
@@ -231,50 +224,6 @@ class AuditService:
                 "force_signal": force_signal
             }
         )
-    
-    async def log_esp32_heartbeat(
-        self,
-        esp32_id: str,
-        ip_address: str,
-        firmware_version: Optional[str] = None,
-        free_heap: Optional[int] = None,
-        uptime_seconds: Optional[int] = None
-    ) -> str:
-        """Log un heartbeat ESP32 et met à jour le registre des appareils."""
-        try:
-            db = self._get_db()
-            
-            # Mettre à jour le registre des appareils ESP32
-            device_data = {
-                "esp32_id": esp32_id,
-                "last_heartbeat": datetime.utcnow().isoformat(),
-                "ip_address": ip_address,
-                "firmware_version": firmware_version,
-                "free_heap": free_heap,
-                "uptime_seconds": uptime_seconds,
-                "status": "online"
-            }
-            
-            db.db.collection(self.COLLECTION_ESP32_DEVICES).document(esp32_id).set(
-                device_data,
-                merge=True
-            )
-            
-            return await self.log_event(
-                event_type=AuditEventType.ESP32_HEARTBEAT,
-                decision=AuditDecision.INFO,
-                esp32_id=esp32_id,
-                ip_address=ip_address,
-                details={
-                    "firmware_version": firmware_version,
-                    "free_heap": free_heap,
-                    "uptime_seconds": uptime_seconds
-                }
-            )
-            
-        except Exception as e:
-            logger.error(f"Erreur log heartbeat: {e}")
-            return ""
     
     async def log_payment_event(
         self,

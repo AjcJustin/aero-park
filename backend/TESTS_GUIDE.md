@@ -1,12 +1,53 @@
 # 🧪 Guide de Tests - AeroPark Smart System Backend
 
+## � Tests Automatisés (pytest)
+
+### Installation des dépendances de test
+```bash
+pip install pytest pytest-asyncio
+```
+
+### Exécution des tests
+
+```bash
+# Tous les tests (105 tests)
+pytest tests/ -v
+
+# Tests rapides (sans verbose)
+pytest tests/ -q
+
+# Un fichier spécifique
+pytest tests/test_sensor.py -v
+
+# Un test spécifique
+pytest tests/test_access.py::TestAccessValidateCode::test_validate_code_requires_api_key -v
+```
+
+### Structure des tests
+| Fichier | Description | Tests |
+|---------|-------------|-------|
+| `tests/conftest.py` | Fixtures partagées (API key, mock DB, mock users) | - |
+| `tests/test_health.py` | Health check, documentation, CORS | 14 |
+| `tests/test_sensor.py` | ESP32 sensor updates, health endpoint | 16 |
+| `tests/test_parking.py` | Status, available, reserve, release | 18 |
+| `tests/test_access.py` | Code validation, entry/exit, barrier | 16 |
+| `tests/test_payment.py` | Mobile money, pricing, status | 16 |
+| `tests/test_admin.py` | Admin endpoints, authentication | 22 |
+
+### Résultat attendu
+```
+105 passed, 12 warnings in ~14s
+```
+
+---
+
 ## 📍 Accès à la Documentation API
 - **URL:** http://localhost:8000/docs
 - **API Key pour ESP32:** `aeropark-sensor-key-2024` (Header: `X-API-Key`)
 
 ---
 
-## 🔬 TESTS À EFFECTUER
+## 🔬 TESTS MANUELS À EFFECTUER
 
 ### 1️⃣ TEST: Endpoint Racine (Health Check)
 **Endpoint:** `GET /`
@@ -102,99 +143,7 @@
 
 ---
 
-### 5️⃣ TEST: ESP32 Heartbeat
-**Endpoint:** `POST /api/v1/esp32/heartbeat`
-
-**Headers:**
-```
-X-API-Key: aeropark-sensor-key-2024
-Content-Type: application/json
-```
-
-**Body:**
-```json
-{
-  "device_id": "ESP32-BARRIER-001",
-  "device_type": "BARRIER_CONTROLLER",
-  "firmware_version": "2.0.0",
-  "uptime_seconds": 3600,
-  "free_heap": 45000,
-  "wifi_rssi": -65,
-  "sensor_status": {
-    "ir_sensors": true,
-    "servo": true,
-    "lcd": true,
-    "entry_sensor": true,
-    "exit_sensor": true
-  }
-}
-```
-
-**Résultat Attendu:**
-```json
-{
-  "acknowledged": true,
-  "server_time": "2026-01-20T10:00:00.000000+00:00",
-  "device_status": "ONLINE",
-  "config_update_available": false,
-  "pending_commands": [],
-  "message": "Heartbeat acknowledged. Device status: ONLINE",
-  "next_heartbeat_seconds": 30
-}
-```
-
----
-
-### 6️⃣ TEST: Liste des Appareils ESP32
-**Endpoint:** `GET /api/v1/esp32/devices`
-
-**Headers:**
-```
-X-API-Key: aeropark-sensor-key-2024
-```
-
-**Résultat Attendu (après heartbeat):**
-```json
-[
-  {
-    "device_id": "ESP32-BARRIER-001",
-    "device_type": "BARRIER_CONTROLLER",
-    "status": "ONLINE",
-    "last_seen": "2026-01-20T10:00:00.000000+00:00",
-    "firmware_version": "2.0.0",
-    "uptime_seconds": 3600,
-    "wifi_rssi": -65,
-    "ip_address": "127.0.0.1",
-    "total_heartbeats": 1
-  }
-]
-```
-
----
-
-### 7️⃣ TEST: Santé de la Flotte ESP32
-**Endpoint:** `GET /api/v1/esp32/health`
-
-**Headers:**
-```
-X-API-Key: aeropark-sensor-key-2024
-```
-
-**Résultat Attendu:**
-```json
-{
-  "total_devices": 1,
-  "online": 1,
-  "offline": 0,
-  "degraded": 0,
-  "health_percentage": 100.0,
-  "checked_at": "2026-01-20T10:00:00.000000+00:00"
-}
-```
-
----
-
-### 8️⃣ TEST: Informations Parking pour Barrière
+### 5️⃣ TEST: Informations Parking pour Barrière
 **Endpoint:** `GET /api/v1/barrier/parking-info`
 
 **Headers:**
@@ -217,7 +166,7 @@ X-API-Key: aeropark-sensor-key-2024
 
 ---
 
-### 9️⃣ TEST: Mise à jour Capteur ESP32
+### 6️⃣ TEST: Mise à jour Capteur
 **Endpoint:** `POST /api/v1/sensor/update`
 
 **Headers:**
@@ -248,7 +197,7 @@ Content-Type: application/json
 
 ---
 
-### 🔟 TEST: Double TRUE Rule - Vérification Entrée
+### 7️⃣ TEST: Double TRUE Rule - Vérification Entrée
 **Endpoint:** `POST /api/v1/barrier/check-entry-access`
 
 **Headers:**
@@ -278,7 +227,7 @@ Content-Type: application/json
 
 ---
 
-### 1️⃣1️⃣ TEST: Validation Code d'Accès
+### 8️⃣ TEST: Validation Code d'Accès
 **Endpoint:** `POST /api/v1/access/validate-code`
 
 **Headers:**
@@ -320,7 +269,7 @@ Content-Type: application/json
 
 ---
 
-### 1️⃣2️⃣ TEST: Simulation Paiement Standard
+### 9️⃣ TEST: Simulation Paiement Standard
 **Endpoint:** `POST /api/v1/payment/simulate`
 
 **Body:**
@@ -344,7 +293,7 @@ Content-Type: application/json
 
 ---
 
-### 1️⃣3️⃣ TEST: Tarification
+### 🔟 TEST: Tarification
 **Endpoint:** `GET /api/v1/payment/pricing`
 
 **Résultat Attendu:**
@@ -373,31 +322,25 @@ POST /api/v1/payment/mobile-money/simulate
 → Obtenir un code d'accès (ex: "A7F")
 ```
 
-### Étape 3: Envoyer un heartbeat ESP32
-```
-POST /api/v1/esp32/heartbeat
-→ Confirme que l'ESP32 est en ligne
-```
-
-### Étape 4: Vérifier l'accès à l'entrée
+### Étape 3: Vérifier l'accès à l'entrée
 ```
 POST /api/v1/barrier/check-entry-access
 → Vérifie si la barrière peut s'ouvrir
 ```
 
-### Étape 5: Valider le code d'accès
+### Étape 4: Valider le code d'accès
 ```
 POST /api/v1/access/validate-code
 → Avec le code obtenu à l'étape 2
 ```
 
-### Étape 6: Mettre à jour le capteur (véhicule garé)
+### Étape 5: Mettre à jour le capteur (véhicule garé)
 ```
 POST /api/v1/sensor/update
 → place_id: "a1", etat: "occupied"
 ```
 
-### Étape 7: Vérifier le nouveau statut
+### Étape 6: Vérifier le nouveau statut
 ```
 GET /api/v1/parking/status
 → Vérifie que la place est occupée
@@ -418,14 +361,12 @@ GET /api/v1/parking/status
 ## 🔐 NOTES IMPORTANTES
 
 1. **Double TRUE Rule:** La barrière s'ouvre UNIQUEMENT si:
-   - `vehicle_presence == true` (capteur ESP32)
+   - `vehicle_presence == true` (capteur)
    - `access_code_valid == true` (code validé via app)
 
 2. **Mobile Money:** 80% de succès simulé, 20% d'échec aléatoire
 
 3. **Codes d'accès:** Expiration automatique (scheduler chaque minute)
-
-4. **Heartbeat ESP32:** Recommandé toutes les 30 secondes
 
 ---
 

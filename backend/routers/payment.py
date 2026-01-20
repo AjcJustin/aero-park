@@ -377,7 +377,7 @@ async def get_mobile_money_providers():
             {
                 "id": MobileMoneyProvider.ORANGE_MONEY.value,
                 "name": "Orange Money",
-                "countries": ["Senegal", "Ivory Coast", "Mali", "Cameroon", "Guinea", "Burkina Faso"],
+                "countries": ["DR Congo","Ivory Coast", "Mali", "Cameroon", "Guinea", "Burkina Faso"],
                 "icon": "orange_money"
             },
             {

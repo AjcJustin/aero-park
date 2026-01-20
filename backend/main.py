@@ -22,7 +22,6 @@ from routers import (
     access_router,
     barrier_router,
     payment_router,
-    esp32_router,
 )
 
 # Import utilities
@@ -98,18 +97,21 @@ app = FastAPI(
     
     * **Monitoring en Temps Réel**: Capteurs ESP32 détectant la présence des véhicules
     * **Réservations Intelligentes**: Réserver des places avec gestion automatique du temps
+    * **Contrôle de Barrière**: Ouverture/fermeture automatique selon les règles d'accès
+    * **Paiement Mobile Money**: Simulation ORANGE_MONEY, AIRTEL_MONEY, MPESA
     * **Mises à Jour WebSocket**: Actualisations en direct pour tous les clients
     * **Intégration Firebase**: Authentification sécurisée et base de données
     
-    ### Endpoints pour ESP32
+    ### API Capteurs & Barrière
     
     * **POST /api/v1/sensor/update**: Mise à jour de l'état d'une place
-    * **GET /api/v1/sensor/health**: Vérification de la connexion au serveur
-    * **WebSocket /ws/parking**: Notifications de réservation en temps réel
+    * **POST /api/v1/barrier/open**: Ouvrir la barrière
+    * **POST /api/v1/barrier/close**: Fermer la barrière
+    * **POST /api/v1/access/validate-code**: Valider un code d'accès
     
     ### Sécurité
     
-    * Endpoints capteurs: Clé API dans le header X-API-Key
+    * Endpoints capteurs/barrière: Clé API dans le header X-API-Key
     * Endpoints utilisateurs: Token Firebase (Bearer authentication)
     """,
     version="1.0.0",
@@ -185,7 +187,6 @@ app.include_router(admin_router)
 app.include_router(access_router)
 app.include_router(barrier_router)
 app.include_router(payment_router)
-app.include_router(esp32_router)
 
 
 # ==================== ENDPOINTS RACINE ====================

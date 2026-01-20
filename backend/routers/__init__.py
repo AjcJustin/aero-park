@@ -11,7 +11,6 @@ from routers.websocket import router as websocket_router
 from routers.access import router as access_router
 from routers.barrier import router as barrier_router
 from routers.payment import router as payment_router
-from routers.esp32 import router as esp32_router
 
 __all__ = [
     "auth_router",
@@ -22,5 +21,4 @@ __all__ = [
     "access_router",
     "barrier_router",
     "payment_router",
-    "esp32_router",
 ]
