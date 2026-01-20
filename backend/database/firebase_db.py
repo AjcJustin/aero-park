@@ -347,6 +347,275 @@ class FirebaseDB:
         except Exception as e:
             logger.error(f"Erreur lors de la récupération de la réservation: {e}")
             raise
+    
+    # ==================== RESERVATIONS (Collection séparée) ====================
+    
+    COLLECTION_ACCESS_CODES = "access_codes"
+    COLLECTION_PAYMENTS = "payments"
+    COLLECTION_BARRIER_LOGS = "barrier_logs"
+    
+    async def get_all_reservations(
+        self,
+        status_filter: Optional[str] = None,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Récupère toutes les réservations (places réservées/occupées)."""
+        try:
+            places_ref = self.db.collection(self.COLLECTION_PLACES)
+            
+            if status_filter == "active":
+                query = places_ref.where(
+                    filter=FieldFilter("etat", "in", ["reserved", "occupied"])
+                )
+            elif status_filter == "completed":
+                # Pour l'historique, on utilise une autre collection ou on filtre
+                query = places_ref.where(
+                    filter=FieldFilter("etat", "==", "free")
+                ).where(
+                    filter=FieldFilter("reserved_by", "!=", None)
+                )
+            else:
+                query = places_ref.where(
+                    filter=FieldFilter("reserved_by", "!=", None)
+                )
+            
+            docs = query.limit(limit).stream()
+            reservations = []
+            for doc in docs:
+                data = doc.to_dict()
+                # Convertir les timestamps
+                for key in ["reservation_start_time", "reservation_end_time", "last_update"]:
+                    if data.get(key) and hasattr(data[key], 'isoformat'):
+                        data[key] = data[key].isoformat()
+                reservations.append(data)
+            
+            return reservations
+        except Exception as e:
+            logger.error(f"Erreur récupération réservations: {e}")
+            # Fallback: retourner les places réservées/occupées
+            try:
+                places = await self.get_all_places()
+                return [p for p in places if p.get("reserved_by")]
+            except:
+                return []
+    
+    async def get_reservation(self, reservation_id: str) -> Optional[Dict[str, Any]]:
+        """Récupère une réservation par ID (place_id dans ce contexte)."""
+        return await self.get_place_by_id(reservation_id)
+    
+    async def cancel_reservation(self, reservation_id: str) -> bool:
+        """Annule une réservation."""
+        return await self.release_place(reservation_id)
+    
+    # ==================== ACCESS CODES ====================
+    
+    async def save_access_code(self, code_data: Dict[str, Any]) -> str:
+        """Sauvegarde un code d'accès."""
+        try:
+            code = code_data["code"]
+            self.db.collection(self.COLLECTION_ACCESS_CODES).document(code).set(code_data)
+            logger.info(f"Code d'accès {code} sauvegardé")
+            return code
+        except Exception as e:
+            logger.error(f"Erreur sauvegarde code d'accès: {e}")
+            raise
+    
+    async def get_access_code(self, code: str) -> Optional[Dict[str, Any]]:
+        """Récupère un code d'accès."""
+        try:
+            doc_ref = self.db.collection(self.COLLECTION_ACCESS_CODES).document(code)
+            doc = doc_ref.get()
+            if doc.exists:
+                return doc.to_dict()
+            return None
+        except Exception as e:
+            logger.error(f"Erreur récupération code: {e}")
+            return None
+    
+    async def update_access_code(self, code: str, updates: Dict[str, Any]) -> bool:
+        """Met à jour un code d'accès."""
+        try:
+            self.db.collection(self.COLLECTION_ACCESS_CODES).document(code).update(updates)
+            return True
+        except Exception as e:
+            logger.error(f"Erreur mise à jour code: {e}")
+            return False
+    
+    async def get_all_access_codes(
+        self,
+        status_filter: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Récupère tous les codes d'accès."""
+        try:
+            codes_ref = self.db.collection(self.COLLECTION_ACCESS_CODES)
+            
+            if status_filter:
+                query = codes_ref.where(
+                    filter=FieldFilter("status", "==", status_filter)
+                )
+            else:
+                query = codes_ref
+            
+            docs = query.stream()
+            codes = []
+            for doc in docs:
+                data = doc.to_dict()
+                # Convertir les timestamps
+                for key in ["created_at", "expires_at", "used_at"]:
+                    if data.get(key) and hasattr(data[key], 'isoformat'):
+                        data[key] = data[key].isoformat()
+                codes.append(data)
+            return codes
+        except Exception as e:
+            logger.error(f"Erreur récupération codes: {e}")
+            return []
+    
+    async def delete_access_code(self, code: str) -> bool:
+        """Supprime un code d'accès."""
+        try:
+            self.db.collection(self.COLLECTION_ACCESS_CODES).document(code).delete()
+            return True
+        except Exception as e:
+            logger.error(f"Erreur suppression code: {e}")
+            return False
+    
+    # ==================== PAYMENTS ====================
+    
+    async def save_payment(self, payment_data: Dict[str, Any]) -> str:
+        """Sauvegarde un paiement."""
+        try:
+            payment_id = payment_data.get("payment_id")
+            if not payment_id:
+                # Générer un ID si non fourni
+                import uuid
+                payment_id = str(uuid.uuid4())
+                payment_data["payment_id"] = payment_id
+            
+            self.db.collection(self.COLLECTION_PAYMENTS).document(payment_id).set(payment_data)
+            logger.info(f"Paiement {payment_id} sauvegardé")
+            return payment_id
+        except Exception as e:
+            logger.error(f"Erreur sauvegarde paiement: {e}")
+            raise
+    
+    async def get_payment(self, payment_id: str) -> Optional[Dict[str, Any]]:
+        """Récupère un paiement."""
+        try:
+            doc_ref = self.db.collection(self.COLLECTION_PAYMENTS).document(payment_id)
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict()
+                for key in ["created_at", "updated_at"]:
+                    if data.get(key) and hasattr(data[key], 'isoformat'):
+                        data[key] = data[key].isoformat()
+                return data
+            return None
+        except Exception as e:
+            logger.error(f"Erreur récupération paiement: {e}")
+            return None
+    
+    async def update_payment(self, payment_id: str, updates: Dict[str, Any]) -> bool:
+        """Met à jour un paiement."""
+        try:
+            self.db.collection(self.COLLECTION_PAYMENTS).document(payment_id).update(updates)
+            return True
+        except Exception as e:
+            logger.error(f"Erreur mise à jour paiement: {e}")
+            return False
+    
+    async def get_all_payments(
+        self,
+        status_filter: Optional[str] = None,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Récupère tous les paiements."""
+        try:
+            payments_ref = self.db.collection(self.COLLECTION_PAYMENTS)
+            
+            if status_filter:
+                query = payments_ref.where(
+                    filter=FieldFilter("status", "==", status_filter)
+                ).limit(limit)
+            else:
+                query = payments_ref.limit(limit)
+            
+            docs = query.stream()
+            payments = []
+            for doc in docs:
+                data = doc.to_dict()
+                for key in ["created_at", "updated_at"]:
+                    if data.get(key) and hasattr(data[key], 'isoformat'):
+                        data[key] = data[key].isoformat()
+                payments.append(data)
+            return payments
+        except Exception as e:
+            logger.error(f"Erreur récupération paiements: {e}")
+            return []
+    
+    async def get_payments_by_reservation(self, reservation_id: str) -> List[Dict[str, Any]]:
+        """Récupère les paiements d'une réservation."""
+        try:
+            payments_ref = self.db.collection(self.COLLECTION_PAYMENTS)
+            query = payments_ref.where(
+                filter=FieldFilter("reservation_id", "==", reservation_id)
+            )
+            
+            docs = query.stream()
+            payments = []
+            for doc in docs:
+                data = doc.to_dict()
+                for key in ["created_at", "updated_at"]:
+                    if data.get(key) and hasattr(data[key], 'isoformat'):
+                        data[key] = data[key].isoformat()
+                payments.append(data)
+            return payments
+        except Exception as e:
+            logger.error(f"Erreur récupération paiements réservation: {e}")
+            return []
+    
+    # ==================== BARRIER LOGS ====================
+    
+    async def log_barrier_action(self, log_data: Dict[str, Any]) -> str:
+        """Enregistre une action de barrière."""
+        try:
+            import uuid
+            log_id = str(uuid.uuid4())
+            log_data["log_id"] = log_id
+            log_data["timestamp"] = datetime.utcnow()
+            
+            self.db.collection(self.COLLECTION_BARRIER_LOGS).document(log_id).set(log_data)
+            return log_id
+        except Exception as e:
+            logger.error(f"Erreur log barrière: {e}")
+            raise
+    
+    async def get_barrier_logs(
+        self,
+        barrier_id: Optional[str] = None,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Récupère les logs de barrière."""
+        try:
+            logs_ref = self.db.collection(self.COLLECTION_BARRIER_LOGS)
+            
+            if barrier_id:
+                query = logs_ref.where(
+                    filter=FieldFilter("barrier_id", "==", barrier_id)
+                ).order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit)
+            else:
+                query = logs_ref.order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit)
+            
+            docs = query.stream()
+            logs = []
+            for doc in docs:
+                data = doc.to_dict()
+                if data.get("timestamp") and hasattr(data["timestamp"], 'isoformat'):
+                    data["timestamp"] = data["timestamp"].isoformat()
+                logs.append(data)
+            return logs
+        except Exception as e:
+            logger.error(f"Erreur récupération logs: {e}")
+            return []
 
 
 # Instance singleton

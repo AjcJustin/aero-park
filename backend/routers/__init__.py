@@ -8,6 +8,10 @@ from routers.parking import router as parking_router
 from routers.admin import router as admin_router
 from routers.sensor import router as sensor_router
 from routers.websocket import router as websocket_router
+from routers.access import router as access_router
+from routers.barrier import router as barrier_router
+from routers.payment import router as payment_router
+from routers.esp32 import router as esp32_router
 
 __all__ = [
     "auth_router",
@@ -15,4 +19,8 @@ __all__ = [
     "admin_router",
     "sensor_router",
     "websocket_router",
+    "access_router",
+    "barrier_router",
+    "payment_router",
+    "esp32_router",
 ]

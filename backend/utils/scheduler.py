@@ -38,6 +38,15 @@ class ReservationScheduler:
             replace_existing=True
         )
         
+        # Add access code expiration job
+        self.scheduler.add_job(
+            self._cleanup_expired_access_codes,
+            trigger=IntervalTrigger(minutes=1),  # Check every minute
+            id="cleanup_expired_codes",
+            name="Cleanup expired access codes and free spots",
+            replace_existing=True
+        )
+        
         # Add periodic status broadcast job
         self.scheduler.add_job(
             self._broadcast_status,
@@ -114,6 +123,99 @@ class ReservationScheduler:
                 
         except Exception as e:
             logger.error(f"Error broadcasting status: {e}")
+    
+    async def _cleanup_expired_access_codes(self):
+        """
+        Background job to cleanup expired access codes.
+        
+        This job runs every minute and:
+        1. Finds all expired access codes (past expiry_time)
+        2. Marks codes as EXPIRED
+        3. Frees up associated parking spots
+        4. Cancels reservations if not yet used
+        5. Logs audit events for each expiration
+        """
+        try:
+            from services.access_code_service import access_code_service
+            from services.audit_service import audit_service, AuditEventType, AuditDecision
+            from database.firebase_db import get_db
+            from datetime import datetime, timezone
+            
+            db = get_db()
+            
+            # Get all access codes
+            codes_ref = db.db.collection("access_codes")
+            all_codes = codes_ref.stream()
+            
+            expired_count = 0
+            now = datetime.now(timezone.utc)
+            
+            for code_doc in all_codes:
+                code_data = code_doc.to_dict()
+                code_id = code_doc.id
+                
+                # Check if code is active and expired
+                if code_data.get("status") not in ["ACTIVE", "active"]:
+                    continue
+                
+                expiry_time = code_data.get("expiry_time")
+                if not expiry_time:
+                    continue
+                
+                # Handle different datetime formats
+                if hasattr(expiry_time, 'timestamp'):
+                    expiry_dt = expiry_time
+                else:
+                    continue
+                
+                # Make expiry_dt timezone aware if needed
+                if expiry_dt.tzinfo is None:
+                    expiry_dt = expiry_dt.replace(tzinfo=timezone.utc)
+                
+                # Check if expired
+                if now > expiry_dt:
+                    # Mark code as expired
+                    codes_ref.document(code_id).update({
+                        "status": "EXPIRED",
+                        "expired_at": now
+                    })
+                    
+                    # Free the parking spot if reservation exists
+                    reservation_id = code_data.get("reservation_id")
+                    if reservation_id:
+                        reservation = await db.get_reservation(reservation_id)
+                        if reservation:
+                            spot_id = reservation.get("spot_id")
+                            if spot_id:
+                                await db.update_place_status(spot_id, "free")
+                            
+                            # Update reservation status
+                            await db.update_reservation(reservation_id, {
+                                "status": "EXPIRED",
+                                "expired_at": now.isoformat()
+                            })
+                    
+                    # Log audit event
+                    await audit_service.log_event(
+                        event_type=AuditEventType.CODE_EXPIRED,
+                        decision=AuditDecision.INFO,
+                        barrier_id="scheduler",
+                        details={
+                            "code_id": code_id,
+                            "code": code_data.get("code", "")[:2] + "***",
+                            "reservation_id": reservation_id,
+                            "expired_at": now.isoformat(),
+                            "reason": "Automatic expiration by scheduler"
+                        }
+                    )
+                    
+                    expired_count += 1
+            
+            if expired_count > 0:
+                logger.info(f"Expired {expired_count} access codes")
+                
+        except Exception as e:
+            logger.error(f"Error cleaning up expired access codes: {e}")
     
     def add_reservation_reminder(self, reservation_id: str, spot_id: str, 
                                   user_id: str, reminder_time_seconds: int):

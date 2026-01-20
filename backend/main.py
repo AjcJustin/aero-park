@@ -19,6 +19,10 @@ from routers import (
     admin_router,
     sensor_router,
     websocket_router,
+    access_router,
+    barrier_router,
+    payment_router,
+    esp32_router,
 )
 
 # Import utilities
@@ -176,6 +180,12 @@ app.include_router(websocket_router)
 app.include_router(auth_router)
 app.include_router(parking_router)
 app.include_router(admin_router)
+
+# Routes nouvelles fonctionnalités: accès, barrières, paiements
+app.include_router(access_router)
+app.include_router(barrier_router)
+app.include_router(payment_router)
+app.include_router(esp32_router)
 
 
 # ==================== ENDPOINTS RACINE ====================

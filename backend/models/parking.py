@@ -17,6 +17,26 @@ class ParkingSpotStatus(str, Enum):
     RESERVED = "reserved"
 
 
+class ReservationStatus(str, Enum):
+    """
+    System States for reservations/access flow.
+    
+    State transitions:
+    1. PENDING_PAYMENT -> CONFIRMED (after successful payment)
+    2. PENDING_PAYMENT -> CANCELLED (payment failed or timeout)
+    3. CONFIRMED -> EXPIRED (access code expired without use)
+    4. CONFIRMED -> ACTIVE (vehicle entered parking)
+    5. ACTIVE -> COMPLETED (vehicle exited parking)
+    6. Any state -> CANCELLED (manual cancellation)
+    """
+    PENDING_PAYMENT = "PENDING_PAYMENT"  # Reservation created, awaiting payment
+    CONFIRMED = "CONFIRMED"              # Payment successful, access code issued
+    ACTIVE = "ACTIVE"                    # Vehicle has entered the parking
+    COMPLETED = "COMPLETED"              # Vehicle has exited, session complete
+    EXPIRED = "EXPIRED"                  # Access code expired without use
+    CANCELLED = "CANCELLED"              # Reservation cancelled
+
+
 class ParkingSpot(BaseModel):
     """Modèle complet d'une place de parking."""
     place_id: str = Field(..., description="Identifiant de la place (ex: a1, a2)")
