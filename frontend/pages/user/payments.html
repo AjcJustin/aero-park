@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="View and manage your parking payments">
+    <meta name="theme-color" content="#1e3a5f">
+    
+    <title>Payments - AeroPark GOMA</title>
+    
+    <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
+    <link rel="manifest" href="../../manifest.json">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <!-- Offline Banner -->
+    <div class="offline-banner" id="offline-banner">
+        ⚠️ You are currently offline. Payments require an internet connection.
+    </div>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <a href="/frontend/index.html" class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <path d="M20 8 L20 32 M12 16 L28 16 M14 24 L26 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="20" cy="20" r="4" fill="currentColor"/>
+                </svg>
+                <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">GOMA</span></span>
+            </a>
+            
+            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+            
+            <nav>
+                <ul class="nav-menu" id="nav-menu">
+                    <li><a href="/frontend/index.html" class="nav-link">Home</a></li>
+                    <li><a href="/frontend/pages/user/dashboard.html" class="nav-link">Dashboard</a></li>
+                    <li><a href="/frontend/pages/user/reservations.html" class="nav-link">Reservations</a></li>
+                    <li><a href="/frontend/pages/user/access-codes.html" class="nav-link">Access Codes</a></li>
+                    <li><a href="/frontend/pages/user/payments.html" class="nav-link active">Payments</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">💳 Payments</h1>
+                <p class="page-subtitle">Manage your parking payments and view history</p>
+            </div>
+            
+            <!-- Payment Summary -->
+            <section class="stats-grid mb-6">
+                <div class="stat-card">
+                    <div class="stat-card-icon warning">⏳</div>
+                    <div class="stat-card-value" id="pending-amount">$0</div>
+                    <div class="stat-card-label">Pending</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon success">✓</div>
+                    <div class="stat-card-value" id="paid-amount">$0</div>
+                    <div class="stat-card-label">Paid This Month</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon primary">📊</div>
+                    <div class="stat-card-value" id="total-spent">$0</div>
+                    <div class="stat-card-label">Total Spent</div>
+                </div>
+            </section>
+            
+            <!-- Pending Payments -->
+            <section class="card mb-6" id="pending-section">
+                <div class="card-header">
+                    <h2 class="card-title">Pending Payments</h2>
+                </div>
+                <div id="pending-payments-container">
+                    <div class="skeleton" style="height: 80px;"></div>
+                </div>
+            </section>
+            
+            <!-- Make Payment Section -->
+            <section class="card mb-6" id="make-payment-section" style="display: none;">
+                <h2 class="card-title mb-4">Make a Payment</h2>
+                
+                <form id="payment-form">
+                    <input type="hidden" id="payment-reservation-id">
+                    
+                    <div class="card mb-4" style="background: var(--gray-50);">
+                        <div class="flex justify-between mb-2">
+                            <span>Reservation:</span>
+                            <strong id="payment-reservation-info"></strong>
+                        </div>
+                        <div class="flex justify-between mb-2">
+                            <span>Duration:</span>
+                            <strong id="payment-duration"></strong>
+                        </div>
+                        <div class="flex justify-between" style="font-size: var(--font-size-xl);">
+                            <span>Amount Due:</span>
+                            <strong id="payment-amount" style="color: var(--primary);">$0.00</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Payment Method</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <label class="card text-center p-4" style="cursor: pointer; border: 2px solid var(--gray-200);">
+                                <input type="radio" name="payment-method" value="card" checked style="display: none;">
+                                <div style="font-size: 1.5rem;">💳</div>
+                                <div style="font-size: var(--font-size-sm);">Card</div>
+                            </label>
+                            <label class="card text-center p-4" style="cursor: pointer; border: 2px solid var(--gray-200);">
+                                <input type="radio" name="payment-method" value="mobile" style="display: none;">
+                                <div style="font-size: 1.5rem;">📱</div>
+                                <div style="font-size: var(--font-size-sm);">M-Pesa</div>
+                            </label>
+                            <label class="card text-center p-4" style="cursor: pointer; border: 2px solid var(--gray-200);">
+                                <input type="radio" name="payment-method" value="wallet" style="display: none;">
+                                <div style="font-size: 1.5rem;">👛</div>
+                                <div style="font-size: var(--font-size-sm);">Wallet</div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Card Payment Fields -->
+                    <div id="card-fields">
+                        <div class="form-group">
+                            <label class="form-label">Card Number</label>
+                            <input type="text" class="form-input" id="card-number" placeholder="1234 5678 9012 3456" maxlength="19">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label class="form-label">Expiry Date</label>
+                                <input type="text" class="form-input" id="card-expiry" placeholder="MM/YY" maxlength="5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">CVV</label>
+                                <input type="text" class="form-input" id="card-cvv" placeholder="123" maxlength="4">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mobile Payment Fields -->
+                    <div id="mobile-fields" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" class="form-input" id="mobile-phone" placeholder="+243 XXX XXX XXX">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="pay-btn">
+                        Pay Now
+                    </button>
+                </form>
+            </section>
+            
+            <!-- Payment History -->
+            <section class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Payment History</h2>
+                </div>
+                <div class="table-container" style="box-shadow: none;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Method</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payment-history-body">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted p-6">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+    
+    <!-- Scripts -->
+    <script src="../../js/services/api.js"></script>
+    <script src="../../js/services/auth.js"></script>
+    <script src="../../js/services/state.js"></script>
+    <script src="../../js/services/notifications.js"></script>
+    <script src="../../js/utils/helpers.js"></script>
+    <script src="../../js/app.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Page Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication
+            if (!localStorage.getItem('aeropark_token')) {
+                window.location.href = '/frontend/pages/public/login.html';
+                return;
+            }
+            
+            // Load payments
+            await loadPayments();
+            
+            // Payment method selection
+            document.querySelectorAll('input[name="payment-method"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    updatePaymentMethod(e.target.value);
+                });
+                
+                // Style selected
+                radio.closest('label').addEventListener('click', function() {
+                    document.querySelectorAll('input[name="payment-method"]').forEach(r => {
+                        r.closest('label').style.borderColor = 'var(--gray-200)';
+                    });
+                    this.style.borderColor = 'var(--primary)';
+                });
+            });
+            
+            // Payment form
+            document.getElementById('payment-form').addEventListener('submit', processPayment);
+            
+            // Card number formatting
+            document.getElementById('card-number').addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\s/g, '').replace(/\D/g, '');
+                value = value.match(/.{1,4}/g)?.join(' ') || '';
+                e.target.value = value;
+            });
+            
+            // Expiry formatting
+            document.getElementById('card-expiry').addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length >= 2) {
+                    value = value.slice(0, 2) + '/' + value.slice(2);
+                }
+                e.target.value = value;
+            });
+            
+            // Logout handler
+            document.getElementById('logout-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.clear();
+                window.location.href = '/frontend/pages/public/login.html';
+            });
+        });
+        
+        async function loadPayments() {
+            try {
+                const payments = await ApiService.getMyPayments();
+                const reservations = await ApiService.getMyReservations();
+                
+                // Calculate stats
+                const pending = payments.filter(p => p.status === 'pending');
+                const paid = payments.filter(p => p.status === 'completed');
+                
+                const pendingTotal = pending.reduce((sum, p) => sum + (p.amount || 0), 0);
+                const paidTotal = paid.reduce((sum, p) => sum + (p.amount || 0), 0);
+                
+                document.getElementById('pending-amount').textContent = Helpers.formatCurrency(pendingTotal);
+                document.getElementById('paid-amount').textContent = Helpers.formatCurrency(paidTotal);
+                document.getElementById('total-spent').textContent = Helpers.formatCurrency(paidTotal);
+                
+                // Render pending payments
+                renderPendingPayments(reservations, payments);
+                
+                // Render payment history
+                renderPaymentHistory(payments);
+                
+            } catch (error) {
+                console.error('Failed to load payments:', error);
+                document.getElementById('pending-payments-container').innerHTML = 
+                    '<p class="text-center text-muted p-4">Unable to load payments</p>';
+            }
+        }
+        
+        function renderPendingPayments(reservations, payments) {
+            const container = document.getElementById('pending-payments-container');
+            
+            // Find reservations that need payment (completed but not paid)
+            const completedReservations = reservations.filter(r => 
+                r.status === 'completed' || (new Date(r.end_time) < new Date() && r.status !== 'cancelled')
+            );
+            
+            const paidReservationIds = payments
+                .filter(p => p.status === 'completed')
+                .map(p => p.reservation_id);
+            
+            const unpaidReservations = completedReservations.filter(r => 
+                !paidReservationIds.includes(r.id)
+            );
+            
+            if (unpaidReservations.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-6">
+                        <div style="font-size: 3rem; margin-bottom: var(--spacing-4);">✅</div>
+                        <p class="text-muted">No pending payments</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = unpaidReservations.map(reservation => {
+                const cost = Helpers.calculateParkingFee(reservation.start_time, reservation.end_time);
+                const duration = Helpers.formatDuration(
+                    Math.round((new Date(reservation.end_time) - new Date(reservation.start_time)) / (1000 * 60))
+                );
+                
+                return `
+                    <div class="flex items-center justify-between p-4" style="border-bottom: 1px solid var(--gray-200);">
+                        <div>
+                            <p class="font-semibold">Spot ${reservation.spot_id}</p>
+                            <p class="text-muted" style="font-size: var(--font-size-sm);">
+                                ${Helpers.formatDate(reservation.start_time)} • ${duration}
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span style="font-size: var(--font-size-xl); font-weight: bold; color: var(--primary);">
+                                ${Helpers.formatCurrency(cost)}
+                            </span>
+                            <button class="btn btn-primary btn-sm" 
+                                    onclick="showPaymentForm('${reservation.id}', '${reservation.spot_id}', '${duration}', ${cost})">
+                                Pay Now
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function showPaymentForm(reservationId, spotId, duration, amount) {
+            document.getElementById('payment-reservation-id').value = reservationId;
+            document.getElementById('payment-reservation-info').textContent = `Spot ${spotId}`;
+            document.getElementById('payment-duration').textContent = duration;
+            document.getElementById('payment-amount').textContent = Helpers.formatCurrency(amount);
+            
+            document.getElementById('make-payment-section').style.display = 'block';
+            Helpers.scrollToElement('#make-payment-section');
+        }
+        
+        function updatePaymentMethod(method) {
+            document.getElementById('card-fields').style.display = method === 'card' ? 'block' : 'none';
+            document.getElementById('mobile-fields').style.display = method === 'mobile' ? 'block' : 'none';
+        }
+        
+        function renderPaymentHistory(payments) {
+            const tbody = document.getElementById('payment-history-body');
+            
+            if (payments.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted p-6">No payment history</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = payments.map(payment => `
+                <tr>
+                    <td>${Helpers.formatDate(payment.created_at || payment.payment_date)}</td>
+                    <td>Parking - ${payment.reservation_id || 'N/A'}</td>
+                    <td>${payment.payment_method || 'Card'}</td>
+                    <td><strong>${Helpers.formatCurrency(payment.amount)}</strong></td>
+                    <td>
+                        <span class="status-badge ${Helpers.getStatusBadgeClass(payment.status)}">
+                            ${payment.status}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        async function processPayment(e) {
+            e.preventDefault();
+            
+            const reservationId = document.getElementById('payment-reservation-id').value;
+            const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
+            const payBtn = document.getElementById('pay-btn');
+            
+            if (!reservationId) {
+                NotificationService.error('No reservation selected');
+                return;
+            }
+            
+            payBtn.disabled = true;
+            payBtn.innerHTML = '<span class="loading-spinner"></span> Processing...';
+            
+            try {
+                // Simulate payment processing
+                const paymentData = {
+                    reservation_id: reservationId,
+                    payment_method: paymentMethod,
+                    amount: parseFloat(document.getElementById('payment-amount').textContent.replace('$', ''))
+                };
+                
+                await ApiService.processPayment(paymentData);
+                
+                NotificationService.paymentSuccess(paymentData.amount);
+                
+                // Reload payments
+                document.getElementById('make-payment-section').style.display = 'none';
+                await loadPayments();
+                
+            } catch (error) {
+                NotificationService.error(error.message || 'Payment failed. Please try again.');
+            } finally {
+                payBtn.disabled = false;
+                payBtn.innerHTML = 'Pay Now';
+            }
+        }
+    </script>
+</body>
+</html>

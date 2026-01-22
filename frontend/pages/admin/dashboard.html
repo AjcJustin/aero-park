@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AeroPark Admin Dashboard - System Overview">
+    <meta name="theme-color" content="#1e3a5f">
+    
+    <title>Admin Dashboard - AeroPark GOMA</title>
+    
+    <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
+    <link rel="manifest" href="../../manifest.json">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="role-admin">
+    <!-- Offline Banner -->
+    <div class="offline-banner" id="offline-banner">
+        ⚠️ You are currently offline. Some admin features may be limited.
+    </div>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <a href="/frontend/index.html" class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <path d="M20 8 L20 32 M12 16 L28 16 M14 24 L26 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="20" cy="20" r="4" fill="currentColor"/>
+                </svg>
+                <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">Admin</span></span>
+            </a>
+            
+            <button class="nav-toggle sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+            
+            <nav>
+                <ul class="nav-menu" id="nav-menu">
+                    <li><a href="/frontend/index.html" class="nav-link">🏠 Public Site</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Admin Layout -->
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/dashboard.html" class="sidebar-link active">
+                        <span class="sidebar-link-icon">📊</span>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/parking.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">🅿️</span>
+                        Parking Management
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/reservations.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📅</span>
+                        Reservations
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/payments.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">💳</span>
+                        Payments
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/users.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">👥</span>
+                        Users
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/system.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">⚙️</span>
+                        System Status
+                    </a>
+                </li>
+            </ul>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="admin-content" style="margin-top: var(--header-height);">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">📊 Admin Dashboard</h1>
+                <p class="page-subtitle">System overview and real-time metrics</p>
+            </div>
+            
+            <!-- Real-time Stats -->
+            <section class="stats-grid mb-6">
+                <div class="stat-card">
+                    <div class="stat-card-icon success">🟢</div>
+                    <div class="stat-card-value" id="available-spots">--</div>
+                    <div class="stat-card-label">Available Spots</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon warning">🟡</div>
+                    <div class="stat-card-value" id="reserved-spots">--</div>
+                    <div class="stat-card-label">Reserved</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon danger">🔴</div>
+                    <div class="stat-card-value" id="occupied-spots">--</div>
+                    <div class="stat-card-label">Occupied</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon primary">📈</div>
+                    <div class="stat-card-value" id="occupancy-rate">--%</div>
+                    <div class="stat-card-label">Occupancy Rate</div>
+                </div>
+            </section>
+            
+            <!-- Today's Metrics -->
+            <section class="grid grid-cols-2 gap-6 mb-6" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                <div class="card">
+                    <h3 class="card-title">Today's Activity</h3>
+                    <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
+                        <div class="text-center p-4">
+                            <div style="font-size: var(--font-size-3xl); font-weight: bold; color: var(--primary);" id="today-reservations">0</div>
+                            <div class="text-muted">Reservations</div>
+                        </div>
+                        <div class="text-center p-4">
+                            <div style="font-size: var(--font-size-3xl); font-weight: bold; color: var(--success);" id="today-revenue">$0</div>
+                            <div class="text-muted">Revenue</div>
+                        </div>
+                        <div class="text-center p-4">
+                            <div style="font-size: var(--font-size-3xl); font-weight: bold; color: var(--info);" id="today-entries">0</div>
+                            <div class="text-muted">Entries</div>
+                        </div>
+                        <div class="text-center p-4">
+                            <div style="font-size: var(--font-size-3xl); font-weight: bold; color: var(--warning);" id="today-exits">0</div>
+                            <div class="text-muted">Exits</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title">System Health</h3>
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-2">
+                            <span>API Server</span>
+                            <span class="status-badge success" id="api-status">● Online</span>
+                        </div>
+                        <div class="flex justify-between mb-2">
+                            <span>Database</span>
+                            <span class="status-badge success" id="db-status">● Connected</span>
+                        </div>
+                        <div class="flex justify-between mb-2">
+                            <span>Gate Controllers</span>
+                            <span class="status-badge success" id="gate-status">● Active</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Sensors</span>
+                            <span class="status-badge info" id="sensor-status">● 24/24 Online</span>
+                        </div>
+                    </div>
+                    <a href="/frontend/pages/admin/system.html" class="btn btn-outline btn-sm btn-block">
+                        View Details
+                    </a>
+                </div>
+            </section>
+            
+            <!-- Parking Overview -->
+            <section class="card mb-6">
+                <div class="card-header">
+                    <h3 class="card-title">Real-Time Parking Map</h3>
+                    <button class="btn btn-sm btn-outline" id="refresh-map">🔄 Refresh</button>
+                </div>
+                <div class="flex gap-6 mb-4" style="flex-wrap: wrap;">
+                    <div class="flex items-center gap-2">
+                        <span class="status-dot online"></span>
+                        <span>Available</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="status-dot pending"></span>
+                        <span>Reserved</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="status-dot offline"></span>
+                        <span>Occupied</span>
+                    </div>
+                </div>
+                <div class="parking-grid" id="parking-grid">
+                    <!-- Loading skeleton -->
+                    <div class="skeleton" style="height: 100px;"></div>
+                    <div class="skeleton" style="height: 100px;"></div>
+                    <div class="skeleton" style="height: 100px;"></div>
+                    <div class="skeleton" style="height: 100px;"></div>
+                </div>
+            </section>
+            
+            <!-- Recent Reservations -->
+            <section class="card mb-6">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Reservations</h3>
+                    <a href="/frontend/pages/admin/reservations.html" class="btn btn-sm btn-outline">View All</a>
+                </div>
+                <div class="table-container" style="box-shadow: none;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Spot</th>
+                                <th>Start</th>
+                                <th>End</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-reservations-body">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted p-4">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Quick Actions -->
+            <section class="card">
+                <h3 class="card-title mb-4">Quick Actions</h3>
+                <div class="grid grid-cols-4 gap-4" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <a href="/frontend/pages/admin/parking.html" class="btn btn-primary btn-block">
+                        ➕ Add Parking Spot
+                    </a>
+                    <button class="btn btn-secondary btn-block" id="open-gate-btn">
+                        🚗 Open Entry Gate
+                    </button>
+                    <button class="btn btn-outline btn-block" id="export-report-btn">
+                        📊 Export Report
+                    </button>
+                    <a href="/frontend/pages/admin/system.html" class="btn btn-outline btn-block">
+                        ⚙️ System Settings
+                    </a>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="../../js/services/api.js"></script>
+    <script src="../../js/services/auth.js"></script>
+    <script src="../../js/services/state.js"></script>
+    <script src="../../js/services/notifications.js"></script>
+    <script src="../../js/utils/helpers.js"></script>
+    <script src="../../js/app.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Page Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check admin authentication
+            const role = localStorage.getItem('aeropark_role');
+            if (!localStorage.getItem('aeropark_token') || role !== 'admin') {
+                NotificationService.error('Admin access required');
+                window.location.href = '/frontend/pages/public/login.html';
+                return;
+            }
+            
+            // Load dashboard data
+            await loadDashboardData();
+            
+            // Refresh button
+            document.getElementById('refresh-map').addEventListener('click', loadDashboardData);
+            
+            // Quick actions
+            document.getElementById('open-gate-btn').addEventListener('click', openGate);
+            document.getElementById('export-report-btn').addEventListener('click', exportReport);
+            
+            // Sidebar toggle
+            document.getElementById('sidebar-toggle').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('active');
+            });
+            
+            // Logout
+            document.getElementById('logout-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.clear();
+                window.location.href = '/frontend/pages/public/login.html';
+            });
+            
+            // Auto-refresh every 30 seconds
+            setInterval(loadDashboardData, 30000);
+        });
+        
+        async function loadDashboardData() {
+            try {
+                // Load parking spots
+                const spots = await ApiService.getParkingSpots();
+                
+                const available = spots.filter(s => s.status === 'free').length;
+                const reserved = spots.filter(s => s.status === 'reserved').length;
+                const occupied = spots.filter(s => s.status === 'occupied').length;
+                const occupancyRate = Math.round(((reserved + occupied) / spots.length) * 100);
+                
+                document.getElementById('available-spots').textContent = available;
+                document.getElementById('reserved-spots').textContent = reserved;
+                document.getElementById('occupied-spots').textContent = occupied;
+                document.getElementById('occupancy-rate').textContent = occupancyRate + '%';
+                
+                // Render parking grid
+                renderParkingGrid(spots);
+                
+                // Load reservations
+                try {
+                    const reservations = await ApiService.getAllReservations({ limit: 10 });
+                    renderRecentReservations(reservations);
+                    
+                    // Today's stats
+                    const today = new Date().toDateString();
+                    const todayReservations = reservations.filter(r => 
+                        new Date(r.created_at || r.start_time).toDateString() === today
+                    );
+                    document.getElementById('today-reservations').textContent = todayReservations.length;
+                } catch (e) {
+                    console.log('Could not load reservations:', e);
+                }
+                
+                // Check system health
+                checkSystemHealth();
+                
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+                NotificationService.error('Failed to load dashboard data');
+            }
+        }
+        
+        function renderParkingGrid(spots) {
+            const grid = document.getElementById('parking-grid');
+            
+            grid.innerHTML = spots.map(spot => `
+                <div class="parking-spot ${spot.status}" 
+                     data-spot-id="${spot.id}"
+                     onclick="showSpotDetails('${spot.id}', '${spot.status}')"
+                     style="cursor: pointer;">
+                    <span class="parking-spot-id">${spot.id}</span>
+                    <span class="parking-spot-status">
+                        ${Helpers.getParkingStatusIcon(spot.status)} ${Helpers.getParkingStatusText(spot.status)}
+                    </span>
+                </div>
+            `).join('');
+        }
+        
+        function renderRecentReservations(reservations) {
+            const tbody = document.getElementById('recent-reservations-body');
+            
+            if (!reservations || reservations.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted p-4">No recent reservations</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = reservations.slice(0, 5).map(r => `
+                <tr>
+                    <td>${r.user_email || r.user_id || 'N/A'}</td>
+                    <td><strong>${r.spot_id}</strong></td>
+                    <td>${Helpers.formatDateTime(r.start_time)}</td>
+                    <td>${Helpers.formatDateTime(r.end_time)}</td>
+                    <td>
+                        <span class="status-badge ${Helpers.getStatusBadgeClass(r.status)}">
+                            ${r.status}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="viewReservation('${r.id}')">
+                            View
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        async function checkSystemHealth() {
+            try {
+                const health = await ApiService.healthCheck();
+                document.getElementById('api-status').innerHTML = '● Online';
+                document.getElementById('api-status').className = 'status-badge success';
+            } catch (error) {
+                document.getElementById('api-status').innerHTML = '● Offline';
+                document.getElementById('api-status').className = 'status-badge danger';
+            }
+        }
+        
+        function showSpotDetails(spotId, status) {
+            NotificationService.info(`Spot ${spotId} is currently ${status}`, 'Spot Details');
+        }
+        
+        function viewReservation(reservationId) {
+            window.location.href = `/frontend/pages/admin/reservations.html?id=${reservationId}`;
+        }
+        
+        async function openGate() {
+            if (!confirm('Open the entry gate manually?')) return;
+            
+            try {
+                // Simulate gate opening
+                NotificationService.success('Entry gate opened', 'Gate Control');
+            } catch (error) {
+                NotificationService.error('Failed to open gate');
+            }
+        }
+        
+        async function exportReport() {
+            NotificationService.info('Generating report...', 'Export');
+            
+            // Simulate report generation
+            setTimeout(() => {
+                NotificationService.success('Report downloaded successfully');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

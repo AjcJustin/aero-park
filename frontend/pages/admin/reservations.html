@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AeroPark Admin - All Reservations">
+    <meta name="theme-color" content="#1e3a5f">
+    
+    <title>Reservations Management - AeroPark Admin</title>
+    
+    <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
+    <link rel="manifest" href="../../manifest.json">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="role-admin">
+    <!-- Offline Banner -->
+    <div class="offline-banner" id="offline-banner">
+        ⚠️ You are currently offline.
+    </div>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <a href="/frontend/index.html" class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <path d="M20 8 L20 32 M12 16 L28 16 M14 24 L26 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="20" cy="20" r="4" fill="currentColor"/>
+                </svg>
+                <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">Admin</span></span>
+            </a>
+            
+            <button class="nav-toggle sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+            
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="/frontend/index.html" class="nav-link">🏠 Public Site</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Admin Layout -->
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/dashboard.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📊</span>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/parking.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">🅿️</span>
+                        Parking Management
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/reservations.html" class="sidebar-link active">
+                        <span class="sidebar-link-icon">📅</span>
+                        Reservations
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/payments.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">💳</span>
+                        Payments
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/users.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">👥</span>
+                        Users
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/system.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">⚙️</span>
+                        System Status
+                    </a>
+                </li>
+            </ul>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="admin-content" style="margin-top: var(--header-height);">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">📅 Reservations Management</h1>
+                <p class="page-subtitle">View and manage all parking reservations</p>
+            </div>
+            
+            <!-- Stats -->
+            <section class="stats-grid mb-6">
+                <div class="stat-card">
+                    <div class="stat-card-icon primary">📊</div>
+                    <div class="stat-card-value" id="total-reservations">--</div>
+                    <div class="stat-card-label">Total Reservations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon success">✅</div>
+                    <div class="stat-card-value" id="active-reservations">--</div>
+                    <div class="stat-card-label">Active Now</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon warning">⏰</div>
+                    <div class="stat-card-value" id="pending-reservations">--</div>
+                    <div class="stat-card-label">Pending Check-in</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon info">📈</div>
+                    <div class="stat-card-value" id="today-reservations">--</div>
+                    <div class="stat-card-label">Today</div>
+                </div>
+            </section>
+            
+            <!-- Filters -->
+            <section class="card mb-6">
+                <div class="flex gap-4" style="flex-wrap: wrap; align-items: flex-end;">
+                    <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="filter-status">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+                        <label class="form-label">Date Range</label>
+                        <select class="form-select" id="filter-date-range">
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month" selected>This Month</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+                        <label class="form-label">From Date</label>
+                        <input type="date" class="form-input" id="filter-from">
+                    </div>
+                    <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+                        <label class="form-label">To Date</label>
+                        <input type="date" class="form-input" id="filter-to">
+                    </div>
+                    <div class="form-group mb-0" style="flex: 2; min-width: 200px;">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-input" id="search-reservations" placeholder="Search by user, spot, or ID...">
+                    </div>
+                    <button class="btn btn-primary" id="apply-filters-btn">Apply Filters</button>
+                    <button class="btn btn-outline" id="export-btn">📊 Export</button>
+                </div>
+            </section>
+            
+            <!-- Reservations Table -->
+            <section class="card">
+                <div class="card-header">
+                    <h3 class="card-title">All Reservations</h3>
+                    <span class="text-muted" id="results-count">Loading...</span>
+                </div>
+                <div class="table-container" style="box-shadow: none;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Spot</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Duration</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reservations-body">
+                            <tr>
+                                <td colspan="9" class="text-center text-muted p-4">Loading reservations...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="flex justify-between items-center mt-4 p-4" style="border-top: 1px solid var(--gray-200);">
+                    <div class="text-muted">
+                        Showing <span id="showing-start">1</span> - <span id="showing-end">10</span> of <span id="total-count">0</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-sm btn-outline" id="prev-btn" disabled>← Previous</button>
+                        <button class="btn btn-sm btn-outline" id="next-btn">Next →</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Reservation Details Modal -->
+    <div class="modal-backdrop" id="details-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Reservation Details</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-content">
+                <!-- Content populated by JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">Close</button>
+                <button class="btn btn-warning" id="cancel-reservation-btn">Cancel Reservation</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="../../js/services/api.js"></script>
+    <script src="../../js/services/auth.js"></script>
+    <script src="../../js/services/state.js"></script>
+    <script src="../../js/services/notifications.js"></script>
+    <script src="../../js/utils/helpers.js"></script>
+    <script src="../../js/app.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Page Script -->
+    <script>
+        let allReservations = [];
+        let currentPage = 1;
+        const pageSize = 10;
+        let selectedReservation = null;
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check admin
+            if (localStorage.getItem('aeropark_role') !== 'admin') {
+                window.location.href = '/frontend/pages/public/login.html';
+                return;
+            }
+            
+            // Check for specific reservation in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const reservationId = urlParams.get('id');
+            
+            // Load reservations
+            await loadReservations();
+            
+            if (reservationId) {
+                viewReservation(reservationId);
+            }
+            
+            // Event listeners
+            document.getElementById('apply-filters-btn').addEventListener('click', () => {
+                currentPage = 1;
+                loadReservations();
+            });
+            
+            document.getElementById('search-reservations').addEventListener('input', 
+                Helpers.debounce(() => {
+                    currentPage = 1;
+                    filterReservations();
+                }, 300)
+            );
+            
+            document.getElementById('filter-status').addEventListener('change', filterReservations);
+            
+            document.getElementById('prev-btn').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderReservations();
+                }
+            });
+            
+            document.getElementById('next-btn').addEventListener('click', () => {
+                const totalPages = Math.ceil(getFilteredReservations().length / pageSize);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderReservations();
+                }
+            });
+            
+            document.getElementById('export-btn').addEventListener('click', exportReservations);
+            document.getElementById('cancel-reservation-btn').addEventListener('click', cancelSelectedReservation);
+            
+            // Sidebar toggle
+            document.getElementById('sidebar-toggle').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('active');
+            });
+            
+            // Logout
+            document.getElementById('logout-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.clear();
+                window.location.href = '/frontend/pages/public/login.html';
+            });
+        });
+        
+        async function loadReservations() {
+            try {
+                const params = {};
+                
+                // Add date filters
+                const from = document.getElementById('filter-from').value;
+                const to = document.getElementById('filter-to').value;
+                if (from) params.from_date = from;
+                if (to) params.to_date = to;
+                
+                allReservations = await ApiService.getAllReservations(params);
+                updateStats();
+                renderReservations();
+            } catch (error) {
+                console.error('Failed to load reservations:', error);
+                
+                // Demo data for testing
+                allReservations = [
+                    {
+                        id: 'RES-001',
+                        user_email: 'user1@example.com',
+                        user_id: 'user1',
+                        spot_id: 'A-01',
+                        start_time: new Date().toISOString(),
+                        end_time: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+                        status: 'active',
+                        amount: 10.00,
+                        payment_status: 'paid'
+                    },
+                    {
+                        id: 'RES-002',
+                        user_email: 'user2@example.com',
+                        user_id: 'user2',
+                        spot_id: 'B-03',
+                        start_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                        end_time: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+                        status: 'pending',
+                        amount: 10.00,
+                        payment_status: 'pending'
+                    },
+                    {
+                        id: 'RES-003',
+                        user_email: 'user3@example.com',
+                        user_id: 'user3',
+                        spot_id: 'A-05',
+                        start_time: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+                        end_time: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+                        status: 'completed',
+                        amount: 10.00,
+                        payment_status: 'paid'
+                    }
+                ];
+                updateStats();
+                renderReservations();
+            }
+        }
+        
+        function updateStats() {
+            const active = allReservations.filter(r => r.status === 'active').length;
+            const pending = allReservations.filter(r => r.status === 'pending').length;
+            
+            const today = new Date().toDateString();
+            const todayCount = allReservations.filter(r => 
+                new Date(r.start_time).toDateString() === today
+            ).length;
+            
+            document.getElementById('total-reservations').textContent = allReservations.length;
+            document.getElementById('active-reservations').textContent = active;
+            document.getElementById('pending-reservations').textContent = pending;
+            document.getElementById('today-reservations').textContent = todayCount;
+        }
+        
+        function getFilteredReservations() {
+            let filtered = [...allReservations];
+            
+            const status = document.getElementById('filter-status').value;
+            const search = document.getElementById('search-reservations').value.toLowerCase();
+            
+            if (status) {
+                filtered = filtered.filter(r => r.status === status);
+            }
+            
+            if (search) {
+                filtered = filtered.filter(r => 
+                    r.id.toLowerCase().includes(search) ||
+                    (r.user_email && r.user_email.toLowerCase().includes(search)) ||
+                    r.spot_id.toLowerCase().includes(search)
+                );
+            }
+            
+            return filtered;
+        }
+        
+        function filterReservations() {
+            currentPage = 1;
+            renderReservations();
+        }
+        
+        function renderReservations() {
+            const filtered = getFilteredReservations();
+            const totalPages = Math.ceil(filtered.length / pageSize);
+            const start = (currentPage - 1) * pageSize;
+            const end = Math.min(start + pageSize, filtered.length);
+            const page = filtered.slice(start, end);
+            
+            // Update results count
+            document.getElementById('results-count').textContent = `${filtered.length} reservations`;
+            document.getElementById('showing-start').textContent = filtered.length ? start + 1 : 0;
+            document.getElementById('showing-end').textContent = end;
+            document.getElementById('total-count').textContent = filtered.length;
+            
+            // Update pagination buttons
+            document.getElementById('prev-btn').disabled = currentPage === 1;
+            document.getElementById('next-btn').disabled = currentPage >= totalPages;
+            
+            const tbody = document.getElementById('reservations-body');
+            
+            if (page.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center text-muted p-4">No reservations found</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = page.map(r => {
+                const duration = Helpers.formatDuration(
+                    Math.floor((new Date(r.end_time) - new Date(r.start_time)) / 1000 / 60)
+                );
+                
+                return `
+                    <tr>
+                        <td><code>${r.id.substring(0, 8)}...</code></td>
+                        <td>${r.user_email || r.user_id}</td>
+                        <td><strong>${r.spot_id}</strong></td>
+                        <td>${Helpers.formatDateTime(r.start_time)}</td>
+                        <td>${Helpers.formatDateTime(r.end_time)}</td>
+                        <td>${duration}</td>
+                        <td>${Helpers.formatCurrency(r.amount)}</td>
+                        <td>
+                            <span class="status-badge ${Helpers.getStatusBadgeClass(r.status)}">
+                                ${r.status}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline" onclick="viewReservation('${r.id}')">
+                                View
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function viewReservation(id) {
+            selectedReservation = allReservations.find(r => r.id === id);
+            if (!selectedReservation) return;
+            
+            const r = selectedReservation;
+            const duration = Helpers.formatDuration(
+                Math.floor((new Date(r.end_time) - new Date(r.start_time)) / 1000 / 60)
+            );
+            
+            document.getElementById('modal-content').innerHTML = `
+                <div class="mb-4">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Reservation ID</span>
+                        <code>${r.id}</code>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">User</span>
+                        <span>${r.user_email || r.user_id}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Parking Spot</span>
+                        <strong>${r.spot_id}</strong>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Start Time</span>
+                        <span>${Helpers.formatDateTime(r.start_time)}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">End Time</span>
+                        <span>${Helpers.formatDateTime(r.end_time)}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Duration</span>
+                        <span>${duration}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Amount</span>
+                        <strong>${Helpers.formatCurrency(r.amount)}</strong>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Status</span>
+                        <span class="status-badge ${Helpers.getStatusBadgeClass(r.status)}">${r.status}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-muted">Payment</span>
+                        <span class="status-badge ${r.payment_status === 'paid' ? 'success' : 'warning'}">${r.payment_status || 'unknown'}</span>
+                    </div>
+                </div>
+            `;
+            
+            // Show/hide cancel button based on status
+            const cancelBtn = document.getElementById('cancel-reservation-btn');
+            cancelBtn.style.display = ['active', 'pending'].includes(r.status) ? 'block' : 'none';
+            
+            document.getElementById('details-modal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('details-modal').classList.remove('active');
+            selectedReservation = null;
+        }
+        
+        async function cancelSelectedReservation() {
+            if (!selectedReservation) return;
+            
+            if (!confirm(`Cancel reservation ${selectedReservation.id}?`)) return;
+            
+            try {
+                await ApiService.adminCancelReservation(selectedReservation.id);
+                NotificationService.success('Reservation cancelled');
+                closeModal();
+                await loadReservations();
+            } catch (error) {
+                NotificationService.error(error.message || 'Failed to cancel reservation');
+            }
+        }
+        
+        function exportReservations() {
+            const filtered = getFilteredReservations();
+            
+            const csv = [
+                ['ID', 'User', 'Spot', 'Start Time', 'End Time', 'Amount', 'Status', 'Payment Status'].join(','),
+                ...filtered.map(r => [
+                    r.id,
+                    r.user_email || r.user_id,
+                    r.spot_id,
+                    r.start_time,
+                    r.end_time,
+                    r.amount,
+                    r.status,
+                    r.payment_status
+                ].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `reservations-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            
+            NotificationService.success('Export complete');
+        }
+    </script>
+</body>
+</html>

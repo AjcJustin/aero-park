@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Generate and manage your parking access codes">
+    <meta name="theme-color" content="#1e3a5f">
+    
+    <title>Access Codes - AeroPark GOMA</title>
+    
+    <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
+    <link rel="manifest" href="../../manifest.json">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <!-- Offline Banner -->
+    <div class="offline-banner" id="offline-banner">
+        ⚠️ You are currently offline. Showing your last access code.
+    </div>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <a href="/frontend/index.html" class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <path d="M20 8 L20 32 M12 16 L28 16 M14 24 L26 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="20" cy="20" r="4" fill="currentColor"/>
+                </svg>
+                <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">GOMA</span></span>
+            </a>
+            
+            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+            
+            <nav>
+                <ul class="nav-menu" id="nav-menu">
+                    <li><a href="/frontend/index.html" class="nav-link">Home</a></li>
+                    <li><a href="/frontend/pages/user/dashboard.html" class="nav-link">Dashboard</a></li>
+                    <li><a href="/frontend/pages/user/reservations.html" class="nav-link">Reservations</a></li>
+                    <li><a href="/frontend/pages/user/access-codes.html" class="nav-link active">Access Codes</a></li>
+                    <li><a href="/frontend/pages/user/payments.html" class="nav-link">Payments</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container" style="max-width: 800px;">
+            <!-- Page Header -->
+            <div class="page-header text-center">
+                <h1 class="page-title">🔑 Access Codes</h1>
+                <p class="page-subtitle">Generate codes for parking entry and exit</p>
+            </div>
+            
+            <!-- Current Code Display -->
+            <section class="card mb-6" id="current-code-section">
+                <div class="access-code-display" id="access-code-display">
+                    <div class="access-code-label">No Active Code</div>
+                    <div class="access-code-value" style="font-size: 2rem; letter-spacing: 2px;">------</div>
+                    <div class="access-code-expires">Generate a code below</div>
+                </div>
+            </section>
+            
+            <!-- Generate Code Section -->
+            <section class="card mb-6">
+                <h2 class="card-title mb-4">Generate New Code</h2>
+                
+                <!-- Select Reservation -->
+                <div class="form-group">
+                    <label class="form-label">Select Reservation</label>
+                    <select class="form-select" id="reservation-select">
+                        <option value="">-- Select a reservation --</option>
+                    </select>
+                </div>
+                
+                <!-- Code Type -->
+                <div class="form-group">
+                    <label class="form-label">Code Type</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button class="btn btn-outline btn-lg code-type-btn active" data-type="entry">
+                            🚗 Entry Code
+                        </button>
+                        <button class="btn btn-outline btn-lg code-type-btn" data-type="exit">
+                            🚶 Exit Code
+                        </button>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary btn-block btn-lg" id="generate-code-btn" disabled>
+                    Generate Access Code
+                </button>
+            </section>
+            
+            <!-- Recent Codes -->
+            <section class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Recent Codes</h2>
+                </div>
+                <div id="recent-codes-container">
+                    <div class="skeleton" style="height: 60px; margin-bottom: var(--spacing-3);"></div>
+                    <div class="skeleton" style="height: 60px;"></div>
+                </div>
+            </section>
+            
+            <!-- How It Works -->
+            <section class="card mt-6">
+                <h2 class="card-title mb-4">How It Works</h2>
+                <div class="grid grid-cols-3 gap-4" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="text-center">
+                        <div style="font-size: 2rem; margin-bottom: var(--spacing-2);">1️⃣</div>
+                        <h4>Generate Code</h4>
+                        <p class="text-muted" style="font-size: var(--font-size-sm);">Select your reservation and generate an entry or exit code</p>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: 2rem; margin-bottom: var(--spacing-2);">2️⃣</div>
+                        <h4>Use at Gate</h4>
+                        <p class="text-muted" style="font-size: var(--font-size-sm);">Enter the 6-digit code at the parking gate keypad</p>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: 2rem; margin-bottom: var(--spacing-2);">3️⃣</div>
+                        <h4>Gate Opens</h4>
+                        <p class="text-muted" style="font-size: var(--font-size-sm);">The barrier opens automatically. Drive safely!</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+    
+    <!-- Scripts -->
+    <script src="../../js/services/api.js"></script>
+    <script src="../../js/services/auth.js"></script>
+    <script src="../../js/services/state.js"></script>
+    <script src="../../js/services/notifications.js"></script>
+    <script src="../../js/utils/helpers.js"></script>
+    <script src="../../js/app.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Page Script -->
+    <script>
+        let selectedCodeType = 'entry';
+        let countdownInterval = null;
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication
+            if (!localStorage.getItem('aeropark_token')) {
+                window.location.href = '/frontend/pages/public/login.html';
+                return;
+            }
+            
+            // Load reservations
+            await loadReservations();
+            
+            // Check for reservation from URL params
+            const params = Helpers.getQueryParams();
+            if (params.reservation) {
+                document.getElementById('reservation-select').value = params.reservation;
+                updateGenerateButton();
+            }
+            
+            // Check for cached code (offline mode)
+            const cachedCode = StateService.getLastAccessCode();
+            if (cachedCode) {
+                displayAccessCode(cachedCode);
+            }
+            
+            // Event listeners
+            document.getElementById('reservation-select').addEventListener('change', updateGenerateButton);
+            
+            document.querySelectorAll('.code-type-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.code-type-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedCodeType = btn.dataset.type;
+                });
+            });
+            
+            document.getElementById('generate-code-btn').addEventListener('click', generateCode);
+            
+            // Logout handler
+            document.getElementById('logout-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.clear();
+                window.location.href = '/frontend/pages/public/login.html';
+            });
+        });
+        
+        async function loadReservations() {
+            const select = document.getElementById('reservation-select');
+            
+            try {
+                const reservations = await ApiService.getMyReservations();
+                
+                // Filter active/reserved reservations
+                const activeReservations = reservations.filter(r => 
+                    r.status === 'active' || r.status === 'reserved'
+                );
+                
+                if (activeReservations.length === 0) {
+                    select.innerHTML = '<option value="">No active reservations</option>';
+                    return;
+                }
+                
+                select.innerHTML = '<option value="">-- Select a reservation --</option>' +
+                    activeReservations.map(r => `
+                        <option value="${r.id}">
+                            Spot ${r.spot_id} - ${Helpers.formatDate(r.start_time)} (${Helpers.formatTime(r.start_time)} - ${Helpers.formatTime(r.end_time)})
+                        </option>
+                    `).join('');
+                
+                // Also load recent codes
+                await loadRecentCodes();
+                
+            } catch (error) {
+                console.error('Failed to load reservations:', error);
+                select.innerHTML = '<option value="">Failed to load reservations</option>';
+                
+                // Check for cached reservation
+                const cached = StateService.getLastReservation();
+                if (cached && (cached.status === 'active' || cached.status === 'reserved')) {
+                    select.innerHTML = `
+                        <option value="">-- Select a reservation --</option>
+                        <option value="${cached.id}">
+                            Spot ${cached.spot_id} (Cached)
+                        </option>
+                    `;
+                }
+            }
+        }
+        
+        async function loadRecentCodes() {
+            const container = document.getElementById('recent-codes-container');
+            
+            try {
+                const codes = await ApiService.getMyAccessCodes();
+                
+                if (codes.length === 0) {
+                    container.innerHTML = '<p class="text-center text-muted p-4">No recent codes</p>';
+                    return;
+                }
+                
+                container.innerHTML = codes.slice(0, 5).map(code => {
+                    const isExpired = new Date(code.expires_at) < new Date();
+                    return `
+                        <div class="flex items-center justify-between p-4" style="border-bottom: 1px solid var(--gray-200);">
+                            <div>
+                                <span style="font-family: monospace; font-size: 1.25rem; font-weight: bold;">
+                                    ${code.code}
+                                </span>
+                                <span class="status-badge ${code.code_type === 'entry' ? 'info' : 'success'}" style="margin-left: var(--spacing-2);">
+                                    ${code.code_type}
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <span class="status-badge ${isExpired ? 'danger' : 'success'}">
+                                    ${isExpired ? 'Expired' : 'Valid'}
+                                </span>
+                                <p class="text-muted" style="font-size: var(--font-size-xs); margin-top: var(--spacing-1);">
+                                    ${Helpers.formatDateTime(code.expires_at)}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Failed to load recent codes:', error);
+                container.innerHTML = '<p class="text-center text-muted p-4">Unable to load recent codes</p>';
+            }
+        }
+        
+        function updateGenerateButton() {
+            const select = document.getElementById('reservation-select');
+            const btn = document.getElementById('generate-code-btn');
+            btn.disabled = !select.value;
+        }
+        
+        async function generateCode() {
+            const reservationId = document.getElementById('reservation-select').value;
+            const btn = document.getElementById('generate-code-btn');
+            
+            if (!reservationId) {
+                NotificationService.error('Please select a reservation');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Generating...';
+            
+            try {
+                const code = await ApiService.generateAccessCode(reservationId, selectedCodeType);
+                
+                // Save for offline access
+                StateService.saveLastAccessCode(code);
+                
+                // Display the code
+                displayAccessCode(code);
+                
+                // Notify user
+                NotificationService.accessCodeGenerated(code);
+                
+                // Reload recent codes
+                await loadRecentCodes();
+                
+            } catch (error) {
+                NotificationService.error(error.message || 'Failed to generate access code');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Generate Access Code';
+                updateGenerateButton();
+            }
+        }
+        
+        function displayAccessCode(code) {
+            const display = document.getElementById('access-code-display');
+            const expiresAt = new Date(code.expires_at);
+            
+            display.innerHTML = `
+                <div class="access-code-label">${code.code_type === 'entry' ? '🚗 Entry' : '🚶 Exit'} Code</div>
+                <div class="access-code-value">${code.code}</div>
+                <div class="flex justify-center gap-4 mt-4" style="flex-wrap: wrap;">
+                    <button class="btn btn-secondary btn-sm" onclick="copyCode('${code.code}')">
+                        📋 Copy Code
+                    </button>
+                </div>
+                <div class="access-code-expires mt-4">
+                    <span id="countdown-timer">${formatCountdown(expiresAt)}</span>
+                </div>
+            `;
+            
+            // Start countdown
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            countdownInterval = setInterval(() => {
+                const timer = document.getElementById('countdown-timer');
+                if (timer) {
+                    const remaining = Helpers.getTimeRemaining(expiresAt);
+                    if (remaining.expired) {
+                        timer.textContent = '⏰ Code Expired - Generate a new one';
+                        timer.style.color = 'var(--danger-light)';
+                        clearInterval(countdownInterval);
+                    } else {
+                        timer.textContent = formatCountdown(expiresAt);
+                    }
+                }
+            }, 1000);
+        }
+        
+        function formatCountdown(expiresAt) {
+            const remaining = Helpers.getTimeRemaining(expiresAt);
+            if (remaining.expired) {
+                return '⏰ Code Expired';
+            }
+            return `Valid for: ${remaining.minutes}m ${remaining.seconds}s`;
+        }
+        
+        async function copyCode(code) {
+            const success = await Helpers.copyToClipboard(code);
+            if (success) {
+                NotificationService.success('Code copied to clipboard!');
+            } else {
+                NotificationService.error('Failed to copy code');
+            }
+        }
+    </script>
+</body>
+</html>

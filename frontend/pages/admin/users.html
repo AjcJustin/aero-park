@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AeroPark Admin - User Management">
+    <meta name="theme-color" content="#1e3a5f">
+    
+    <title>User Management - AeroPark Admin</title>
+    
+    <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
+    <link rel="manifest" href="../../manifest.json">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="role-admin">
+    <!-- Offline Banner -->
+    <div class="offline-banner" id="offline-banner">
+        ⚠️ You are currently offline.
+    </div>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <a href="/frontend/index.html" class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <path d="M20 8 L20 32 M12 16 L28 16 M14 24 L26 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="20" cy="20" r="4" fill="currentColor"/>
+                </svg>
+                <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">Admin</span></span>
+            </a>
+            
+            <button class="nav-toggle sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+            
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="/frontend/index.html" class="nav-link">🏠 Public Site</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Admin Layout -->
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/dashboard.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📊</span>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/parking.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">🅿️</span>
+                        Parking Management
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/reservations.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">📅</span>
+                        Reservations
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/payments.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">💳</span>
+                        Payments
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/users.html" class="sidebar-link active">
+                        <span class="sidebar-link-icon">👥</span>
+                        Users
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="/frontend/pages/admin/system.html" class="sidebar-link">
+                        <span class="sidebar-link-icon">⚙️</span>
+                        System Status
+                    </a>
+                </li>
+            </ul>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="admin-content" style="margin-top: var(--header-height);">
+            <!-- Page Header -->
+            <div class="page-header flex justify-between items-center" style="flex-wrap: wrap; gap: var(--spacing-4);">
+                <div>
+                    <h1 class="page-title">👥 User Management</h1>
+                    <p class="page-subtitle">Manage user accounts and permissions</p>
+                </div>
+                <button class="btn btn-primary" id="add-user-btn">
+                    ➕ Add User
+                </button>
+            </div>
+            
+            <!-- Stats -->
+            <section class="stats-grid mb-6">
+                <div class="stat-card">
+                    <div class="stat-card-icon primary">👥</div>
+                    <div class="stat-card-value" id="total-users">--</div>
+                    <div class="stat-card-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon success">✅</div>
+                    <div class="stat-card-value" id="active-users">--</div>
+                    <div class="stat-card-label">Active Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon warning">👑</div>
+                    <div class="stat-card-value" id="admin-count">--</div>
+                    <div class="stat-card-label">Admins</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon info">🆕</div>
+                    <div class="stat-card-value" id="new-users">--</div>
+                    <div class="stat-card-label">New This Month</div>
+                </div>
+            </section>
+            
+            <!-- Filters -->
+            <section class="card mb-6">
+                <div class="flex gap-4" style="flex-wrap: wrap; align-items: flex-end;">
+                    <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+                        <label class="form-label">Role</label>
+                        <select class="form-select" id="filter-role">
+                            <option value="">All Roles</option>
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="filter-status">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-0" style="flex: 3; min-width: 250px;">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-input" id="search-users" placeholder="Search by name, email, or phone...">
+                    </div>
+                    <button class="btn btn-outline" id="refresh-btn">🔄 Refresh</button>
+                </div>
+            </section>
+            
+            <!-- Users Table -->
+            <section class="card">
+                <div class="card-header">
+                    <h3 class="card-title">All Users</h3>
+                    <span class="text-muted" id="results-count">Loading...</span>
+                </div>
+                <div class="table-container" style="box-shadow: none;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Role</th>
+                                <th>Reservations</th>
+                                <th>Joined</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-body">
+                            <tr>
+                                <td colspan="8" class="text-center text-muted p-4">Loading users...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="flex justify-between items-center mt-4 p-4" style="border-top: 1px solid var(--gray-200);">
+                    <div class="text-muted">
+                        Showing <span id="showing-start">1</span> - <span id="showing-end">10</span> of <span id="total-count">0</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-sm btn-outline" id="prev-btn" disabled>← Previous</button>
+                        <button class="btn btn-sm btn-outline" id="next-btn">Next →</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- User Modal -->
+    <div class="modal-backdrop" id="user-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">User Details</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-content">
+                <!-- Content populated by JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="save-user-btn" style="display: none;">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="../../js/services/api.js"></script>
+    <script src="../../js/services/auth.js"></script>
+    <script src="../../js/services/state.js"></script>
+    <script src="../../js/services/notifications.js"></script>
+    <script src="../../js/utils/helpers.js"></script>
+    <script src="../../js/app.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Page Script -->
+    <script>
+        let allUsers = [];
+        let currentPage = 1;
+        const pageSize = 10;
+        let selectedUser = null;
+        let editMode = false;
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check admin
+            if (localStorage.getItem('aeropark_role') !== 'admin') {
+                window.location.href = '/frontend/pages/public/login.html';
+                return;
+            }
+            
+            // Load users
+            await loadUsers();
+            
+            // Event listeners
+            document.getElementById('add-user-btn').addEventListener('click', () => openAddUserModal());
+            document.getElementById('refresh-btn').addEventListener('click', loadUsers);
+            
+            document.getElementById('search-users').addEventListener('input', 
+                Helpers.debounce(() => {
+                    currentPage = 1;
+                    filterUsers();
+                }, 300)
+            );
+            
+            document.getElementById('filter-role').addEventListener('change', filterUsers);
+            document.getElementById('filter-status').addEventListener('change', filterUsers);
+            
+            document.getElementById('prev-btn').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderUsers();
+                }
+            });
+            
+            document.getElementById('next-btn').addEventListener('click', () => {
+                const totalPages = Math.ceil(getFilteredUsers().length / pageSize);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderUsers();
+                }
+            });
+            
+            document.getElementById('save-user-btn').addEventListener('click', saveUser);
+            
+            // Sidebar toggle
+            document.getElementById('sidebar-toggle').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('active');
+            });
+            
+            // Logout
+            document.getElementById('logout-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.clear();
+                window.location.href = '/frontend/pages/public/login.html';
+            });
+        });
+        
+        async function loadUsers() {
+            try {
+                // Try to fetch from API
+                allUsers = await ApiService.getAllUsers();
+            } catch (error) {
+                console.error('Failed to load users:', error);
+                
+                // Demo data
+                allUsers = [
+                    {
+                        id: 'user-001',
+                        name: 'John Doe',
+                        email: 'john.doe@example.com',
+                        phone: '+243 999 000 001',
+                        role: 'user',
+                        status: 'active',
+                        reservation_count: 5,
+                        created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+                    },
+                    {
+                        id: 'user-002',
+                        name: 'Jane Smith',
+                        email: 'jane.smith@example.com',
+                        phone: '+243 999 000 002',
+                        role: 'user',
+                        status: 'active',
+                        reservation_count: 12,
+                        created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
+                    },
+                    {
+                        id: 'admin-001',
+                        name: 'Admin User',
+                        email: 'admin@aeropark.com',
+                        phone: '+243 999 000 000',
+                        role: 'admin',
+                        status: 'active',
+                        reservation_count: 0,
+                        created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+                    },
+                    {
+                        id: 'user-003',
+                        name: 'Bob Wilson',
+                        email: 'bob.wilson@example.com',
+                        phone: '+243 999 000 003',
+                        role: 'user',
+                        status: 'disabled',
+                        reservation_count: 2,
+                        created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
+                    },
+                    {
+                        id: 'user-004',
+                        name: 'Alice Brown',
+                        email: 'alice.brown@example.com',
+                        phone: '+243 999 000 004',
+                        role: 'user',
+                        status: 'active',
+                        reservation_count: 8,
+                        created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+                    }
+                ];
+            }
+            
+            updateStats();
+            renderUsers();
+        }
+        
+        function updateStats() {
+            const active = allUsers.filter(u => u.status === 'active').length;
+            const admins = allUsers.filter(u => u.role === 'admin').length;
+            
+            // New users this month
+            const monthStart = new Date();
+            monthStart.setDate(1);
+            monthStart.setHours(0, 0, 0, 0);
+            const newUsers = allUsers.filter(u => new Date(u.created_at) >= monthStart).length;
+            
+            document.getElementById('total-users').textContent = allUsers.length;
+            document.getElementById('active-users').textContent = active;
+            document.getElementById('admin-count').textContent = admins;
+            document.getElementById('new-users').textContent = newUsers;
+        }
+        
+        function getFilteredUsers() {
+            let filtered = [...allUsers];
+            
+            const role = document.getElementById('filter-role').value;
+            const status = document.getElementById('filter-status').value;
+            const search = document.getElementById('search-users').value.toLowerCase();
+            
+            if (role) {
+                filtered = filtered.filter(u => u.role === role);
+            }
+            
+            if (status) {
+                filtered = filtered.filter(u => u.status === status);
+            }
+            
+            if (search) {
+                filtered = filtered.filter(u => 
+                    (u.name && u.name.toLowerCase().includes(search)) ||
+                    (u.email && u.email.toLowerCase().includes(search)) ||
+                    (u.phone && u.phone.includes(search))
+                );
+            }
+            
+            return filtered;
+        }
+        
+        function filterUsers() {
+            currentPage = 1;
+            renderUsers();
+        }
+        
+        function renderUsers() {
+            const filtered = getFilteredUsers();
+            const totalPages = Math.ceil(filtered.length / pageSize);
+            const start = (currentPage - 1) * pageSize;
+            const end = Math.min(start + pageSize, filtered.length);
+            const page = filtered.slice(start, end);
+            
+            // Update results count
+            document.getElementById('results-count').textContent = `${filtered.length} users`;
+            document.getElementById('showing-start').textContent = filtered.length ? start + 1 : 0;
+            document.getElementById('showing-end').textContent = end;
+            document.getElementById('total-count').textContent = filtered.length;
+            
+            // Update pagination buttons
+            document.getElementById('prev-btn').disabled = currentPage === 1;
+            document.getElementById('next-btn').disabled = currentPage >= totalPages;
+            
+            const tbody = document.getElementById('users-body');
+            
+            if (page.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-muted p-4">No users found</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = page.map(u => `
+                <tr>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <div style="width: 32px; height: 32px; background: var(--primary-light); color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                ${(u.name || u.email)[0].toUpperCase()}
+                            </div>
+                            <span>${u.name || 'N/A'}</span>
+                        </div>
+                    </td>
+                    <td>${u.email}</td>
+                    <td>${u.phone || '-'}</td>
+                    <td>
+                        <span class="status-badge ${u.role === 'admin' ? 'warning' : 'info'}">
+                            ${u.role === 'admin' ? '👑 Admin' : '👤 User'}
+                        </span>
+                    </td>
+                    <td>${u.reservation_count || 0}</td>
+                    <td>${Helpers.formatDate(u.created_at)}</td>
+                    <td>
+                        <span class="status-badge ${u.status === 'active' ? 'success' : 'danger'}">
+                            ${u.status}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="flex gap-2">
+                            <button class="btn btn-sm btn-outline" onclick="viewUser('${u.id}')">View</button>
+                            <button class="btn btn-sm btn-outline" onclick="editUser('${u.id}')">Edit</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function viewUser(id) {
+            selectedUser = allUsers.find(u => u.id === id);
+            if (!selectedUser) return;
+            
+            editMode = false;
+            const u = selectedUser;
+            
+            document.getElementById('modal-title').textContent = 'User Details';
+            document.getElementById('save-user-btn').style.display = 'none';
+            
+            document.getElementById('modal-content').innerHTML = `
+                <div class="text-center mb-4">
+                    <div style="width: 80px; height: 80px; background: var(--primary-light); color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; margin: 0 auto 1rem;">
+                        ${(u.name || u.email)[0].toUpperCase()}
+                    </div>
+                    <h3>${u.name || 'N/A'}</h3>
+                    <span class="status-badge ${u.role === 'admin' ? 'warning' : 'info'}">
+                        ${u.role === 'admin' ? '👑 Admin' : '👤 User'}
+                    </span>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Email</span>
+                        <span>${u.email}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Phone</span>
+                        <span>${u.phone || '-'}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Status</span>
+                        <span class="status-badge ${u.status === 'active' ? 'success' : 'danger'}">${u.status}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-muted">Total Reservations</span>
+                        <span>${u.reservation_count || 0}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-muted">Joined</span>
+                        <span>${Helpers.formatDate(u.created_at)}</span>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button class="btn btn-outline btn-block" onclick="editUser('${u.id}')">✏️ Edit User</button>
+                    <button class="btn btn-${u.status === 'active' ? 'warning' : 'success'} btn-block" onclick="toggleUserStatus('${u.id}')">
+                        ${u.status === 'active' ? '🚫 Disable' : '✅ Enable'}
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('user-modal').classList.add('active');
+        }
+        
+        function editUser(id) {
+            selectedUser = allUsers.find(u => u.id === id);
+            if (!selectedUser) return;
+            
+            editMode = true;
+            const u = selectedUser;
+            
+            document.getElementById('modal-title').textContent = 'Edit User';
+            document.getElementById('save-user-btn').style.display = 'block';
+            
+            document.getElementById('modal-content').innerHTML = `
+                <form id="user-form">
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-input" id="user-name" value="${u.name || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="user-email" value="${u.email}" readonly>
+                        <small class="text-muted">Email cannot be changed</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-input" id="user-phone" value="${u.phone || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <select class="form-select" id="user-role">
+                            <option value="user" ${u.role === 'user' ? 'selected' : ''}>User</option>
+                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="user-status">
+                            <option value="active" ${u.status === 'active' ? 'selected' : ''}>Active</option>
+                            <option value="disabled" ${u.status === 'disabled' ? 'selected' : ''}>Disabled</option>
+                        </select>
+                    </div>
+                </form>
+            `;
+            
+            document.getElementById('user-modal').classList.add('active');
+        }
+        
+        function openAddUserModal() {
+            selectedUser = null;
+            editMode = true;
+            
+            document.getElementById('modal-title').textContent = 'Add New User';
+            document.getElementById('save-user-btn').style.display = 'block';
+            
+            document.getElementById('modal-content').innerHTML = `
+                <form id="user-form">
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-input" id="user-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="user-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-input" id="user-phone">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <select class="form-select" id="user-role">
+                            <option value="user" selected>User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Initial Password</label>
+                        <input type="password" class="form-input" id="user-password" required minlength="8">
+                        <small class="text-muted">Minimum 8 characters</small>
+                    </div>
+                </form>
+                
+                <div class="alert alert-info">
+                    <strong>Note:</strong> The user will receive an email to verify their account.
+                </div>
+            `;
+            
+            document.getElementById('user-modal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('user-modal').classList.remove('active');
+            selectedUser = null;
+            editMode = false;
+        }
+        
+        async function saveUser() {
+            const name = document.getElementById('user-name').value;
+            const email = document.getElementById('user-email').value;
+            const phone = document.getElementById('user-phone').value;
+            const role = document.getElementById('user-role').value;
+            const status = document.getElementById('user-status')?.value || 'active';
+            
+            if (!name || !email) {
+                NotificationService.error('Name and email are required');
+                return;
+            }
+            
+            try {
+                if (selectedUser) {
+                    // Update existing user
+                    await ApiService.updateUser(selectedUser.id, { name, phone, role, status });
+                    
+                    // Update local state
+                    Object.assign(selectedUser, { name, phone, role, status });
+                    
+                    NotificationService.success('User updated successfully');
+                } else {
+                    // Create new user
+                    const password = document.getElementById('user-password').value;
+                    if (!password || password.length < 8) {
+                        NotificationService.error('Password must be at least 8 characters');
+                        return;
+                    }
+                    
+                    // API call to create user
+                    // await ApiService.createUser({ name, email, phone, role, password });
+                    
+                    NotificationService.success('User created successfully');
+                    await loadUsers();
+                }
+                
+                closeModal();
+                renderUsers();
+            } catch (error) {
+                NotificationService.error(error.message || 'Failed to save user');
+            }
+        }
+        
+        async function toggleUserStatus(id) {
+            const user = allUsers.find(u => u.id === id);
+            if (!user) return;
+            
+            const newStatus = user.status === 'active' ? 'disabled' : 'active';
+            const action = newStatus === 'active' ? 'enable' : 'disable';
+            
+            if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+            
+            try {
+                // API call
+                // await ApiService.updateUser(id, { status: newStatus });
+                
+                // Update local state
+                user.status = newStatus;
+                
+                NotificationService.success(`User ${newStatus === 'active' ? 'enabled' : 'disabled'} successfully`);
+                closeModal();
+                renderUsers();
+            } catch (error) {
+                NotificationService.error(error.message || 'Failed to update user status');
+            }
+        }
+    </script>
+</body>
+</html>

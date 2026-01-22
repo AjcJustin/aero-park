@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Your AeroPark Dashboard - Manage your parking reservations">
+    <meta name="theme-color" content="#1e3a5f">
+    
+    <title>Dashboard - AeroPark GOMA</title>
+    
+    <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
+    <link rel="manifest" href="../../manifest.json">
+    <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body>
+    <!-- Offline Banner -->
+    <div class="offline-banner" id="offline-banner">
+        ⚠️ You are currently offline. Showing cached data.
+    </div>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <a href="/frontend/index.html" class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <path d="M20 8 L20 32 M12 16 L28 16 M14 24 L26 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="20" cy="20" r="4" fill="currentColor"/>
+                </svg>
+                <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">GOMA</span></span>
+            </a>
+            
+            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+            
+            <nav>
+                <ul class="nav-menu" id="nav-menu">
+                    <li><a href="/frontend/index.html" class="nav-link">Home</a></li>
+                    <li><a href="/frontend/pages/user/dashboard.html" class="nav-link active">Dashboard</a></li>
+                    <li><a href="/frontend/pages/user/reservations.html" class="nav-link">Reservations</a></li>
+                    <li><a href="/frontend/pages/user/access-codes.html" class="nav-link">Access Codes</a></li>
+                    <li><a href="/frontend/pages/user/payments.html" class="nav-link">Payments</a></li>
+                    <li class="admin-only"><a href="/frontend/pages/admin/dashboard.html" class="nav-link">Admin</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Welcome Section -->
+            <div class="page-header">
+                <h1 class="page-title">Welcome back, <span id="user-name">User</span>! 👋</h1>
+                <p class="page-subtitle">Here's an overview of your parking activity</p>
+            </div>
+            
+            <!-- Quick Stats -->
+            <section class="stats-grid mb-6">
+                <div class="stat-card">
+                    <div class="stat-card-icon primary">🅿️</div>
+                    <div class="stat-card-value" id="active-reservations">0</div>
+                    <div class="stat-card-label">Active Reservations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon success">✓</div>
+                    <div class="stat-card-value" id="completed-reservations">0</div>
+                    <div class="stat-card-label">Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon warning">💳</div>
+                    <div class="stat-card-value" id="pending-payments">$0</div>
+                    <div class="stat-card-label">Pending Payments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon danger">📍</div>
+                    <div class="stat-card-value" id="total-hours">0</div>
+                    <div class="stat-card-label">Total Hours Parked</div>
+                </div>
+            </section>
+            
+            <!-- Quick Actions -->
+            <section class="card mb-6">
+                <h2 class="card-title mb-4">Quick Actions</h2>
+                <div class="grid grid-cols-4 gap-4" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <a href="/frontend/index.html#parking-status" class="btn btn-primary btn-block">
+                        🅿️ New Reservation
+                    </a>
+                    <a href="/frontend/pages/user/access-codes.html" class="btn btn-secondary btn-block">
+                        🔑 Access Codes
+                    </a>
+                    <a href="/frontend/pages/user/payments.html" class="btn btn-outline btn-block">
+                        💳 Make Payment
+                    </a>
+                    <a href="/frontend/pages/user/profile.html" class="btn btn-outline btn-block">
+                        👤 My Profile
+                    </a>
+                </div>
+            </section>
+            
+            <!-- Current/Upcoming Reservation -->
+            <section class="card mb-6" id="current-reservation-section">
+                <div class="card-header">
+                    <h2 class="card-title">Current Reservation</h2>
+                </div>
+                <div id="current-reservation-content">
+                    <!-- Content loaded dynamically -->
+                    <div class="skeleton" style="height: 150px;"></div>
+                </div>
+            </section>
+            
+            <!-- Last Access Code (for offline) -->
+            <section class="card mb-6" id="last-access-code-section" style="display: none;">
+                <div class="card-header">
+                    <h2 class="card-title">Your Access Code</h2>
+                    <span class="status-badge warning" id="access-code-status">Cached</span>
+                </div>
+                <div id="last-access-code-content">
+                    <!-- Content loaded dynamically -->
+                </div>
+            </section>
+            
+            <!-- Recent Activity -->
+            <section class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Recent Activity</h2>
+                    <a href="/frontend/pages/user/reservations.html" class="btn btn-sm btn-outline">View All</a>
+                </div>
+                <div class="table-container" style="box-shadow: none;">
+                    <table class="table" id="recent-activity-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Spot</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-activity-body">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted p-6">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+    
+    <!-- Scripts -->
+    <script src="../../js/services/api.js"></script>
+    <script src="../../js/services/auth.js"></script>
+    <script src="../../js/services/state.js"></script>
+    <script src="../../js/services/notifications.js"></script>
+    <script src="../../js/utils/helpers.js"></script>
+    <script src="../../js/app.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Page Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication
+            const isAuthenticated = localStorage.getItem('aeropark_token');
+            if (!isAuthenticated) {
+                window.location.href = '/frontend/pages/public/login.html';
+                return;
+            }
+            
+            // Set user name
+            const user = JSON.parse(localStorage.getItem('aeropark_user') || '{}');
+            document.getElementById('user-name').textContent = user.displayName || user.email?.split('@')[0] || 'User';
+            
+            // Load dashboard data
+            await loadDashboardData();
+            
+            // Check for offline data
+            checkOfflineData();
+            
+            // Logout handler
+            document.getElementById('logout-btn').addEventListener('click', async (e) => {
+                e.preventDefault();
+                localStorage.clear();
+                window.location.href = '/frontend/pages/public/login.html';
+            });
+        });
+        
+        async function loadDashboardData() {
+            try {
+                // Load reservations
+                const reservations = await ApiService.getMyReservations();
+                
+                // Update stats
+                const active = reservations.filter(r => r.status === 'active' || r.status === 'reserved').length;
+                const completed = reservations.filter(r => r.status === 'completed').length;
+                
+                document.getElementById('active-reservations').textContent = active;
+                document.getElementById('completed-reservations').textContent = completed;
+                
+                // Calculate total hours
+                let totalMinutes = 0;
+                reservations.forEach(r => {
+                    if (r.start_time && r.end_time) {
+                        const duration = new Date(r.end_time) - new Date(r.start_time);
+                        totalMinutes += duration / (1000 * 60);
+                    }
+                });
+                document.getElementById('total-hours').textContent = Math.round(totalMinutes / 60);
+                
+                // Load current reservation
+                const currentReservation = reservations.find(r => 
+                    r.status === 'active' || r.status === 'reserved'
+                );
+                
+                if (currentReservation) {
+                    StateService.saveLastReservation(currentReservation);
+                    renderCurrentReservation(currentReservation);
+                } else {
+                    renderNoReservation();
+                }
+                
+                // Load recent activity
+                renderRecentActivity(reservations.slice(0, 5));
+                
+                // Load payments
+                try {
+                    const payments = await ApiService.getMyPayments();
+                    const pending = payments
+                        .filter(p => p.status === 'pending')
+                        .reduce((sum, p) => sum + (p.amount || 0), 0);
+                    document.getElementById('pending-payments').textContent = Helpers.formatCurrency(pending);
+                } catch (e) {
+                    console.log('Payments not available');
+                }
+                
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+                
+                // Try offline data
+                const cachedReservation = StateService.getLastReservation();
+                if (cachedReservation) {
+                    renderCurrentReservation(cachedReservation);
+                    NotificationService.warning('Showing cached data');
+                }
+            }
+        }
+        
+        function renderCurrentReservation(reservation) {
+            const content = document.getElementById('current-reservation-content');
+            const now = new Date();
+            const start = new Date(reservation.start_time);
+            const end = new Date(reservation.end_time);
+            
+            const isActive = now >= start && now <= end;
+            const isUpcoming = now < start;
+            
+            content.innerHTML = `
+                <div class="flex gap-6" style="flex-wrap: wrap;">
+                    <div class="parking-spot ${reservation.status}" style="min-width: 120px; cursor: default;">
+                        <span class="parking-spot-id">${reservation.spot_id}</span>
+                        <span class="parking-spot-status">${Helpers.getParkingStatusIcon(reservation.status)} ${reservation.status}</span>
+                    </div>
+                    <div class="flex-1" style="min-width: 200px;">
+                        <div class="mb-4">
+                            <span class="status-badge ${isActive ? 'success' : 'info'}">
+                                ${isActive ? 'Currently Active' : 'Upcoming'}
+                            </span>
+                        </div>
+                        <p><strong>Start:</strong> ${Helpers.formatDateTime(start)}</p>
+                        <p><strong>End:</strong> ${Helpers.formatDateTime(end)}</p>
+                        <p><strong>Vehicle:</strong> ${reservation.vehicle_plate || 'N/A'}</p>
+                        <p><strong>Time Remaining:</strong> <span id="time-remaining">${Helpers.getTimeRemaining(end).text}</span></p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <a href="/frontend/pages/user/access-codes.html?reservation=${reservation.id}" class="btn btn-primary">
+                            🔑 Get Access Code
+                        </a>
+                        ${!isActive ? `
+                            <button class="btn btn-outline btn-danger" onclick="cancelReservation('${reservation.id}')">
+                                Cancel Reservation
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            // Update time remaining every second
+            setInterval(() => {
+                const remaining = Helpers.getTimeRemaining(end);
+                const el = document.getElementById('time-remaining');
+                if (el) {
+                    el.textContent = remaining.expired ? 'Expired' : remaining.text;
+                }
+            }, 1000);
+        }
+        
+        function renderNoReservation() {
+            const content = document.getElementById('current-reservation-content');
+            content.innerHTML = `
+                <div class="text-center p-6">
+                    <div style="font-size: 4rem; margin-bottom: var(--spacing-4);">🅿️</div>
+                    <h3>No Active Reservations</h3>
+                    <p class="text-muted mb-4">You don't have any active parking reservations.</p>
+                    <a href="/frontend/index.html#parking-status" class="btn btn-primary">Make a Reservation</a>
+                </div>
+            `;
+        }
+        
+        function renderRecentActivity(reservations) {
+            const tbody = document.getElementById('recent-activity-body');
+            
+            if (reservations.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted p-6">No recent activity</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = reservations.map(r => {
+                const duration = r.start_time && r.end_time 
+                    ? Helpers.formatDuration(Math.round((new Date(r.end_time) - new Date(r.start_time)) / (1000 * 60)))
+                    : 'N/A';
+                const cost = r.start_time && r.end_time 
+                    ? Helpers.calculateParkingFee(r.start_time, r.end_time)
+                    : 0;
+                    
+                return `
+                    <tr>
+                        <td>${Helpers.formatDate(r.start_time)}</td>
+                        <td><strong>${r.spot_id}</strong></td>
+                        <td>${duration}</td>
+                        <td>
+                            <span class="status-badge ${Helpers.getStatusBadgeClass(r.status)}">
+                                ${r.status}
+                            </span>
+                        </td>
+                        <td>${Helpers.formatCurrency(cost)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function checkOfflineData() {
+            if (!navigator.onLine) {
+                // Show last access code
+                const lastCode = StateService.getLastAccessCode();
+                if (lastCode) {
+                    document.getElementById('last-access-code-section').style.display = 'block';
+                    renderLastAccessCode(lastCode);
+                }
+            }
+        }
+        
+        function renderLastAccessCode(code) {
+            const content = document.getElementById('last-access-code-content');
+            content.innerHTML = `
+                <div class="access-code-display">
+                    <div class="access-code-label">Your ${code.code_type || 'Entry'} Code</div>
+                    <div class="access-code-value">${code.code}</div>
+                    <div class="access-code-expires">
+                        Expires: ${Helpers.formatDateTime(code.expires_at)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function cancelReservation(reservationId) {
+            if (!confirm('Are you sure you want to cancel this reservation?')) {
+                return;
+            }
+            
+            try {
+                await ApiService.cancelReservation(reservationId);
+                NotificationService.success('Reservation cancelled successfully');
+                location.reload();
+            } catch (error) {
+                NotificationService.error(error.message || 'Failed to cancel reservation');
+            }
+        }
+    </script>
+</body>
+</html>

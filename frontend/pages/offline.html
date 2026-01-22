@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AeroPark - Offline Mode">
+    <meta name="theme-color" content="#1e3a5f">
+    
+    <title>Offline - AeroPark GOMA</title>
+    
+    <link rel="icon" type="image/png" href="../assets/icons/favicon-32x32.png">
+    <link rel="manifest" href="../manifest.json">
+    <link rel="stylesheet" href="../css/styles.css">
+    
+    <style>
+        .offline-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-6);
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+        
+        .offline-icon {
+            font-size: 80px;
+            margin-bottom: var(--spacing-6);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .offline-title {
+            font-size: var(--font-size-3xl);
+            font-weight: bold;
+            margin-bottom: var(--spacing-4);
+        }
+        
+        .offline-message {
+            font-size: var(--font-size-lg);
+            opacity: 0.9;
+            margin-bottom: var(--spacing-8);
+            max-width: 500px;
+        }
+        
+        .offline-actions {
+            display: flex;
+            gap: var(--spacing-4);
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: var(--spacing-8);
+        }
+        
+        .offline-card {
+            background: white;
+            color: var(--gray-900);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-6);
+            max-width: 400px;
+            width: 100%;
+            text-align: left;
+        }
+        
+        .offline-card-title {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            margin-bottom: var(--spacing-4);
+            color: var(--primary);
+        }
+        
+        .offline-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: var(--spacing-3) 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .offline-info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .offline-info-label {
+            color: var(--gray-600);
+        }
+        
+        .offline-info-value {
+            font-weight: 600;
+        }
+        
+        .access-code-display {
+            background: var(--gray-100);
+            padding: var(--spacing-4);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            margin-top: var(--spacing-4);
+        }
+        
+        .access-code-value {
+            font-size: 2rem;
+            font-weight: bold;
+            letter-spacing: 0.5rem;
+            color: var(--primary);
+            font-family: monospace;
+        }
+        
+        .no-data-message {
+            text-align: center;
+            padding: var(--spacing-4);
+            color: var(--gray-500);
+        }
+        
+        .retry-section {
+            margin-top: var(--spacing-8);
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            padding: var(--spacing-3) var(--spacing-4);
+            background: rgba(255,255,255,0.2);
+            border-radius: var(--radius-full);
+            margin-top: var(--spacing-4);
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-page">
+        <div class="offline-icon">📡</div>
+        <h1 class="offline-title">You're Offline</h1>
+        <p class="offline-message">
+            No internet connection detected. But don't worry - we've saved your essential parking information for you.
+        </p>
+        
+        <div class="offline-actions">
+            <button class="btn btn-lg" style="background: white; color: var(--primary);" onclick="tryReconnect()">
+                🔄 Try Again
+            </button>
+            <a href="/frontend/index.html" class="btn btn-lg btn-outline" style="color: white; border-color: white;">
+                🏠 Go Home
+            </a>
+        </div>
+        
+        <!-- Last Reservation Card -->
+        <div class="offline-card mb-4" id="reservation-card" style="display: none;">
+            <h3 class="offline-card-title">📅 Your Last Reservation</h3>
+            <div id="reservation-content">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+        
+        <!-- Last Access Code Card -->
+        <div class="offline-card" id="access-code-card" style="display: none;">
+            <h3 class="offline-card-title">🔑 Your Last Access Code</h3>
+            <div id="access-code-content">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+        
+        <!-- No Data Message -->
+        <div class="offline-card" id="no-data-card" style="display: none;">
+            <div class="no-data-message">
+                <div style="font-size: 48px; margin-bottom: var(--spacing-4);">📭</div>
+                <p>No offline data available.</p>
+                <p class="text-sm text-muted">Once you make a reservation or generate an access code while online, it will be saved here for offline access.</p>
+            </div>
+        </div>
+        
+        <div class="connection-status">
+            <span class="status-dot"></span>
+            <span>Checking connection...</span>
+        </div>
+        
+        <div class="retry-section">
+            <p style="opacity: 0.7; font-size: var(--font-size-sm);">
+                This page will automatically reconnect when internet is available.
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        // Load cached data
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCachedData();
+            startConnectionCheck();
+        });
+        
+        function loadCachedData() {
+            let hasData = false;
+            
+            // Try to load last reservation
+            const cachedReservation = localStorage.getItem('aeropark_last_reservation');
+            if (cachedReservation) {
+                try {
+                    const reservation = JSON.parse(cachedReservation);
+                    displayReservation(reservation);
+                    hasData = true;
+                } catch (e) {
+                    console.error('Failed to parse reservation:', e);
+                }
+            }
+            
+            // Try to load last access code
+            const cachedAccessCode = localStorage.getItem('aeropark_last_access_code');
+            if (cachedAccessCode) {
+                try {
+                    const accessCode = JSON.parse(cachedAccessCode);
+                    displayAccessCode(accessCode);
+                    hasData = true;
+                } catch (e) {
+                    console.error('Failed to parse access code:', e);
+                }
+            }
+            
+            // Show no data message if nothing cached
+            if (!hasData) {
+                document.getElementById('no-data-card').style.display = 'block';
+            }
+        }
+        
+        function displayReservation(reservation) {
+            const card = document.getElementById('reservation-card');
+            const content = document.getElementById('reservation-content');
+            
+            card.style.display = 'block';
+            
+            const startTime = new Date(reservation.start_time);
+            const endTime = new Date(reservation.end_time);
+            
+            content.innerHTML = `
+                <div class="offline-info-row">
+                    <span class="offline-info-label">Spot</span>
+                    <span class="offline-info-value">${reservation.spot_id}</span>
+                </div>
+                <div class="offline-info-row">
+                    <span class="offline-info-label">Start</span>
+                    <span class="offline-info-value">${formatDateTime(startTime)}</span>
+                </div>
+                <div class="offline-info-row">
+                    <span class="offline-info-label">End</span>
+                    <span class="offline-info-value">${formatDateTime(endTime)}</span>
+                </div>
+                <div class="offline-info-row">
+                    <span class="offline-info-label">Status</span>
+                    <span class="offline-info-value" style="color: ${getStatusColor(reservation.status)};">
+                        ${reservation.status}
+                    </span>
+                </div>
+            `;
+        }
+        
+        function displayAccessCode(accessCode) {
+            const card = document.getElementById('access-code-card');
+            const content = document.getElementById('access-code-content');
+            
+            card.style.display = 'block';
+            
+            const expiresAt = new Date(accessCode.expires_at);
+            const isExpired = expiresAt < new Date();
+            
+            content.innerHTML = `
+                <div class="offline-info-row">
+                    <span class="offline-info-label">Type</span>
+                    <span class="offline-info-value">${accessCode.type === 'entry' ? '🚗 Entry' : '🚶 Exit'}</span>
+                </div>
+                <div class="offline-info-row">
+                    <span class="offline-info-label">Expires</span>
+                    <span class="offline-info-value" style="color: ${isExpired ? 'var(--danger)' : 'var(--success)'};">
+                        ${isExpired ? 'Expired' : formatDateTime(expiresAt)}
+                    </span>
+                </div>
+                <div class="access-code-display ${isExpired ? 'expired' : ''}">
+                    <div class="access-code-value" ${isExpired ? 'style="opacity: 0.5; text-decoration: line-through;"' : ''}>
+                        ${accessCode.code}
+                    </div>
+                    ${isExpired ? '<p style="color: var(--danger); margin-top: 8px;">This code has expired</p>' : ''}
+                </div>
+            `;
+        }
+        
+        function formatDateTime(date) {
+            return date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+        
+        function getStatusColor(status) {
+            switch (status) {
+                case 'active': return 'var(--success)';
+                case 'pending': return 'var(--warning)';
+                case 'completed': return 'var(--info)';
+                case 'cancelled': return 'var(--danger)';
+                default: return 'var(--gray-600)';
+            }
+        }
+        
+        function tryReconnect() {
+            window.location.reload();
+        }
+        
+        function startConnectionCheck() {
+            const checkConnection = async () => {
+                try {
+                    const response = await fetch('/api/v1/health', {
+                        method: 'HEAD',
+                        cache: 'no-store'
+                    });
+                    
+                    if (response.ok) {
+                        // Connection restored, redirect to home
+                        window.location.href = '/frontend/index.html';
+                    }
+                } catch (e) {
+                    // Still offline
+                }
+            };
+            
+            // Check immediately
+            checkConnection();
+            
+            // Check every 5 seconds
+            setInterval(checkConnection, 5000);
+            
+            // Also listen for online event
+            window.addEventListener('online', () => {
+                window.location.href = '/frontend/index.html';
+            });
+        }
+    </script>
+</body>
+</html>
