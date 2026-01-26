@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiements - Admin AeroPark GOMA</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-page">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-plane"></i>
+                <span>AeroPark GOMA</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebar-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul>
+                <li>
+                    <a href="dashboard.html">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Tableau de bord</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="places.html">
+                        <i class="fas fa-parking"></i>
+                        <span>Gestion des places</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="reservations.html">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Réservations</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="users.html">
+                        <i class="fas fa-users"></i>
+                        <span>Utilisateurs</span>
+                    </a>
+                </li>
+                <li class="active">
+                    <a href="payments.html">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Paiements</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="settings.html">
+                        <i class="fas fa-cog"></i>
+                        <span>Paramètres</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="admin-info">
+                <div class="admin-avatar">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="admin-details">
+                    <span class="admin-name" id="admin-name">Admin</span>
+                    <span class="admin-role">Administrateur</span>
+                </div>
+            </div>
+            <button class="btn-logout" id="admin-logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Déconnexion</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+        <header class="admin-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1>Historique des Paiements</h1>
+            </div>
+        </header>
+
+        <div class="admin-content">
+            <!-- Stats -->
+            <section class="dashboard-stats">
+                <div class="stat-card-admin">
+                    <div class="stat-card-icon green">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <div class="stat-card-info">
+                        <h3 id="stat-total-amount">0 FC</h3>
+                        <p>Total revenus</p>
+                    </div>
+                </div>
+                <div class="stat-card-admin">
+                    <div class="stat-card-icon blue">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                    <div class="stat-card-info">
+                        <h3 id="stat-transactions">0</h3>
+                        <p>Transactions</p>
+                    </div>
+                </div>
+                <div class="stat-card-admin">
+                    <div class="stat-card-icon orange">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-card-info">
+                        <h3 id="stat-today">0 FC</h3>
+                        <p>Revenus aujourd'hui</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Payments by Method Chart -->
+            <div class="dashboard-card full-width" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-pie"></i> Répartition par méthode</h3>
+                </div>
+                <div class="card-body">
+                    <div id="payment-methods-chart" style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 1rem; padding: 1rem;">
+                        <!-- Généré par JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label>Date début:</label>
+                    <input type="date" id="filter-date-start" onchange="filterPayments()">
+                </div>
+                <div class="filter-group">
+                    <label>Date fin:</label>
+                    <input type="date" id="filter-date-end" onchange="filterPayments()">
+                </div>
+                <div class="filter-group">
+                    <label>Méthode:</label>
+                    <select id="filter-method" onchange="filterPayments()">
+                        <option value="all">Toutes</option>
+                        <option value="orange">Orange Money</option>
+                        <option value="airtel">Airtel Money</option>
+                        <option value="mpesa">M-Pesa</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Statut:</label>
+                    <select id="filter-status" onchange="filterPayments()">
+                        <option value="all">Tous</option>
+                        <option value="success">Réussi</option>
+                        <option value="failed">Échoué</option>
+                        <option value="pending">En attente</option>
+                    </select>
+                </div>
+                <div style="flex: 1;"></div>
+                <button class="btn btn-outline" onclick="exportPayments()">
+                    <i class="fas fa-download"></i> Exporter
+                </button>
+            </div>
+
+            <!-- Payments Table -->
+            <div class="dashboard-card full-width">
+                <div class="card-header">
+                    <h3><i class="fas fa-list"></i> Liste des Paiements</h3>
+                    <span id="payments-count">0 paiements</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID Transaction</th>
+                                    <th>Utilisateur</th>
+                                    <th>Méthode</th>
+                                    <th>Téléphone</th>
+                                    <th>Montant</th>
+                                    <th>Place</th>
+                                    <th>Date</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payments-table">
+                                <tr>
+                                    <td colspan="8" class="text-center">Chargement...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/admin.js"></script>
+    <script src="../js/services/api.js"></script>
+    <script>
+        // Vérifier l'authentification
+        if (!AdminAuth.isLoggedIn()) {
+            window.location.href = 'login.html';
+        }
+
+        let allPayments = [];
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadAllData();
+            initSidebar();
+
+            const admin = AdminAuth.getCurrentAdmin();
+            if (admin) {
+                document.getElementById('admin-name').textContent = admin.username;
+            }
+        });
+
+        async function loadAllData() {
+            await loadStats();
+            loadPaymentMethodsChart();
+            loadPaymentsTable();
+        }
+
+        async function loadStats() {
+            try {
+                const response = await ApiService.getAllPayments();
+                allPayments = response.payments || response || [];
+                
+                const successPayments = allPayments.filter(p => p.status === 'completed' || p.status === 'success');
+                const totalAmount = successPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                
+                const today = new Date().toDateString();
+                const todayPayments = successPayments.filter(p => 
+                    new Date(p.created_at || p.date).toDateString() === today
+                );
+                const todayAmount = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                
+                document.getElementById('stat-total-amount').textContent = totalAmount.toLocaleString('fr-FR') + ' FC';
+                document.getElementById('stat-transactions').textContent = successPayments.length;
+                document.getElementById('stat-today').textContent = todayAmount.toLocaleString('fr-FR') + ' FC';
+            } catch (error) {
+                console.error('Erreur lors du chargement des statistiques:', error);
+                AdminUtils.showNotification('Erreur lors du chargement des données: ' + error.message, 'error');
+            }
+        }
+
+        function loadPaymentMethodsChart() {
+            const payments = allPayments.filter(p => p.status === 'completed' || p.status === 'success');
+            
+            const byMethod = {
+                orange: { count: 0, amount: 0, name: 'Orange Money', color: '#ff6b35', icon: 'fab fa-orange' },
+                ORANGE_MONEY: { count: 0, amount: 0, name: 'Orange Money', color: '#ff6b35', icon: 'fab fa-orange' },
+                airtel: { count: 0, amount: 0, name: 'Airtel Money', color: '#e4002b', icon: 'fas fa-mobile-alt' },
+                AIRTEL_MONEY: { count: 0, amount: 0, name: 'Airtel Money', color: '#e4002b', icon: 'fas fa-mobile-alt' },
+                mpesa: { count: 0, amount: 0, name: 'M-Pesa', color: '#00a651', icon: 'fas fa-mobile-alt' },
+                MPESA: { count: 0, amount: 0, name: 'M-Pesa', color: '#00a651', icon: 'fas fa-mobile-alt' }
+            };
+
+            payments.forEach(p => {
+                if (byMethod[p.method]) {
+                    byMethod[p.method].count++;
+                    byMethod[p.method].amount += p.amount || 0;
+                }
+            });
+
+            // Consolider les méthodes (orange + ORANGE_MONEY, etc.)
+            const consolidatedMethods = {
+                orange: { 
+                    count: (byMethod.orange?.count || 0) + (byMethod.ORANGE_MONEY?.count || 0), 
+                    amount: (byMethod.orange?.amount || 0) + (byMethod.ORANGE_MONEY?.amount || 0), 
+                    name: 'Orange Money', 
+                    color: '#ff6b35' 
+                },
+                airtel: { 
+                    count: (byMethod.airtel?.count || 0) + (byMethod.AIRTEL_MONEY?.count || 0), 
+                    amount: (byMethod.airtel?.amount || 0) + (byMethod.AIRTEL_MONEY?.amount || 0), 
+                    name: 'Airtel Money', 
+                    color: '#e4002b' 
+                },
+                mpesa: { 
+                    count: (byMethod.mpesa?.count || 0) + (byMethod.MPESA?.count || 0), 
+                    amount: (byMethod.mpesa?.amount || 0) + (byMethod.MPESA?.amount || 0), 
+                    name: 'M-Pesa', 
+                    color: '#00a651' 
+                }
+            };
+
+            const total = payments.length || 1;
+            
+            document.getElementById('payment-methods-chart').innerHTML = Object.entries(consolidatedMethods).map(([key, data]) => {
+                const percent = ((data.count / total) * 100).toFixed(1);
+                return `
+                    <div style="text-align: center; min-width: 150px;">
+                        <div style="width: 100px; height: 100px; border-radius: 50%; background: conic-gradient(${data.color} 0% ${percent}%, #e0e0e0 ${percent}% 100%); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;">
+                            <div style="width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-weight: bold; color: ${data.color};">${percent}%</span>
+                            </div>
+                        </div>
+                        <h4 style="margin: 0; color: ${data.color};">${data.name}</h4>
+                        <p style="margin: 0.25rem 0; color: var(--text-secondary);">${data.count} transactions</p>
+                        <p style="margin: 0; font-weight: 600;">${data.amount.toLocaleString('fr-FR')} FC</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function loadPaymentsTable() {
+            const payments = getFilteredPayments();
+            const tbody = document.getElementById('payments-table');
+
+            document.getElementById('payments-count').textContent = payments.length + ' paiements';
+
+            if (payments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Aucun paiement trouvé</td></tr>';
+                return;
+            }
+
+            const methodIcons = {
+                orange: '<span style="color: #ff6b35;"><i class="fas fa-circle"></i> Orange Money</span>',
+                ORANGE_MONEY: '<span style="color: #ff6b35;"><i class="fas fa-circle"></i> Orange Money</span>',
+                airtel: '<span style="color: #e4002b;"><i class="fas fa-circle"></i> Airtel Money</span>',
+                AIRTEL_MONEY: '<span style="color: #e4002b;"><i class="fas fa-circle"></i> Airtel Money</span>',
+                mpesa: '<span style="color: #00a651;"><i class="fas fa-circle"></i> M-Pesa</span>',
+                MPESA: '<span style="color: #00a651;"><i class="fas fa-circle"></i> M-Pesa</span>'
+            };
+
+            const statusBadge = {
+                success: '<span class="badge success">Réussi</span>',
+                completed: '<span class="badge success">Réussi</span>',
+                failed: '<span class="badge danger">Échoué</span>',
+                pending: '<span class="badge warning">En attente</span>'
+            };
+
+            tbody.innerHTML = payments.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date)).map(payment => {
+                return `
+                    <tr>
+                        <td><code>${(payment.id || '').slice(-10)}</code></td>
+                        <td>${payment.user_email || payment.user_id || '-'}</td>
+                        <td>${methodIcons[payment.method] || payment.method || '-'}</td>
+                        <td>${payment.phone_number || payment.phone || '-'}</td>
+                        <td><strong>${(payment.amount || 0).toLocaleString('fr-FR')} FC</strong></td>
+                        <td>${payment.spot_id || payment.place_id || '-'}</td>
+                        <td>${AdminUtils.formatDate(payment.created_at || payment.date)}</td>
+                        <td>${statusBadge[payment.status] || payment.status}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getFilteredPayments() {
+            let payments = [...allPayments];
+            
+            const dateStart = document.getElementById('filter-date-start').value;
+            const dateEnd = document.getElementById('filter-date-end').value;
+            const method = document.getElementById('filter-method').value;
+            const status = document.getElementById('filter-status').value;
+
+            if (dateStart) {
+                payments = payments.filter(p => new Date(p.created_at || p.date) >= new Date(dateStart));
+            }
+
+            if (dateEnd) {
+                const end = new Date(dateEnd);
+                end.setHours(23, 59, 59);
+                payments = payments.filter(p => new Date(p.created_at || p.date) <= end);
+            }
+
+            if (method !== 'all') {
+                const methodUpper = method.toUpperCase() + '_MONEY';
+                payments = payments.filter(p => p.method === method || p.method === methodUpper || p.method === method.toUpperCase());
+            }
+
+            if (status !== 'all') {
+                if (status === 'success') {
+                    payments = payments.filter(p => p.status === 'success' || p.status === 'completed');
+                } else {
+                    payments = payments.filter(p => p.status === status);
+                }
+            }
+
+            return payments;
+        }
+
+        function filterPayments() {
+            loadPaymentsTable();
+        }
+
+        function exportPayments() {
+            const payments = getFilteredPayments().map(p => ({
+                id: p.id,
+                method: p.method,
+                phone: p.phone_number || p.phone,
+                amount: p.amount,
+                spot_id: p.spot_id || p.place_id,
+                date: p.created_at || p.date,
+                status: p.status
+            }));
+            AdminUtils.exportToCSV(payments, 'paiements_aeropark.csv');
+            AdminUtils.showNotification('Export terminé');
+        }
+
+        function initSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const mobileToggle = document.getElementById('mobile-menu-toggle');
+
+            sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+            mobileToggle.addEventListener('click', () => sidebar.classList.toggle('mobile-open'));
+            document.getElementById('admin-logout').addEventListener('click', () => {
+                AdminAuth.logout();
+                window.location.href = 'login.html';
+            });
+        }
+    </script>
+</body>
+</html>

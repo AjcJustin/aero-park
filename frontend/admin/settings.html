@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paramètres - Admin AeroPark GOMA</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="admin-page">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-plane"></i>
+                <span>AeroPark GOMA</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebar-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul>
+                <li>
+                    <a href="dashboard.html">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Tableau de bord</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="places.html">
+                        <i class="fas fa-parking"></i>
+                        <span>Gestion des places</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="reservations.html">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Réservations</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="users.html">
+                        <i class="fas fa-users"></i>
+                        <span>Utilisateurs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="payments.html">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Paiements</span>
+                    </a>
+                </li>
+                <li class="active">
+                    <a href="settings.html">
+                        <i class="fas fa-cog"></i>
+                        <span>Paramètres</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="admin-info">
+                <div class="admin-avatar">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="admin-details">
+                    <span class="admin-name" id="admin-name">Admin</span>
+                    <span class="admin-role">Administrateur</span>
+                </div>
+            </div>
+            <button class="btn-logout" id="admin-logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Déconnexion</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+        <header class="admin-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1>Paramètres</h1>
+            </div>
+        </header>
+
+        <div class="admin-content">
+            <div class="settings-grid">
+                <!-- Informations générales -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-building"></i> Informations générales</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="general-settings-form">
+                            <div class="form-group">
+                                <label for="parking-name">Nom du parking</label>
+                                <input type="text" id="parking-name" class="form-control" placeholder="AeroPark GOMA">
+                            </div>
+                            <div class="form-group">
+                                <label for="parking-slogan">Slogan</label>
+                                <input type="text" id="parking-slogan" class="form-control" placeholder="Parking Automatisé">
+                            </div>
+                            <div class="form-group">
+                                <label for="parking-address">Adresse</label>
+                                <textarea id="parking-address" class="form-control" rows="2" placeholder="Aéroport de Goma, RDC"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Enregistrer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tarification -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-money-bill"></i> Tarification</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="pricing-settings-form">
+                            <div class="form-group">
+                                <label for="hourly-rate">Tarif horaire (FC)</label>
+                                <input type="number" id="hourly-rate" class="form-control" min="100" step="100" placeholder="1000">
+                            </div>
+                            <div class="form-group">
+                                <label for="max-duration">Durée maximale (heures)</label>
+                                <input type="number" id="max-duration" class="form-control" min="1" max="720" placeholder="168">
+                            </div>
+                            <div class="form-group">
+                                <label for="currency">Devise</label>
+                                <select id="currency" class="form-control">
+                                    <option value="FC">Franc Congolais (FC)</option>
+                                    <option value="USD">Dollar US ($)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Enregistrer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Méthodes de paiement -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-credit-card"></i> Méthodes de paiement</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="payment-methods-form">
+                            <div class="payment-method-item">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="orange-enabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <div class="payment-method-info">
+                                    <img src="../logo/orange_money_logo.png" alt="Orange Money" style="height: 30px;">
+                                    <span>Orange Money</span>
+                                </div>
+                            </div>
+                            <div class="payment-method-item">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="airtel-enabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <div class="payment-method-info">
+                                    <img src="../logo/airtel-money.png" alt="Airtel Money" style="height: 30px;">
+                                    <span>Airtel Money</span>
+                                </div>
+                            </div>
+                            <div class="payment-method-item">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="mpesa-enabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <div class="payment-method-info">
+                                    <img src="../logo/Mpesa.png" alt="M-Pesa" style="height: 30px;">
+                                    <span>M-Pesa</span>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
+                                <i class="fas fa-save"></i> Enregistrer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Contact -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-phone"></i> Contact</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="contact-settings-form">
+                            <div class="form-group">
+                                <label for="contact-phone">Téléphone</label>
+                                <input type="tel" id="contact-phone" class="form-control" placeholder="+243 XXX XXX XXX">
+                            </div>
+                            <div class="form-group">
+                                <label for="contact-email">Email</label>
+                                <input type="email" id="contact-email" class="form-control" placeholder="contact@aeropark.cd">
+                            </div>
+                            <div class="form-group">
+                                <label for="whatsapp">WhatsApp</label>
+                                <input type="tel" id="whatsapp" class="form-control" placeholder="+243 XXX XXX XXX">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Enregistrer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Configuration Admin -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-user-shield"></i> Compte Administrateur</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="admin-settings-form">
+                            <div class="form-group">
+                                <label for="admin-username">Nom d'utilisateur</label>
+                                <input type="text" id="admin-username" class="form-control" placeholder="admin">
+                            </div>
+                            <div class="form-group">
+                                <label for="current-password">Mot de passe actuel</label>
+                                <input type="password" id="current-password" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">Nouveau mot de passe</label>
+                                <input type="password" id="new-password" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-password">Confirmer le mot de passe</label>
+                                <input type="password" id="confirm-password" class="form-control">
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Modifier
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Données système -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-database"></i> Données système</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="data-info">
+                            <p><strong>Utilisateurs:</strong> <span id="data-users">0</span></p>
+                            <p><strong>Réservations:</strong> <span id="data-reservations">0</span></p>
+                            <p><strong>Paiements:</strong> <span id="data-payments">0</span></p>
+                            <p><strong>Places de parking:</strong> <span id="data-spots">0</span></p>
+                        </div>
+                        <hr style="margin: 1rem 0; border-color: var(--border-color);">
+                        <div class="data-actions">
+                            <button class="btn btn-outline" onclick="exportAllData()">
+                                <i class="fas fa-download"></i> Exporter tout
+                            </button>
+                            <button class="btn btn-danger" onclick="resetData()">
+                                <i class="fas fa-trash"></i> Réinitialiser
+                            </button>
+                        </div>
+                        <p class="text-muted" style="margin-top: 1rem; font-size: 0.85rem;">
+                            <i class="fas fa-info-circle"></i> Les données sont stockées localement dans le navigateur.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/admin.js"></script>
+    <script src="../js/services/api.js"></script>
+    <script>
+        // Vérifier l'authentification
+        if (!AdminAuth.isLoggedIn()) {
+            window.location.href = 'login.html';
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            loadSettings();
+            await loadDataStats();
+            initForms();
+            initSidebar();
+
+            const admin = AdminAuth.getCurrentAdmin();
+            if (admin) {
+                document.getElementById('admin-name').textContent = admin.username;
+                document.getElementById('admin-username').value = admin.username;
+            }
+        });
+
+        function loadSettings() {
+            const settings = ParkingSettings.get();
+
+            // Informations générales
+            document.getElementById('parking-name').value = settings.name || 'AeroPark GOMA';
+            document.getElementById('parking-slogan').value = settings.slogan || 'Parking Automatisé';
+            document.getElementById('parking-address').value = settings.address || 'Aéroport de Goma, RDC';
+
+            // Tarification
+            document.getElementById('hourly-rate').value = settings.hourlyRate || 1000;
+            document.getElementById('max-duration').value = settings.maxDuration || 168;
+            document.getElementById('currency').value = settings.currency || 'FC';
+
+            // Méthodes de paiement
+            document.getElementById('orange-enabled').checked = settings.paymentMethods?.orange !== false;
+            document.getElementById('airtel-enabled').checked = settings.paymentMethods?.airtel !== false;
+            document.getElementById('mpesa-enabled').checked = settings.paymentMethods?.mpesa !== false;
+
+            // Contact
+            document.getElementById('contact-phone').value = settings.phone || '';
+            document.getElementById('contact-email').value = settings.email || '';
+            document.getElementById('whatsapp').value = settings.whatsapp || '';
+        }
+
+        async function loadDataStats() {
+            try {
+                // Charger les stats depuis l'API
+                const [usersResponse, reservationsResponse, paymentsResponse, spotsResponse] = await Promise.allSettled([
+                    ApiService.getAllUsers(),
+                    ApiService.getAllReservations(),
+                    ApiService.getAllPayments(),
+                    ApiService.getAllParkingPlaces()
+                ]);
+                
+                const users = usersResponse.status === 'fulfilled' ? (usersResponse.value.users || usersResponse.value || []) : [];
+                const reservations = reservationsResponse.status === 'fulfilled' ? (reservationsResponse.value.reservations || reservationsResponse.value || []) : [];
+                const payments = paymentsResponse.status === 'fulfilled' ? (paymentsResponse.value.payments || paymentsResponse.value || []) : [];
+                const spots = spotsResponse.status === 'fulfilled' ? (spotsResponse.value.places || spotsResponse.value || []) : [];
+
+                document.getElementById('data-users').textContent = users.length;
+                document.getElementById('data-reservations').textContent = reservations.length;
+                document.getElementById('data-payments').textContent = payments.length;
+                document.getElementById('data-spots').textContent = spots.length;
+            } catch (error) {
+                console.error('Erreur lors du chargement des stats:', error);
+                // Fallback sur les données locales en cas d'erreur
+                const usersLocal = JSON.parse(localStorage.getItem('aeropark_users') || '[]');
+                const reservationsLocal = ParkingData.getReservations ? ParkingData.getReservations() : [];
+                const paymentsLocal = JSON.parse(localStorage.getItem('aeropark_payments') || '[]');
+                const spotsLocal = ParkingData.getSpots ? ParkingData.getSpots() : [];
+
+                document.getElementById('data-users').textContent = usersLocal.length;
+                document.getElementById('data-reservations').textContent = reservationsLocal.length;
+                document.getElementById('data-payments').textContent = paymentsLocal.length;
+                document.getElementById('data-spots').textContent = spotsLocal.length;
+            }
+        }
+
+        function initForms() {
+            // Informations générales
+            document.getElementById('general-settings-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const settings = ParkingSettings.get();
+                settings.name = document.getElementById('parking-name').value;
+                settings.slogan = document.getElementById('parking-slogan').value;
+                settings.address = document.getElementById('parking-address').value;
+                ParkingSettings.save(settings);
+                AdminUtils.showNotification('Informations enregistrées');
+            });
+
+            // Tarification
+            document.getElementById('pricing-settings-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const settings = ParkingSettings.get();
+                settings.hourlyRate = parseInt(document.getElementById('hourly-rate').value);
+                settings.maxDuration = parseInt(document.getElementById('max-duration').value);
+                settings.currency = document.getElementById('currency').value;
+                ParkingSettings.save(settings);
+                AdminUtils.showNotification('Tarification enregistrée');
+            });
+
+            // Méthodes de paiement
+            document.getElementById('payment-methods-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const settings = ParkingSettings.get();
+                settings.paymentMethods = {
+                    orange: document.getElementById('orange-enabled').checked,
+                    airtel: document.getElementById('airtel-enabled').checked,
+                    mpesa: document.getElementById('mpesa-enabled').checked
+                };
+                ParkingSettings.save(settings);
+                AdminUtils.showNotification('Méthodes de paiement enregistrées');
+            });
+
+            // Contact
+            document.getElementById('contact-settings-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const settings = ParkingSettings.get();
+                settings.phone = document.getElementById('contact-phone').value;
+                settings.email = document.getElementById('contact-email').value;
+                settings.whatsapp = document.getElementById('whatsapp').value;
+                ParkingSettings.save(settings);
+                AdminUtils.showNotification('Informations de contact enregistrées');
+            });
+
+            // Compte admin
+            document.getElementById('admin-settings-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const currentPassword = document.getElementById('current-password').value;
+                const newPassword = document.getElementById('new-password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+
+                if (!currentPassword) {
+                    AdminUtils.showNotification('Veuillez entrer le mot de passe actuel', 'error');
+                    return;
+                }
+
+                const admin = AdminAuth.getCurrentAdmin();
+                if (currentPassword !== admin.password) {
+                    AdminUtils.showNotification('Mot de passe actuel incorrect', 'error');
+                    return;
+                }
+
+                if (newPassword && newPassword !== confirmPassword) {
+                    AdminUtils.showNotification('Les mots de passe ne correspondent pas', 'error');
+                    return;
+                }
+
+                // Mettre à jour les credentials
+                const credentials = {
+                    username: document.getElementById('admin-username').value || admin.username,
+                    password: newPassword || admin.password
+                };
+                
+                localStorage.setItem('aeropark_admin_credentials', JSON.stringify(credentials));
+                AdminUtils.showNotification('Compte administrateur mis à jour');
+
+                // Reset form
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+            });
+        }
+
+        function exportAllData() {
+            const data = {
+                users: JSON.parse(localStorage.getItem('aeropark_users') || '[]'),
+                reservations: ParkingData.getReservations(),
+                payments: JSON.parse(localStorage.getItem('aeropark_payments') || '[]'),
+                spots: ParkingData.getSpots(),
+                settings: ParkingSettings.get(),
+                exportDate: new Date().toISOString()
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `aeropark_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            AdminUtils.showNotification('Export complet terminé');
+        }
+
+        function resetData() {
+            if (!confirm('⚠️ ATTENTION: Cette action supprimera TOUTES les données (utilisateurs, réservations, paiements). Cette action est irréversible. Continuer ?')) {
+                return;
+            }
+
+            if (!confirm('Êtes-vous VRAIMENT sûr ? Tapez OK pour confirmer.')) {
+                return;
+            }
+
+            // Supprimer toutes les données
+            localStorage.removeItem('aeropark_users');
+            localStorage.removeItem('aeropark_reservations');
+            localStorage.removeItem('aeropark_payments');
+            localStorage.removeItem('aeropark_spots');
+            
+            // Réinitialiser les places de parking
+            ParkingData.init();
+
+            AdminUtils.showNotification('Données réinitialisées');
+            loadDataStats();
+        }
+
+        function initSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const mobileToggle = document.getElementById('mobile-menu-toggle');
+
+            sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+            mobileToggle.addEventListener('click', () => sidebar.classList.toggle('mobile-open'));
+            document.getElementById('admin-logout').addEventListener('click', () => {
+                AdminAuth.logout();
+                window.location.href = 'login.html';
+            });
+        }
+    </script>
+
+    <style>
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .payment-method-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+            margin-bottom: 0.75rem;
+        }
+
+        .payment-method-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            cursor: pointer;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: #ccc;
+            border-radius: 26px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            left: 3px;
+            top: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--primary-color);
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(24px);
+        }
+
+        .data-info p {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        .data-info p:last-child {
+            border-bottom: none;
+        }
+
+        .data-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        @media (max-width: 768px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .data-actions {
+                flex-direction: column;
+            }
+
+            .data-actions .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</body>
+</html>

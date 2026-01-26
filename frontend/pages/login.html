@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - AeroPark GOMA</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="auth-page">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <i class="fas fa-plane"></i>
+            <span>AeroPark GOMA</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../index.html"><i class="fas fa-home"></i> Accueil</a></li>
+            <li><a href="reservation.html"><i class="fas fa-ticket-alt"></i> Réserver</a></li>
+            <li id="auth-links">
+                <a href="login.html" class="btn btn-outline active"><i class="fas fa-sign-in-alt"></i> Connexion</a>
+                <a href="register.html" class="btn btn-primary"><i class="fas fa-user-plus"></i> Inscription</a>
+            </li>
+            <li id="user-menu" class="hidden">
+                <span class="user-name"></span>
+                <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+            </li>
+        </ul>
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </nav>
+
+    <!-- Login Form -->
+    <main class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i class="fas fa-sign-in-alt"></i>
+                <h1>Connexion</h1>
+                <p>Accédez à votre espace AeroPark GOMA</p>
+            </div>
+
+            <div class="alert hidden" id="alert-message">
+                <i class="fas fa-info-circle"></i>
+                <span></span>
+            </div>
+
+            <form class="auth-form" id="login-form">
+                <div class="form-group">
+                    <label for="email">Adresse email</label>
+                    <div class="input-icon">
+                        <i class="fas fa-envelope"></i>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            placeholder="votre@email.com"
+                            autocomplete="email"
+                            required
+                        >
+                    </div>
+                    <span class="error-message" id="email-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <div class="input-icon">
+                        <i class="fas fa-lock"></i>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            placeholder="Votre mot de passe"
+                            autocomplete="current-password"
+                            required
+                        >
+                    </div>
+                    <span class="error-message" id="password-error"></span>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Se connecter
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Pas encore de compte ? <a href="register.html">S'inscrire</a></p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <i class="fas fa-plane"></i>
+                    <span>AeroPark GOMA - Parking Automatisé</span>
+                </div>
+                <p>&copy; 2025 AeroPark GOMA. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/main.js"></script>
+    <script>
+        // Rediriger si déjà connecté
+        if (Auth.isLoggedIn()) {
+            window.location.href = 'reservation.html';
+        }
+
+        // Gestion du formulaire de connexion
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Réinitialiser les erreurs
+            clearErrors();
+
+            // Récupérer les valeurs
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            // Validation côté client
+            let isValid = true;
+
+            if (!email) {
+                showFieldError('email', 'L\'email est requis');
+                isValid = false;
+            } else if (!Auth.isValidEmail(email)) {
+                showFieldError('email', 'Adresse email invalide');
+                isValid = false;
+            }
+
+            if (!password) {
+                showFieldError('password', 'Le mot de passe est requis');
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            // Tentative de connexion
+            const result = Auth.login(email, password);
+
+            if (result.success) {
+                showAlert('success', 'Connexion réussie ! Redirection...');
+                
+                setTimeout(() => {
+                    // Vérifier s'il y a une URL de redirection stockée
+                    const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+                    if (redirectUrl) {
+                        sessionStorage.removeItem('redirectAfterLogin');
+                        window.location.href = redirectUrl;
+                    } else {
+                        window.location.href = 'reservation.html';
+                    }
+                }, 1000);
+            } else {
+                showAlert('error', result.message);
+            }
+        });
+
+        // Fonctions utilitaires
+        function showFieldError(fieldId, message) {
+            const input = document.getElementById(fieldId);
+            const errorSpan = document.getElementById(fieldId + '-error');
+            
+            input.classList.add('error');
+            errorSpan.textContent = message;
+            errorSpan.classList.add('show');
+        }
+
+        function clearErrors() {
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.textContent = '';
+                el.classList.remove('show');
+            });
+            document.querySelectorAll('input').forEach(input => {
+                input.classList.remove('error');
+            });
+            hideAlert();
+        }
+
+        function showAlert(type, message) {
+            const alert = document.getElementById('alert-message');
+            alert.className = `alert ${type}`;
+            alert.querySelector('span').textContent = message;
+            alert.classList.remove('hidden');
+        }
+
+        function hideAlert() {
+            const alert = document.getElementById('alert-message');
+            alert.classList.add('hidden');
+        }
+
+        // Initialiser la navigation mobile
+        document.addEventListener('DOMContentLoaded', function() {
+            const hamburger = document.querySelector('.hamburger');
+            const navLinks = document.querySelector('.nav-links');
+
+            if (hamburger && navLinks) {
+                hamburger.addEventListener('click', () => {
+                    hamburger.classList.toggle('active');
+                    navLinks.classList.toggle('active');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

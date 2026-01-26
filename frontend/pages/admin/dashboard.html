@@ -1,24 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AeroPark Admin Dashboard - System Overview">
+    <meta name="description" content="Tableau de Bord Admin AeroPark - Aperçu du Système">
     <meta name="theme-color" content="#1e3a5f">
     
-    <title>Admin Dashboard - AeroPark GOMA</title>
+    <title>Tableau de Bord Admin - AeroPark GOMA</title>
     
     <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
     <link rel="manifest" href="../../manifest.json">
     <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body class="role-admin">
-    <!-- Offline Banner -->
+    <!-- Bannière Hors Ligne -->
     <div class="offline-banner" id="offline-banner">
-        ⚠️ You are currently offline. Some admin features may be limited.
+        ⚠️ Vous êtes actuellement hors ligne. Certaines fonctionnalités admin peuvent être limitées.
     </div>
     
-    <!-- Header -->
+    <!-- En-tête -->
     <header class="header">
         <div class="header-container">
             <a href="/frontend/index.html" class="logo">
@@ -30,165 +30,165 @@
                 <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">Admin</span></span>
             </a>
             
-            <button class="nav-toggle sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+            <button class="hamburger-btn sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
             
             <nav>
                 <ul class="nav-menu" id="nav-menu">
-                    <li><a href="/frontend/index.html" class="nav-link">🏠 Public Site</a></li>
-                    <li><a href="#" class="nav-link" id="logout-btn">🚪 Logout</a></li>
+                    <li><a href="/frontend/index.html" class="nav-link">🏠 Site Public</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">🚪 Déconnexion</a></li>
                 </ul>
             </nav>
         </div>
     </header>
     
-    <!-- Admin Layout -->
+    <!-- Layout Admin -->
     <div class="admin-layout">
-        <!-- Sidebar -->
+        <!-- Barre Latérale -->
         <aside class="sidebar" id="sidebar">
             <ul class="sidebar-menu">
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/dashboard.html" class="sidebar-link active">
                         <span class="sidebar-link-icon">📊</span>
-                        Dashboard
+                        Tableau de Bord
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/parking.html" class="sidebar-link">
                         <span class="sidebar-link-icon">🅿️</span>
-                        Parking Management
+                        Gestion Parking
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/reservations.html" class="sidebar-link">
                         <span class="sidebar-link-icon">📅</span>
-                        Reservations
+                        Réservations
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/payments.html" class="sidebar-link">
                         <span class="sidebar-link-icon">💳</span>
-                        Payments
+                        Paiements
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/users.html" class="sidebar-link">
                         <span class="sidebar-link-icon">👥</span>
-                        Users
+                        Utilisateurs
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/system.html" class="sidebar-link">
                         <span class="sidebar-link-icon">⚙️</span>
-                        System Status
+                        État du Système
                     </a>
                 </li>
             </ul>
         </aside>
         
-        <!-- Main Content -->
+        <!-- Contenu Principal -->
         <main class="admin-content" style="margin-top: var(--header-height);">
-            <!-- Page Header -->
+            <!-- En-tête de Page -->
             <div class="page-header">
-                <h1 class="page-title">📊 Admin Dashboard</h1>
-                <p class="page-subtitle">System overview and real-time metrics</p>
+                <h1 class="page-title">📊 Tableau de Bord Admin</h1>
+                <p class="page-subtitle">Aperçu du système et métriques en temps réel</p>
             </div>
             
-            <!-- Real-time Stats -->
+            <!-- Stats en Temps Réel -->
             <section class="stats-grid mb-6">
                 <div class="stat-card">
                     <div class="stat-card-icon success">🟢</div>
                     <div class="stat-card-value" id="available-spots">--</div>
-                    <div class="stat-card-label">Available Spots</div>
+                    <div class="stat-card-label">Places Disponibles</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-card-icon warning">🟡</div>
                     <div class="stat-card-value" id="reserved-spots">--</div>
-                    <div class="stat-card-label">Reserved</div>
+                    <div class="stat-card-label">Réservées</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-card-icon danger">🔴</div>
                     <div class="stat-card-value" id="occupied-spots">--</div>
-                    <div class="stat-card-label">Occupied</div>
+                    <div class="stat-card-label">Occupées</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-card-icon primary">📈</div>
                     <div class="stat-card-value" id="occupancy-rate">--%</div>
-                    <div class="stat-card-label">Occupancy Rate</div>
+                    <div class="stat-card-label">Taux d'Occupation</div>
                 </div>
             </section>
             
-            <!-- Today's Metrics -->
+            <!-- Métriques du Jour -->
             <section class="grid grid-cols-2 gap-6 mb-6" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
                 <div class="card">
-                    <h3 class="card-title">Today's Activity</h3>
+                    <h3 class="card-title">Activité du Jour</h3>
                     <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
                         <div class="text-center p-4">
                             <div style="font-size: var(--font-size-3xl); font-weight: bold; color: var(--primary);" id="today-reservations">0</div>
-                            <div class="text-muted">Reservations</div>
+                            <div class="text-muted">Réservations</div>
                         </div>
                         <div class="text-center p-4">
                             <div style="font-size: var(--font-size-3xl); font-weight: bold; color: var(--success);" id="today-revenue">$0</div>
-                            <div class="text-muted">Revenue</div>
+                            <div class="text-muted">Revenus</div>
                         </div>
                         <div class="text-center p-4">
                             <div style="font-size: var(--font-size-3xl); font-weight: bold; color: var(--info);" id="today-entries">0</div>
-                            <div class="text-muted">Entries</div>
+                            <div class="text-muted">Entrées</div>
                         </div>
                         <div class="text-center p-4">
                             <div style="font-size: var(--font-size-3xl); font-weight: bold; color: var(--warning);" id="today-exits">0</div>
-                            <div class="text-muted">Exits</div>
+                            <div class="text-muted">Sorties</div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h3 class="card-title">System Health</h3>
+                    <h3 class="card-title">État du Système</h3>
                     <div class="mb-4">
                         <div class="flex justify-between mb-2">
-                            <span>API Server</span>
-                            <span class="status-badge success" id="api-status">● Online</span>
+                            <span>Serveur API</span>
+                            <span class="status-badge success" id="api-status">● En Ligne</span>
                         </div>
                         <div class="flex justify-between mb-2">
-                            <span>Database</span>
-                            <span class="status-badge success" id="db-status">● Connected</span>
+                            <span>Base de Données</span>
+                            <span class="status-badge success" id="db-status">● Connecté</span>
                         </div>
                         <div class="flex justify-between mb-2">
-                            <span>Gate Controllers</span>
-                            <span class="status-badge success" id="gate-status">● Active</span>
+                            <span>Contrôleurs de Portail</span>
+                            <span class="status-badge success" id="gate-status">● Actif</span>
                         </div>
                         <div class="flex justify-between">
-                            <span>Sensors</span>
-                            <span class="status-badge info" id="sensor-status">● 24/24 Online</span>
+                            <span>Capteurs</span>
+                            <span class="status-badge info" id="sensor-status">● 24/24 En Ligne</span>
                         </div>
                     </div>
                     <a href="/frontend/pages/admin/system.html" class="btn btn-outline btn-sm btn-block">
-                        View Details
+                        Voir Détails
                     </a>
                 </div>
             </section>
             
-            <!-- Parking Overview -->
+            <!-- Aperçu du Parking -->
             <section class="card mb-6">
                 <div class="card-header">
-                    <h3 class="card-title">Real-Time Parking Map</h3>
-                    <button class="btn btn-sm btn-outline" id="refresh-map">🔄 Refresh</button>
+                    <h3 class="card-title">Carte du Parking en Temps Réel</h3>
+                    <button class="btn btn-sm btn-outline" id="refresh-map">🔄 Actualiser</button>
                 </div>
                 <div class="flex gap-6 mb-4" style="flex-wrap: wrap;">
                     <div class="flex items-center gap-2">
                         <span class="status-dot online"></span>
-                        <span>Available</span>
+                        <span>Disponible</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="status-dot pending"></span>
-                        <span>Reserved</span>
+                        <span>Réservé</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="status-dot offline"></span>
-                        <span>Occupied</span>
+                        <span>Occupé</span>
                     </div>
                 </div>
                 <div class="parking-grid" id="parking-grid">
-                    <!-- Loading skeleton -->
+                    <!-- Skeleton de chargement -->
                     <div class="skeleton" style="height: 100px;"></div>
                     <div class="skeleton" style="height: 100px;"></div>
                     <div class="skeleton" style="height: 100px;"></div>
@@ -196,53 +196,56 @@
                 </div>
             </section>
             
-            <!-- Recent Reservations -->
+            <!-- Réservations Récentes -->
             <section class="card mb-6">
                 <div class="card-header">
-                    <h3 class="card-title">Recent Reservations</h3>
-                    <a href="/frontend/pages/admin/reservations.html" class="btn btn-sm btn-outline">View All</a>
+                    <h3 class="card-title">Réservations Récentes</h3>
+                    <a href="/frontend/pages/admin/reservations.html" class="btn btn-sm btn-outline">Voir Tout</a>
                 </div>
                 <div class="table-container" style="box-shadow: none;">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>User</th>
-                                <th>Spot</th>
-                                <th>Start</th>
-                                <th>End</th>
-                                <th>Status</th>
+                                <th>Utilisateur</th>
+                                <th>Place</th>
+                                <th>Début</th>
+                                <th>Fin</th>
+                                <th>Statut</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="recent-reservations-body">
                             <tr>
-                                <td colspan="6" class="text-center text-muted p-4">Loading...</td>
+                                <td colspan="6" class="text-center text-muted p-4">Chargement...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </section>
             
-            <!-- Quick Actions -->
+            <!-- Actions Rapides -->
             <section class="card">
-                <h3 class="card-title mb-4">Quick Actions</h3>
+                <h3 class="card-title mb-4">Actions Rapides</h3>
                 <div class="grid grid-cols-4 gap-4" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
                     <a href="/frontend/pages/admin/parking.html" class="btn btn-primary btn-block">
-                        ➕ Add Parking Spot
+                        ➕ Ajouter une Place
                     </a>
                     <button class="btn btn-secondary btn-block" id="open-gate-btn">
-                        🚗 Open Entry Gate
+                        🚗 Ouvrir Portail Entrée
                     </button>
                     <button class="btn btn-outline btn-block" id="export-report-btn">
-                        📊 Export Report
+                        📊 Exporter Rapport
                     </button>
                     <a href="/frontend/pages/admin/system.html" class="btn btn-outline btn-block">
-                        ⚙️ System Settings
+                        ⚙️ Paramètres Système
                     </a>
                 </div>
             </section>
         </main>
     </div>
+    
+    <!-- Conteneur Toast -->
+    <div class="toast-container" id="toast-container"></div>
     
     <!-- Scripts -->
     <script src="../../js/services/api.js"></script>
@@ -296,12 +299,13 @@
         async function loadDashboardData() {
             try {
                 // Load parking spots
-                const spots = await ApiService.getParkingSpots();
+                const spotsResponse = await ApiService.getParkingSpots();
+                const spots = spotsResponse.places || spotsResponse || [];
                 
                 const available = spots.filter(s => s.status === 'free').length;
                 const reserved = spots.filter(s => s.status === 'reserved').length;
                 const occupied = spots.filter(s => s.status === 'occupied').length;
-                const occupancyRate = Math.round(((reserved + occupied) / spots.length) * 100);
+                const occupancyRate = spots.length > 0 ? Math.round(((reserved + occupied) / spots.length) * 100) : 0;
                 
                 document.getElementById('available-spots').textContent = available;
                 document.getElementById('reserved-spots').textContent = reserved;
@@ -313,7 +317,8 @@
                 
                 // Load reservations
                 try {
-                    const reservations = await ApiService.getAllReservations({ limit: 10 });
+                    const reservationsResponse = await ApiService.getAllReservations({ limit: 10 });
+                    const reservations = reservationsResponse.reservations || reservationsResponse || [];
                     renderRecentReservations(reservations);
                     
                     // Today's stats
@@ -323,15 +328,24 @@
                     );
                     document.getElementById('today-reservations').textContent = todayReservations.length;
                 } catch (e) {
-                    console.log('Could not load reservations:', e);
+                    console.log('Échec du chargement des réservations:', e);
+                    document.getElementById('today-reservations').textContent = '0';
+                    renderRecentReservations([]);
                 }
                 
                 // Check system health
                 checkSystemHealth();
                 
             } catch (error) {
-                console.error('Failed to load dashboard:', error);
-                NotificationService.error('Failed to load dashboard data');
+                console.error('Échec du chargement du tableau de bord:', error);
+                NotificationService.error('Erreur lors du chargement des données: ' + error.message);
+                
+                // Reset stats to show error state
+                document.getElementById('available-spots').textContent = '--';
+                document.getElementById('reserved-spots').textContent = '--';
+                document.getElementById('occupied-spots').textContent = '--';
+                document.getElementById('occupancy-rate').textContent = '--%';
+                renderParkingGrid([]);
             }
         }
         

@@ -1,145 +1,144 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Your AeroPark Dashboard - Manage your parking reservations">
+    <meta name="description" content="Votre Tableau de Bord AeroPark - Gérez vos réservations de parking">
     <meta name="theme-color" content="#1e3a5f">
     
-    <title>Dashboard - AeroPark GOMA</title>
+    <title>Tableau de Bord - AeroPark GOMA</title>
     
     <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
     <link rel="manifest" href="../../manifest.json">
     <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
-    <!-- Offline Banner -->
+    <!-- Bannière Hors Ligne -->
     <div class="offline-banner" id="offline-banner">
-        ⚠️ You are currently offline. Showing cached data.
+        ⚠️ Vous êtes actuellement hors ligne. Affichage des données en cache.
     </div>
     
-    <!-- Header -->
+    <!-- En-tête -->
     <header class="header">
         <div class="header-container">
             <a href="/frontend/index.html" class="logo">
                 <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <path d="M20 8 L20 32 M12 16 L28 16 M14 24 L26 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <circle cx="20" cy="20" r="4" fill="currentColor"/>
+                    <path d="M12 24 L20 8 L28 24 M15 20 L25 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="20" cy="28" r="3" fill="currentColor"/>
                 </svg>
                 <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">GOMA</span></span>
             </a>
             
-            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+            <button class="nav-toggle" id="nav-toggle" aria-label="Menu de navigation" aria-expanded="false">
+                <span id="nav-toggle-icon">☰</span>
+            </button>
             
             <nav>
                 <ul class="nav-menu" id="nav-menu">
-                    <li><a href="/frontend/index.html" class="nav-link">Home</a></li>
-                    <li><a href="/frontend/pages/user/dashboard.html" class="nav-link active">Dashboard</a></li>
-                    <li><a href="/frontend/pages/user/reservations.html" class="nav-link">Reservations</a></li>
-                    <li><a href="/frontend/pages/user/access-codes.html" class="nav-link">Access Codes</a></li>
-                    <li><a href="/frontend/pages/user/payments.html" class="nav-link">Payments</a></li>
-                    <li class="admin-only"><a href="/frontend/pages/admin/dashboard.html" class="nav-link">Admin</a></li>
-                    <li><a href="#" class="nav-link" id="logout-btn">Logout</a></li>
+                    <li><a href="/frontend/index.html" class="nav-link">🏠 Accueil</a></li>
+                    <li><a href="/frontend/pages/user/dashboard.html" class="nav-link active">📊 Tableau de bord</a></li>
+                    <li><a href="/frontend/pages/user/reservations.html" class="nav-link">📅 Réservations</a></li>
+                    <li><a href="/frontend/pages/user/access-codes.html" class="nav-link">🔑 Codes d'Accès</a></li>
+                    <li><a href="/frontend/pages/user/payments.html" class="nav-link">💳 Paiements</a></li>
+                    <li class="admin-only"><a href="/frontend/pages/admin/dashboard.html" class="nav-link">⚙️ Admin</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">🚪 Déconnexion</a></li>
                 </ul>
             </nav>
         </div>
     </header>
     
-    <!-- Main Content -->
+    <!-- Contenu Principal -->
     <main class="main-content">
         <div class="container">
-            <!-- Welcome Section -->
+            <!-- Section Bienvenue -->
             <div class="page-header">
-                <h1 class="page-title">Welcome back, <span id="user-name">User</span>! 👋</h1>
-                <p class="page-subtitle">Here's an overview of your parking activity</p>
+                <h1 class="page-title">Bienvenue, <span id="user-name">Utilisateur</span>! 👋</h1>
+                <p class="page-subtitle">Voici un aperçu de votre activité de stationnement</p>
             </div>
             
-            <!-- Quick Stats -->
+            <!-- Statistiques Rapides -->
             <section class="stats-grid mb-6">
                 <div class="stat-card">
                     <div class="stat-card-icon primary">🅿️</div>
                     <div class="stat-card-value" id="active-reservations">0</div>
-                    <div class="stat-card-label">Active Reservations</div>
+                    <div class="stat-card-label">Réservations Actives</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-card-icon success">✓</div>
                     <div class="stat-card-value" id="completed-reservations">0</div>
-                    <div class="stat-card-label">Completed</div>
+                    <div class="stat-card-label">Terminées</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-card-icon warning">💳</div>
                     <div class="stat-card-value" id="pending-payments">$0</div>
-                    <div class="stat-card-label">Pending Payments</div>
+                    <div class="stat-card-label">Paiements en Attente</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-card-icon danger">📍</div>
                     <div class="stat-card-value" id="total-hours">0</div>
-                    <div class="stat-card-label">Total Hours Parked</div>
+                    <div class="stat-card-label">Heures Totales</div>
                 </div>
             </section>
             
-            <!-- Quick Actions -->
+            <!-- Actions Rapides -->
             <section class="card mb-6">
-                <h2 class="card-title mb-4">Quick Actions</h2>
+                <h2 class="card-title mb-4">⚡ Actions Rapides</h2>
                 <div class="grid grid-cols-4 gap-4" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
                     <a href="/frontend/index.html#parking-status" class="btn btn-primary btn-block">
-                        🅿️ New Reservation
+                        🅿️ Nouvelle Réservation
                     </a>
                     <a href="/frontend/pages/user/access-codes.html" class="btn btn-secondary btn-block">
-                        🔑 Access Codes
+                        🔑 Codes d'Accès
                     </a>
                     <a href="/frontend/pages/user/payments.html" class="btn btn-outline btn-block">
-                        💳 Make Payment
+                        💳 Effectuer Paiement
                     </a>
                     <a href="/frontend/pages/user/profile.html" class="btn btn-outline btn-block">
-                        👤 My Profile
+                        👤 Mon Profil
                     </a>
                 </div>
             </section>
             
-            <!-- Current/Upcoming Reservation -->
+            <!-- Réservation Actuelle -->
             <section class="card mb-6" id="current-reservation-section">
                 <div class="card-header">
-                    <h2 class="card-title">Current Reservation</h2>
+                    <h2 class="card-title">📅 Réservation Actuelle</h2>
                 </div>
                 <div id="current-reservation-content">
-                    <!-- Content loaded dynamically -->
                     <div class="skeleton" style="height: 150px;"></div>
                 </div>
             </section>
             
-            <!-- Last Access Code (for offline) -->
+            <!-- Dernier Code d'Accès (hors ligne) -->
             <section class="card mb-6" id="last-access-code-section" style="display: none;">
                 <div class="card-header">
-                    <h2 class="card-title">Your Access Code</h2>
-                    <span class="status-badge warning" id="access-code-status">Cached</span>
+                    <h2 class="card-title">🔑 Votre Code d'Accès</h2>
+                    <span class="status-badge warning" id="access-code-status">En Cache</span>
                 </div>
-                <div id="last-access-code-content">
-                    <!-- Content loaded dynamically -->
-                </div>
+                <div id="last-access-code-content"></div>
             </section>
             
-            <!-- Recent Activity -->
+            <!-- Activité Récente -->
             <section class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Recent Activity</h2>
-                    <a href="/frontend/pages/user/reservations.html" class="btn btn-sm btn-outline">View All</a>
+                    <h2 class="card-title">📋 Activité Récente</h2>
+                    <a href="/frontend/pages/user/reservations.html" class="btn btn-sm btn-outline">Voir Tout</a>
                 </div>
                 <div class="table-container" style="box-shadow: none;">
                     <table class="table" id="recent-activity-table">
                         <thead>
                             <tr>
                                 <th>Date</th>
-                                <th>Spot</th>
-                                <th>Duration</th>
-                                <th>Status</th>
-                                <th>Amount</th>
+                                <th>Place</th>
+                                <th>Durée</th>
+                                <th>Statut</th>
+                                <th>Montant</th>
                             </tr>
                         </thead>
                         <tbody id="recent-activity-body">
                             <tr>
-                                <td colspan="5" class="text-center text-muted p-6">Loading...</td>
+                                <td colspan="5" class="text-center text-muted p-6">Chargement...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -147,6 +146,9 @@
             </section>
         </div>
     </main>
+    
+    <!-- Conteneur Toast -->
+    <div class="toast-container" id="toast-container"></div>
     
     <!-- Scripts -->
     <script src="../../js/services/api.js"></script>
@@ -160,91 +162,155 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
-    <!-- Page Script -->
+    <!-- Script de la Page -->
     <script>
+        // Traductions françaises
+        const STATUS_FR = {
+            active: 'Actif',
+            reserved: 'Réservé',
+            completed: 'Terminé',
+            cancelled: 'Annulé',
+            pending: 'En attente'
+        };
+        
         document.addEventListener('DOMContentLoaded', async () => {
-            // Check authentication
+            // Initialiser le menu hamburger
+            initHamburgerMenu();
+            
+            // Vérifier l'authentification
             const isAuthenticated = localStorage.getItem('aeropark_token');
             if (!isAuthenticated) {
                 window.location.href = '/frontend/pages/public/login.html';
                 return;
             }
             
-            // Set user name
+            // Définir le nom d'utilisateur
             const user = JSON.parse(localStorage.getItem('aeropark_user') || '{}');
-            document.getElementById('user-name').textContent = user.displayName || user.email?.split('@')[0] || 'User';
+            document.getElementById('user-name').textContent = user.displayName || user.email?.split('@')[0] || 'Utilisateur';
             
-            // Load dashboard data
+            // Charger les données du tableau de bord
             await loadDashboardData();
             
-            // Check for offline data
+            // Vérifier les données hors ligne
             checkOfflineData();
             
-            // Logout handler
+            // Gestionnaire de déconnexion
             document.getElementById('logout-btn').addEventListener('click', async (e) => {
                 e.preventDefault();
                 localStorage.clear();
-                window.location.href = '/frontend/pages/public/login.html';
+                showToast('Déconnexion', 'À bientôt !', 'success');
+                setTimeout(() => {
+                    window.location.href = '/frontend/pages/public/login.html';
+                }, 1000);
             });
         });
         
-        async function loadDashboardData() {
-            try {
-                // Load reservations
-                const reservations = await ApiService.getMyReservations();
+        // Initialiser le menu hamburger
+        function initHamburgerMenu() {
+            const navToggle = document.getElementById('nav-toggle');
+            const navMenu = document.getElementById('nav-menu');
+            const navToggleIcon = document.getElementById('nav-toggle-icon');
+            
+            if (navToggle && navMenu) {
+                navToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isActive = navMenu.classList.toggle('active');
+                    navToggle.classList.toggle('active', isActive);
+                    navToggle.setAttribute('aria-expanded', isActive);
+                    if (navToggleIcon) navToggleIcon.textContent = isActive ? '✕' : '☰';
+                });
                 
-                // Update stats
-                const active = reservations.filter(r => r.status === 'active' || r.status === 'reserved').length;
-                const completed = reservations.filter(r => r.status === 'completed').length;
-                
-                document.getElementById('active-reservations').textContent = active;
-                document.getElementById('completed-reservations').textContent = completed;
-                
-                // Calculate total hours
-                let totalMinutes = 0;
-                reservations.forEach(r => {
-                    if (r.start_time && r.end_time) {
-                        const duration = new Date(r.end_time) - new Date(r.start_time);
-                        totalMinutes += duration / (1000 * 60);
+                document.addEventListener('click', (e) => {
+                    if (!navMenu.contains(e.target) && !navToggle.contains(e.target)) {
+                        navMenu.classList.remove('active');
+                        navToggle.classList.remove('active');
+                        if (navToggleIcon) navToggleIcon.textContent = '☰';
                     }
                 });
-                document.getElementById('total-hours').textContent = Math.round(totalMinutes / 60);
                 
-                // Load current reservation
-                const currentReservation = reservations.find(r => 
-                    r.status === 'active' || r.status === 'reserved'
-                );
+                navMenu.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', () => {
+                        navMenu.classList.remove('active');
+                        navToggle.classList.remove('active');
+                        if (navToggleIcon) navToggleIcon.textContent = '☰';
+                    });
+                });
+            }
+        }
+        
+        async function loadDashboardData() {
+            try {
+                // Charger le profil utilisateur avec la réservation active
+                const profileData = await ApiService.getProfile();
                 
-                if (currentReservation) {
-                    StateService.saveLastReservation(currentReservation);
+                // Mettre à jour les statistiques depuis le profil
+                document.getElementById('completed-reservations').textContent = profileData.reservation_count || 0;
+                document.getElementById('total-hours').textContent = Math.round(profileData.total_parking_hours || 0);
+                
+                // Vérifier s'il y a une réservation active
+                const activeReservationData = await ApiService.getMyActiveReservation();
+                
+                if (activeReservationData.has_reservation && activeReservationData.reservation) {
+                    const currentReservation = activeReservationData.reservation;
+                    document.getElementById('active-reservations').textContent = 1;
+                    
+                    if (typeof StateService !== 'undefined') {
+                        StateService.saveLastReservation(currentReservation);
+                    }
                     renderCurrentReservation(currentReservation);
                 } else {
+                    document.getElementById('active-reservations').textContent = 0;
                     renderNoReservation();
                 }
                 
-                // Load recent activity
-                renderRecentActivity(reservations.slice(0, 5));
-                
-                // Load payments
+                // Charger les paiements
                 try {
                     const payments = await ApiService.getMyPayments();
-                    const pending = payments
+                    const paymentsList = payments.payments || payments || [];
+                    const pending = paymentsList
                         .filter(p => p.status === 'pending')
                         .reduce((sum, p) => sum + (p.amount || 0), 0);
-                    document.getElementById('pending-payments').textContent = Helpers.formatCurrency(pending);
+                    document.getElementById('pending-payments').textContent = '$' + pending.toFixed(2);
                 } catch (e) {
-                    console.log('Payments not available');
+                    console.log('Paiements non disponibles:', e);
+                    document.getElementById('pending-payments').textContent = '$0.00';
+                }
+                
+                // Charger l'activité récente (historique des réservations)
+                try {
+                    const parkingStatus = await ApiService.getParkingStatus();
+                    // Simuler l'activité récente basée sur les places occupées
+                    const recentActivity = parkingStatus.places
+                        ?.filter(p => p.etat === 'occupied' || p.etat === 'reserved')
+                        ?.slice(0, 3)
+                        ?.map(p => ({
+                            spot_id: p.id,
+                            status: p.etat === 'occupied' ? 'active' : 'reserved',
+                            start_time: p.reserve_at || new Date().toISOString(),
+                            end_time: p.reserve_until || new Date(Date.now() + 3600000).toISOString()
+                        })) || [];
+                    renderRecentActivity(recentActivity);
+                } catch (e) {
+                    console.log('Activité récente non disponible');
+                    renderRecentActivity([]);
                 }
                 
             } catch (error) {
-                console.error('Failed to load dashboard data:', error);
+                console.error('Échec du chargement:', error);
                 
-                // Try offline data
-                const cachedReservation = StateService.getLastReservation();
-                if (cachedReservation) {
-                    renderCurrentReservation(cachedReservation);
-                    NotificationService.warning('Showing cached data');
+                // Essayer les données hors ligne
+                if (typeof StateService !== 'undefined') {
+                    const cachedReservation = StateService.getLastReservation();
+                    if (cachedReservation) {
+                        renderCurrentReservation(cachedReservation);
+                        showToast('Mode Hors Ligne', 'Affichage des données en cache', 'warning');
+                    } else {
+                        renderNoReservation();
+                    }
+                } else {
+                    renderNoReservation();
                 }
+                renderRecentActivity([]);
             }
         }
         
@@ -255,44 +321,42 @@
             const end = new Date(reservation.end_time);
             
             const isActive = now >= start && now <= end;
-            const isUpcoming = now < start;
             
             content.innerHTML = `
                 <div class="flex gap-6" style="flex-wrap: wrap;">
                     <div class="parking-spot ${reservation.status}" style="min-width: 120px; cursor: default;">
                         <span class="parking-spot-id">${reservation.spot_id}</span>
-                        <span class="parking-spot-status">${Helpers.getParkingStatusIcon(reservation.status)} ${reservation.status}</span>
+                        <span class="parking-spot-status">${STATUS_FR[reservation.status] || reservation.status}</span>
                     </div>
                     <div class="flex-1" style="min-width: 200px;">
                         <div class="mb-4">
                             <span class="status-badge ${isActive ? 'success' : 'info'}">
-                                ${isActive ? 'Currently Active' : 'Upcoming'}
+                                ${isActive ? '🟢 Actuellement Actif' : '🔵 À Venir'}
                             </span>
                         </div>
-                        <p><strong>Start:</strong> ${Helpers.formatDateTime(start)}</p>
-                        <p><strong>End:</strong> ${Helpers.formatDateTime(end)}</p>
-                        <p><strong>Vehicle:</strong> ${reservation.vehicle_plate || 'N/A'}</p>
-                        <p><strong>Time Remaining:</strong> <span id="time-remaining">${Helpers.getTimeRemaining(end).text}</span></p>
+                        <p><strong>Début:</strong> ${formatDateTime(start)}</p>
+                        <p><strong>Fin:</strong> ${formatDateTime(end)}</p>
+                        <p><strong>Véhicule:</strong> ${reservation.vehicle_plate || 'N/A'}</p>
+                        <p><strong>Temps Restant:</strong> <span id="time-remaining">${getTimeRemaining(end)}</span></p>
                     </div>
                     <div class="flex flex-col gap-2">
                         <a href="/frontend/pages/user/access-codes.html?reservation=${reservation.id}" class="btn btn-primary">
-                            🔑 Get Access Code
+                            🔑 Obtenir Code d'Accès
                         </a>
                         ${!isActive ? `
                             <button class="btn btn-outline btn-danger" onclick="cancelReservation('${reservation.id}')">
-                                Cancel Reservation
+                                ❌ Annuler Réservation
                             </button>
                         ` : ''}
                     </div>
                 </div>
             `;
             
-            // Update time remaining every second
+            // Mettre à jour le temps restant chaque seconde
             setInterval(() => {
-                const remaining = Helpers.getTimeRemaining(end);
                 const el = document.getElementById('time-remaining');
                 if (el) {
-                    el.textContent = remaining.expired ? 'Expired' : remaining.text;
+                    el.textContent = getTimeRemaining(end);
                 }
             }, 1000);
         }
@@ -302,9 +366,9 @@
             content.innerHTML = `
                 <div class="text-center p-6">
                     <div style="font-size: 4rem; margin-bottom: var(--spacing-4);">🅿️</div>
-                    <h3>No Active Reservations</h3>
-                    <p class="text-muted mb-4">You don't have any active parking reservations.</p>
-                    <a href="/frontend/index.html#parking-status" class="btn btn-primary">Make a Reservation</a>
+                    <h3>Aucune Réservation Active</h3>
+                    <p class="text-muted mb-4">Vous n'avez pas de réservation de parking active.</p>
+                    <a href="/frontend/index.html#parking-status" class="btn btn-primary">📅 Faire une Réservation</a>
                 </div>
             `;
         }
@@ -315,7 +379,7 @@
             if (reservations.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center text-muted p-6">No recent activity</td>
+                        <td colspan="5" class="text-center text-muted p-6">Aucune activité récente</td>
                     </tr>
                 `;
                 return;
@@ -323,23 +387,23 @@
             
             tbody.innerHTML = reservations.map(r => {
                 const duration = r.start_time && r.end_time 
-                    ? Helpers.formatDuration(Math.round((new Date(r.end_time) - new Date(r.start_time)) / (1000 * 60)))
+                    ? formatDuration(Math.round((new Date(r.end_time) - new Date(r.start_time)) / (1000 * 60)))
                     : 'N/A';
                 const cost = r.start_time && r.end_time 
-                    ? Helpers.calculateParkingFee(r.start_time, r.end_time)
+                    ? calculateParkingFee(r.start_time, r.end_time)
                     : 0;
                     
                 return `
                     <tr>
-                        <td>${Helpers.formatDate(r.start_time)}</td>
+                        <td>${formatDate(r.start_time)}</td>
                         <td><strong>${r.spot_id}</strong></td>
                         <td>${duration}</td>
                         <td>
-                            <span class="status-badge ${Helpers.getStatusBadgeClass(r.status)}">
-                                ${r.status}
+                            <span class="status-badge ${getStatusBadgeClass(r.status)}">
+                                ${STATUS_FR[r.status] || r.status}
                             </span>
                         </td>
-                        <td>${Helpers.formatCurrency(cost)}</td>
+                        <td>$${cost.toFixed(2)}</td>
                     </tr>
                 `;
             }).join('');
@@ -347,11 +411,13 @@
         
         function checkOfflineData() {
             if (!navigator.onLine) {
-                // Show last access code
-                const lastCode = StateService.getLastAccessCode();
-                if (lastCode) {
-                    document.getElementById('last-access-code-section').style.display = 'block';
-                    renderLastAccessCode(lastCode);
+                document.getElementById('offline-banner').style.display = 'block';
+                if (typeof StateService !== 'undefined') {
+                    const lastCode = StateService.getLastAccessCode();
+                    if (lastCode) {
+                        document.getElementById('last-access-code-section').style.display = 'block';
+                        renderLastAccessCode(lastCode);
+                    }
                 }
             }
         }
@@ -360,27 +426,91 @@
             const content = document.getElementById('last-access-code-content');
             content.innerHTML = `
                 <div class="access-code-display">
-                    <div class="access-code-label">Your ${code.code_type || 'Entry'} Code</div>
+                    <div class="access-code-label">Votre Code ${code.code_type === 'entry' ? 'd\'Entrée' : 'de Sortie'}</div>
                     <div class="access-code-value">${code.code}</div>
                     <div class="access-code-expires">
-                        Expires: ${Helpers.formatDateTime(code.expires_at)}
+                        Expire: ${formatDateTime(new Date(code.expires_at))}
                     </div>
                 </div>
             `;
         }
         
         async function cancelReservation(reservationId) {
-            if (!confirm('Are you sure you want to cancel this reservation?')) {
+            if (!confirm('Êtes-vous sûr de vouloir annuler cette réservation ?')) {
                 return;
             }
             
             try {
                 await ApiService.cancelReservation(reservationId);
-                NotificationService.success('Reservation cancelled successfully');
+                showToast('Succès', 'Réservation annulée avec succès', 'success');
                 location.reload();
             } catch (error) {
-                NotificationService.error(error.message || 'Failed to cancel reservation');
+                showToast('Erreur', error.message || 'Échec de l\'annulation', 'error');
             }
+        }
+        
+        // Fonctions utilitaires
+        function formatDateTime(date) {
+            return new Date(date).toLocaleString('fr-FR', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+        
+        function formatDate(dateStr) {
+            return new Date(dateStr).toLocaleDateString('fr-FR');
+        }
+        
+        function formatDuration(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins}m`;
+        }
+        
+        function calculateParkingFee(start, end) {
+            const hours = Math.ceil((new Date(end) - new Date(start)) / (1000 * 60 * 60));
+            return hours * 5;
+        }
+        
+        function getTimeRemaining(endDate) {
+            const now = new Date();
+            const end = new Date(endDate);
+            const diff = end - now;
+            
+            if (diff <= 0) return 'Expiré';
+            
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            return `${hours}h ${minutes}m`;
+        }
+        
+        function getStatusBadgeClass(status) {
+            const classes = {
+                active: 'success', reserved: 'info', completed: 'success',
+                cancelled: 'danger', pending: 'warning'
+            };
+            return classes[status] || 'secondary';
+        }
+        
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+            `;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
         }
     </script>
 </body>

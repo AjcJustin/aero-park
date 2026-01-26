@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AeroPark Admin - All Reservations">
+    <meta name="description" content="AeroPark Admin - Toutes les Réservations">
     <meta name="theme-color" content="#1e3a5f">
     
-    <title>Reservations Management - AeroPark Admin</title>
+    <title>Réservations - AeroPark Admin</title>
     
     <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
     <link rel="manifest" href="../../manifest.json">
@@ -15,7 +15,7 @@
 <body class="role-admin">
     <!-- Offline Banner -->
     <div class="offline-banner" id="offline-banner">
-        ⚠️ You are currently offline.
+        ⚠️ Vous êtes actuellement hors ligne.
     </div>
     
     <!-- Header -->
@@ -30,12 +30,12 @@
                 <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">Admin</span></span>
             </a>
             
-            <button class="nav-toggle sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+            <button class="hamburger-btn sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
             
             <nav>
                 <ul class="nav-menu">
-                    <li><a href="/frontend/index.html" class="nav-link">🏠 Public Site</a></li>
-                    <li><a href="#" class="nav-link" id="logout-btn">🚪 Logout</a></li>
+                    <li><a href="/frontend/index.html" class="nav-link">🏠 Site Public</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">🚪 Déconnexion</a></li>
                 </ul>
             </nav>
         </div>
@@ -49,37 +49,37 @@
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/dashboard.html" class="sidebar-link">
                         <span class="sidebar-link-icon">📊</span>
-                        Dashboard
+                        Tableau de Bord
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/parking.html" class="sidebar-link">
                         <span class="sidebar-link-icon">🅿️</span>
-                        Parking Management
+                        Gestion Parking
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/reservations.html" class="sidebar-link active">
                         <span class="sidebar-link-icon">📅</span>
-                        Reservations
+                        Réservations
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/payments.html" class="sidebar-link">
                         <span class="sidebar-link-icon">💳</span>
-                        Payments
+                        Paiements
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/users.html" class="sidebar-link">
                         <span class="sidebar-link-icon">👥</span>
-                        Users
+                        Utilisateurs
                     </a>
                 </li>
                 <li class="sidebar-item">
                     <a href="/frontend/pages/admin/system.html" class="sidebar-link">
                         <span class="sidebar-link-icon">⚙️</span>
-                        System Status
+                        État du Système
                     </a>
                 </li>
             </ul>
@@ -89,8 +89,8 @@
         <main class="admin-content" style="margin-top: var(--header-height);">
             <!-- Page Header -->
             <div class="page-header">
-                <h1 class="page-title">📅 Reservations Management</h1>
-                <p class="page-subtitle">View and manage all parking reservations</p>
+                <h1 class="page-title">📅 Gestion des Réservations</h1>
+                <p class="page-subtitle">Consultez et gérez toutes les réservations de parking</p>
             </div>
             
             <!-- Stats -->
@@ -309,48 +309,15 @@
                 if (from) params.from_date = from;
                 if (to) params.to_date = to;
                 
-                allReservations = await ApiService.getAllReservations(params);
+                const response = await ApiService.getAllReservations(params);
+                // Handle different response formats
+                allReservations = response.reservations || response || [];
                 updateStats();
                 renderReservations();
             } catch (error) {
-                console.error('Failed to load reservations:', error);
-                
-                // Demo data for testing
-                allReservations = [
-                    {
-                        id: 'RES-001',
-                        user_email: 'user1@example.com',
-                        user_id: 'user1',
-                        spot_id: 'A-01',
-                        start_time: new Date().toISOString(),
-                        end_time: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-                        status: 'active',
-                        amount: 10.00,
-                        payment_status: 'paid'
-                    },
-                    {
-                        id: 'RES-002',
-                        user_email: 'user2@example.com',
-                        user_id: 'user2',
-                        spot_id: 'B-03',
-                        start_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-                        end_time: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-                        status: 'pending',
-                        amount: 10.00,
-                        payment_status: 'pending'
-                    },
-                    {
-                        id: 'RES-003',
-                        user_email: 'user3@example.com',
-                        user_id: 'user3',
-                        spot_id: 'A-05',
-                        start_time: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-                        end_time: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-                        status: 'completed',
-                        amount: 10.00,
-                        payment_status: 'paid'
-                    }
-                ];
+                console.error('Échec du chargement des réservations:', error);
+                NotificationService.error('Erreur lors du chargement des réservations: ' + error.message);
+                allReservations = [];
                 updateStats();
                 renderReservations();
             }
@@ -558,5 +525,8 @@
             NotificationService.success('Export complete');
         }
     </script>
+
+    <!-- Conteneur Toast -->
+    <div class="toast-container" id="toast-container"></div>
 </body>
 </html>

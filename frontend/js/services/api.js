@@ -1,9 +1,17 @@
 /**
  * AeroPark GOMA - API Service
  * Handles all HTTP requests to the backend API
+ * 
+ * Backend Routes:
+ * - /users/* - Auth & Profile
+ * - /parking/* - Parking management
+ * - /admin/parking/* - Admin operations
+ * - /api/v1/access/* - Access code validation
+ * - /api/v1/barrier/* - Barrier control
+ * - /api/v1/payment/* - Payment processing
  */
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://localhost:8000';
 
 // API Configuration
 const ApiService = {
@@ -39,7 +47,7 @@ const ApiService = {
         try {
             // Check if online
             if (!navigator.onLine) {
-                throw new Error('You are currently offline');
+                throw new Error('Vous êtes actuellement hors ligne');
             }
             
             const response = await fetch(url, config);
@@ -48,7 +56,7 @@ const ApiService = {
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    throw new Error(`Erreur HTTP! Status: ${response.status}`);
                 }
                 return { success: true };
             }
@@ -56,12 +64,12 @@ const ApiService = {
             const data = await response.json();
             
             if (!response.ok) {
-                throw new Error(data.detail || data.message || `Request failed with status ${response.status}`);
+                throw new Error(data.detail || data.message || `Requête échouée avec status ${response.status}`);
             }
             
             return data;
         } catch (error) {
-            console.error('[API] Request failed:', error);
+            console.error('[API] Requête échouée:', error);
             throw error;
         }
     },
@@ -75,28 +83,30 @@ const ApiService = {
     },
     
     // ==========================================
-    // PARKING ENDPOINTS
+    // PARKING ENDPOINTS - /parking/*
     // ==========================================
     
     /**
-     * Get all parking spots
+     * Get parking status with all spots
      */
     async getParkingSpots() {
-        return this.request('/parking/spots');
+        const data = await this.request('/parking/status');
+        // Normalize the response to return spots array
+        return data.places || data.spots || [];
     },
     
     /**
      * Get parking availability summary
      */
     async getParkingAvailability() {
-        return this.request('/parking/availability');
+        return this.request('/parking/available');
     },
     
     /**
      * Get specific parking spot
      */
     async getParkingSpot(spotId) {
-        return this.request(`/parking/spots/${spotId}`);
+        return this.request(`/parking/place/${spotId}`);
     },
     
     /**
@@ -107,14 +117,14 @@ const ApiService = {
     },
     
     // ==========================================
-    // RESERVATION ENDPOINTS
+    // RESERVATION ENDPOINTS - /parking/*
     // ==========================================
     
     /**
      * Create a new reservation
      */
     async createReservation(data) {
-        return this.request('/reservations', {
+        return this.request('/parking/reserve', {
             method: 'POST',
             body: JSON.stringify(data)
         });
@@ -124,21 +134,21 @@ const ApiService = {
      * Get my reservations
      */
     async getMyReservations() {
-        return this.request('/reservations/my');
+        return this.request('/users/me/reservation');
     },
     
     /**
      * Get reservation by ID
      */
     async getReservation(reservationId) {
-        return this.request(`/reservations/${reservationId}`);
+        return this.request(`/parking/reservation/${reservationId}`);
     },
     
     /**
      * Cancel a reservation
      */
     async cancelReservation(reservationId) {
-        return this.request(`/reservations/${reservationId}/cancel`, {
+        return this.request(`/parking/cancel/${reservationId}`, {
             method: 'POST'
         });
     },
@@ -147,31 +157,47 @@ const ApiService = {
      * Extend a reservation
      */
     async extendReservation(reservationId, newEndTime) {
-        return this.request(`/reservations/${reservationId}/extend`, {
+        return this.request(`/parking/extend/${reservationId}`, {
             method: 'POST',
             body: JSON.stringify({ new_end_time: newEndTime })
         });
     },
     
     // ==========================================
-    // ACCESS CODE ENDPOINTS
+    // ACCESS CODE ENDPOINTS - /api/v1/access/*
     // ==========================================
     
     /**
      * Generate access code for a reservation
      */
     async generateAccessCode(reservationId, codeType = 'entry') {
-        return this.request(`/access/generate/${reservationId}`, {
+        return this.request(`/api/v1/access/generate/${reservationId}`, {
             method: 'POST',
             body: JSON.stringify({ code_type: codeType })
         });
     },
     
     /**
-     * Validate an access code
+     * Validate an access code (for entry/exit)
      */
-    async validateAccessCode(code) {
-        return this.request(`/access/validate/${code}`, {
+    async validateAccessCode(code, sensorPresence = true, barrierId = 'entry') {
+        return this.request('/api/v1/access/validate-code', {
+            method: 'POST',
+            body: JSON.stringify({
+                code: code,
+                sensor_presence: sensorPresence,
+                barrier_id: barrierId
+            })
+        });
+    },
+    
+    /**
+     * Check entry access (auto or with code)
+     */
+    async checkEntryAccess(accessCode = null) {
+        const params = new URLSearchParams({ sensor_presence: 'true' });
+        if (accessCode) params.append('access_code', accessCode);
+        return this.request(`/api/v1/access/check-entry?${params}`, {
             method: 'POST'
         });
     },
@@ -180,27 +206,56 @@ const ApiService = {
      * Get my access codes
      */
     async getMyAccessCodes() {
-        return this.request('/access/my-codes');
+        return this.request('/admin/parking/access-codes');
     },
     
     // ==========================================
-    // PAYMENT ENDPOINTS
+    // PAYMENT ENDPOINTS - /api/v1/payment/*
     // ==========================================
     
     /**
-     * Calculate payment amount for a reservation
+     * Get pricing information
      */
-    async calculatePayment(reservationId) {
-        return this.request(`/payments/calculate/${reservationId}`);
+    async getPricing() {
+        return this.request('/api/v1/payment/pricing');
     },
     
     /**
-     * Process a payment
+     * Calculate payment amount for duration
+     */
+    async calculatePayment(hours, minutes = 0) {
+        return this.request(`/api/v1/payment/calculate?hours=${hours}&minutes=${minutes}`, {
+            method: 'POST'
+        });
+    },
+    
+    /**
+     * Simulate payment (Orange Money, Airtel Money, M-Pesa)
      */
     async processPayment(data) {
-        return this.request('/payments', {
+        return this.request('/api/v1/payment/simulate', {
             method: 'POST',
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                place_id: data.place_id || data.spot_id,
+                duration_minutes: data.duration_minutes,
+                method: data.method || data.provider, // ORANGE_MONEY, AIRTEL_MONEY, MPESA
+                simulate_failure: data.simulate_failure || false
+            })
+        });
+    },
+    
+    /**
+     * Process Mobile Money payment
+     */
+    async processMobileMoneyPayment(provider, phoneNumber, amount, reservationId) {
+        return this.request('/api/v1/payment/mobile-money', {
+            method: 'POST',
+            body: JSON.stringify({
+                provider: provider, // ORANGE_MONEY, AIRTEL_MONEY, MPESA
+                phone_number: phoneNumber,
+                amount: amount,
+                reservation_id: reservationId
+            })
         });
     },
     
@@ -208,18 +263,18 @@ const ApiService = {
      * Get my payments
      */
     async getMyPayments() {
-        return this.request('/payments/my');
+        return this.request('/api/v1/payment/history');
     },
     
     /**
      * Get payment by ID
      */
     async getPayment(paymentId) {
-        return this.request(`/payments/${paymentId}`);
+        return this.request(`/api/v1/payment/${paymentId}`);
     },
     
     // ==========================================
-    // USER PROFILE ENDPOINTS
+    // USER PROFILE ENDPOINTS - /users/*
     // ==========================================
     
     /**
@@ -233,21 +288,74 @@ const ApiService = {
      * Update user profile
      */
     async updateProfile(data) {
-        return this.request('/users/me', {
-            method: 'PUT',
-            body: JSON.stringify(data)
+        const params = new URLSearchParams();
+        if (data.display_name) params.append('display_name', data.display_name);
+        if (data.vehicle_plate) params.append('vehicle_plate', data.vehicle_plate);
+        return this.request(`/users/me/profile?${params}`, {
+            method: 'PUT'
         });
     },
     
+    /**
+     * Get current user's active reservation
+     */
+    async getMyActiveReservation() {
+        return this.request('/users/me/reservation');
+    },
+    
     // ==========================================
-    // ADMIN ENDPOINTS
+    // ADMIN ENDPOINTS - /admin/parking/*
     // ==========================================
     
     /**
      * Get admin dashboard stats
      */
     async getAdminStats() {
-        return this.request('/admin/stats');
+        return this.request('/admin/parking/stats');
+    },
+    
+    /**
+     * Get all parking places (admin)
+     */
+    async getAllParkingPlaces() {
+        return this.request('/admin/parking/all');
+    },
+    
+    /**
+     * Get all access codes (admin)
+     */
+    async getAllAccessCodes(statusFilter = null) {
+        const params = statusFilter ? `?status_filter=${statusFilter}` : '';
+        return this.request(`/admin/parking/access-codes${params}`);
+    },
+    
+    /**
+     * Force release a parking spot (admin)
+     */
+    async forceRelease(placeId, reason = null) {
+        const params = reason ? `?reason=${encodeURIComponent(reason)}` : '';
+        return this.request(`/admin/parking/force-release/${placeId}${params}`, {
+            method: 'POST'
+        });
+    },
+    
+    /**
+     * Invalidate an access code (admin)
+     */
+    async invalidateAccessCode(code, reason = null) {
+        return this.request(`/admin/parking/access-codes/${code}/invalidate`, {
+            method: 'POST',
+            body: JSON.stringify({ reason: reason })
+        });
+    },
+    
+    /**
+     * Initialize parking places (admin)
+     */
+    async initializePlaces(count = 6) {
+        return this.request(`/admin/parking/initialize?count=${count}`, {
+            method: 'POST'
+        });
     },
     
     /**
@@ -255,7 +363,7 @@ const ApiService = {
      */
     async getAllReservations(params = {}) {
         const queryString = new URLSearchParams(params).toString();
-        return this.request(`/admin/reservations${queryString ? '?' + queryString : ''}`);
+        return this.request(`/admin/parking/reservations${queryString ? '?' + queryString : ''}`);
     },
     
     /**
@@ -263,7 +371,7 @@ const ApiService = {
      */
     async getAllPayments(params = {}) {
         const queryString = new URLSearchParams(params).toString();
-        return this.request(`/admin/payments${queryString ? '?' + queryString : ''}`);
+        return this.request(`/admin/parking/payments${queryString ? '?' + queryString : ''}`);
     },
     
     /**
@@ -271,7 +379,7 @@ const ApiService = {
      */
     async getAllUsers(params = {}) {
         const queryString = new URLSearchParams(params).toString();
-        return this.request(`/admin/users${queryString ? '?' + queryString : ''}`);
+        return this.request(`/admin/parking/users${queryString ? '?' + queryString : ''}`);
     },
     
     /**
@@ -307,7 +415,7 @@ const ApiService = {
      * Get system status (admin)
      */
     async getSystemStatus() {
-        return this.request('/admin/system/status');
+        return this.request('/health');
     },
     
     /**
@@ -315,7 +423,31 @@ const ApiService = {
      */
     async getAuditLogs(params = {}) {
         const queryString = new URLSearchParams(params).toString();
-        return this.request(`/admin/audit-logs${queryString ? '?' + queryString : ''}`);
+        return this.request(`/admin/parking/audit-logs${queryString ? '?' + queryString : ''}`);
+    },
+    
+    // ==========================================
+    // BARRIER ENDPOINTS - /api/v1/barrier/*
+    // ==========================================
+    
+    /**
+     * Get barrier status
+     */
+    async getBarrierStatus(barrierId = 'entry') {
+        return this.request(`/api/v1/barrier/status?barrier_id=${barrierId}`);
+    },
+    
+    /**
+     * Open barrier
+     */
+    async openBarrier(barrierId = 'entry', reason = 'manual') {
+        return this.request('/api/v1/barrier/open', {
+            method: 'POST',
+            body: JSON.stringify({
+                barrier_id: barrierId,
+                reason: reason
+            })
+        });
     }
 };
 

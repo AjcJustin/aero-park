@@ -1,24 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="View and manage your parking reservations">
+    <meta name="description" content="Consultez et gérez vos réservations de parking">
     <meta name="theme-color" content="#1e3a5f">
     
-    <title>My Reservations - AeroPark GOMA</title>
+    <title>Mes Réservations - AeroPark GOMA</title>
     
     <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
     <link rel="manifest" href="../../manifest.json">
     <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
-    <!-- Offline Banner -->
+    <!-- Bannière Hors Ligne -->
     <div class="offline-banner" id="offline-banner">
-        ⚠️ You are currently offline. Showing cached data.
+        ⚠️ Vous êtes actuellement hors ligne. Affichage des données en cache.
     </div>
     
-    <!-- Header -->
+    <!-- En-tête -->
     <header class="header">
         <div class="header-container">
             <a href="/frontend/index.html" class="logo">
@@ -30,63 +30,63 @@
                 <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">GOMA</span></span>
             </a>
             
-            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle navigation">☰</button>
             
             <nav>
                 <ul class="nav-menu" id="nav-menu">
-                    <li><a href="/frontend/index.html" class="nav-link">Home</a></li>
-                    <li><a href="/frontend/pages/user/dashboard.html" class="nav-link">Dashboard</a></li>
-                    <li><a href="/frontend/pages/user/reservations.html" class="nav-link active">Reservations</a></li>
-                    <li><a href="/frontend/pages/user/access-codes.html" class="nav-link">Access Codes</a></li>
-                    <li><a href="/frontend/pages/user/payments.html" class="nav-link">Payments</a></li>
-                    <li><a href="#" class="nav-link" id="logout-btn">Logout</a></li>
+                    <li><a href="/frontend/index.html" class="nav-link">🏠 Accueil</a></li>
+                    <li><a href="/frontend/pages/user/dashboard.html" class="nav-link">📊 Tableau de Bord</a></li>
+                    <li><a href="/frontend/pages/user/reservations.html" class="nav-link active">📅 Réservations</a></li>
+                    <li><a href="/frontend/pages/user/access-codes.html" class="nav-link">🔑 Codes d'Accès</a></li>
+                    <li><a href="/frontend/pages/user/payments.html" class="nav-link">💳 Paiements</a></li>
+                    <li><a href="#" class="nav-link" id="logout-btn">🚪 Déconnexion</a></li>
                 </ul>
             </nav>
         </div>
     </header>
     
-    <!-- Main Content -->
+    <!-- Contenu Principal -->
     <main class="main-content">
         <div class="container">
-            <!-- Page Header -->
+            <!-- En-tête de Page -->
             <div class="page-header flex justify-between items-center" style="flex-wrap: wrap; gap: var(--spacing-4);">
                 <div>
-                    <h1 class="page-title">My Reservations</h1>
-                    <p class="page-subtitle">View and manage all your parking reservations</p>
+                    <h1 class="page-title">📅 Mes Réservations</h1>
+                    <p class="page-subtitle">Consultez et gérez toutes vos réservations de parking</p>
                 </div>
                 <a href="/frontend/index.html#parking-status" class="btn btn-primary">
-                    + New Reservation
+                    + Nouvelle Réservation
                 </a>
             </div>
             
-            <!-- Filters -->
+            <!-- Filtres -->
             <div class="card mb-6">
                 <div class="flex gap-4" style="flex-wrap: wrap;">
                     <div class="form-group mb-0" style="min-width: 150px;">
-                        <label class="form-label">Status</label>
+                        <label class="form-label">Statut</label>
                         <select class="form-select" id="filter-status">
-                            <option value="">All</option>
-                            <option value="active">Active</option>
-                            <option value="reserved">Reserved</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
+                            <option value="">Tous</option>
+                            <option value="active">Actif</option>
+                            <option value="reserved">Réservé</option>
+                            <option value="completed">Terminé</option>
+                            <option value="cancelled">Annulé</option>
                         </select>
                     </div>
                     <div class="form-group mb-0" style="min-width: 150px;">
-                        <label class="form-label">Date Range</label>
+                        <label class="form-label">Période</label>
                         <select class="form-select" id="filter-date">
-                            <option value="">All Time</option>
-                            <option value="today">Today</option>
-                            <option value="week">This Week</option>
-                            <option value="month">This Month</option>
+                            <option value="">Tout</option>
+                            <option value="today">Aujourd'hui</option>
+                            <option value="week">Cette Semaine</option>
+                            <option value="month">Ce Mois</option>
                         </select>
                     </div>
                 </div>
             </div>
             
-            <!-- Reservations List -->
+            <!-- Liste des Réservations -->
             <div id="reservations-container">
-                <!-- Loading skeleton -->
+                <!-- Skeleton de chargement -->
                 <div class="card mb-4">
                     <div class="skeleton" style="height: 100px;"></div>
                 </div>
@@ -95,45 +95,48 @@
                 </div>
             </div>
             
-            <!-- Empty State -->
+            <!-- État Vide -->
             <div class="card text-center p-6" id="empty-state" style="display: none;">
                 <div style="font-size: 4rem; margin-bottom: var(--spacing-4);">📭</div>
-                <h3>No Reservations Found</h3>
-                <p class="text-muted mb-4">You haven't made any parking reservations yet.</p>
-                <a href="/frontend/index.html#parking-status" class="btn btn-primary">Make Your First Reservation</a>
+                <h3>Aucune Réservation Trouvée</h3>
+                <p class="text-muted mb-4">Vous n'avez pas encore fait de réservation de parking.</p>
+                <a href="/frontend/index.html#parking-status" class="btn btn-primary">Faire Votre Première Réservation</a>
             </div>
         </div>
     </main>
     
-    <!-- Extend Modal -->
+    <!-- Conteneur Toast -->
+    <div class="toast-container" id="toast-container"></div>
+    
+    <!-- Modal Prolonger -->
     <div class="modal-backdrop" id="extend-modal">
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title">Extend Reservation</h3>
+                <h3 class="modal-title">Prolonger la Réservation</h3>
                 <button class="modal-close" onclick="closeExtendModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="extend-form">
                     <input type="hidden" id="extend-reservation-id">
                     <div class="form-group">
-                        <label class="form-label">Current End Time</label>
+                        <label class="form-label">Heure de Fin Actuelle</label>
                         <input type="text" class="form-input" id="current-end-time" readonly>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">New End Time</label>
+                        <label class="form-label">Nouvelle Heure de Fin</label>
                         <input type="datetime-local" class="form-input" id="new-end-time" required>
                     </div>
                     <div class="card" style="background: var(--gray-50);">
                         <div class="flex justify-between">
-                            <span>Additional Cost:</span>
+                            <span>Coût Supplémentaire:</span>
                             <strong id="additional-cost">$0.00</strong>
                         </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline" onclick="closeExtendModal()">Cancel</button>
-                <button class="btn btn-primary" id="confirm-extend">Extend Reservation</button>
+                <button class="btn btn-outline" onclick="closeExtendModal()">Annuler</button>
+                <button class="btn btn-primary" id="confirm-extend">Prolonger la Réservation</button>
             </div>
         </div>
     </div>
@@ -155,52 +158,128 @@
         let allReservations = [];
         
         document.addEventListener('DOMContentLoaded', async () => {
-            // Check authentication
+            // Vérifier l'authentification
             if (!localStorage.getItem('aeropark_token')) {
                 window.location.href = '/frontend/pages/public/login.html';
                 return;
             }
             
-            // Load reservations
+            // Initialiser le menu hamburger
+            initHamburgerMenu();
+            
+            // Charger les réservations
             await loadReservations();
             
-            // Filter handlers
+            // Gestionnaires de filtres
             document.getElementById('filter-status').addEventListener('change', filterReservations);
             document.getElementById('filter-date').addEventListener('change', filterReservations);
             
-            // Extend modal
+            // Modal de prolongation
             document.getElementById('new-end-time').addEventListener('change', calculateExtendCost);
             document.getElementById('confirm-extend').addEventListener('click', submitExtend);
             
-            // Logout handler
+            // Gestionnaire de déconnexion
             document.getElementById('logout-btn').addEventListener('click', (e) => {
                 e.preventDefault();
                 localStorage.clear();
-                window.location.href = '/frontend/pages/public/login.html';
+                showToast('Déconnexion réussie', 'success');
+                setTimeout(() => {
+                    window.location.href = '/frontend/pages/public/login.html';
+                }, 500);
             });
         });
+        
+        // ===== MENU HAMBURGER =====
+        function initHamburgerMenu() {
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const navMenu = document.getElementById('nav-menu');
+            
+            if (hamburgerBtn && navMenu) {
+                hamburgerBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    navMenu.classList.toggle('active');
+                    hamburgerBtn.innerHTML = navMenu.classList.contains('active') ? '✕' : '☰';
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (!navMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+                        navMenu.classList.remove('active');
+                        hamburgerBtn.innerHTML = '☰';
+                    }
+                });
+                
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', () => {
+                        navMenu.classList.remove('active');
+                        hamburgerBtn.innerHTML = '☰';
+                    });
+                });
+            }
+        }
+        
+        // ===== SYSTÈME TOAST =====
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-message">${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+        
+        // ===== TRADUCTIONS =====
+        const statusTranslations = {
+            'active': 'Actif',
+            'reserved': 'Réservé',
+            'completed': 'Terminé',
+            'cancelled': 'Annulé',
+            'pending': 'En Attente'
+        };
         
         async function loadReservations() {
             const container = document.getElementById('reservations-container');
             
             try {
-                allReservations = await ApiService.getMyReservations();
-                renderReservations(allReservations);
-            } catch (error) {
-                console.error('Failed to load reservations:', error);
+                // Charger la réservation active depuis le backend
+                const activeReservationData = await ApiService.getMyActiveReservation();
                 
-                // Try cached data
-                const lastReservation = StateService.getLastReservation();
+                allReservations = [];
+                
+                if (activeReservationData.has_reservation && activeReservationData.reservation) {
+                    const reservation = activeReservationData.reservation;
+                    allReservations.push({
+                        id: reservation.id || reservation.place_id,
+                        spot_id: reservation.place_id || reservation.id,
+                        start_time: reservation.reserve_at || reservation.start_time,
+                        end_time: reservation.reserve_until || reservation.end_time,
+                        status: reservation.etat || reservation.status || 'reserved',
+                        vehicle_plate: reservation.vehicle_plate || 'N/A',
+                        user_email: reservation.user_email
+                    });
+                }
+                
+                renderReservations(allReservations);
+                
+            } catch (error) {
+                console.error('Erreur de chargement des réservations:', error);
+                
+                // Essayer les données en cache
+                const lastReservation = StateService ? StateService.getLastReservation() : null;
                 if (lastReservation) {
                     allReservations = [lastReservation];
                     renderReservations(allReservations);
-                    NotificationService.warning('Showing cached data');
+                    showToast('Affichage des données en cache', 'warning');
                 } else {
-                    container.innerHTML = `
-                        <div class="card text-center p-6">
-                            <p class="text-muted">Unable to load reservations. Please check your connection.</p>
-                        </div>
-                    `;
+                    container.innerHTML = '';
+                    document.getElementById('reservations-container').style.display = 'none';
+                    document.getElementById('empty-state').style.display = 'block';
                 }
             }
         }
@@ -218,7 +297,7 @@
             container.style.display = 'block';
             emptyState.style.display = 'none';
             
-            // Sort by start time (newest first)
+            // Trier par date de début (plus récent en premier)
             reservations.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
             
             container.innerHTML = reservations.map(reservation => {
@@ -229,65 +308,66 @@
                 const isUpcoming = now < start && reservation.status !== 'cancelled';
                 const isPast = now > end || reservation.status === 'completed' || reservation.status === 'cancelled';
                 
-                const duration = Helpers.formatDuration(Math.round((end - start) / (1000 * 60)));
-                const cost = Helpers.calculateParkingFee(start, end);
+                const hours = Math.round((end - start) / (1000 * 60 * 60));
+                const duration = hours + (hours > 1 ? ' heures' : ' heure');
+                const cost = hours * 2.5; // $2.50/heure
                 
                 return `
                     <div class="card mb-4 ${isPast ? '' : 'reservation-active'}">
                         <div class="flex gap-4" style="flex-wrap: wrap;">
-                            <!-- Spot Badge -->
+                            <!-- Badge Place -->
                             <div class="parking-spot ${reservation.status}" style="min-width: 100px; max-width: 100px; cursor: default;">
                                 <span class="parking-spot-id">${reservation.spot_id}</span>
                                 <span class="parking-spot-status" style="font-size: 0.7rem;">
-                                    ${Helpers.getParkingStatusText(reservation.status)}
+                                    ${statusTranslations[reservation.status] || reservation.status}
                                 </span>
                             </div>
                             
-                            <!-- Details -->
+                            <!-- Détails -->
                             <div class="flex-1" style="min-width: 200px;">
                                 <div class="flex items-center gap-2 mb-2">
-                                    <span class="status-badge ${Helpers.getStatusBadgeClass(reservation.status)}">
-                                        ${reservation.status}
+                                    <span class="status-badge ${getStatusClass(reservation.status)}">
+                                        ${statusTranslations[reservation.status] || reservation.status}
                                     </span>
-                                    ${isActive ? '<span class="status-badge success">● Live</span>' : ''}
-                                    ${isUpcoming ? '<span class="status-badge info">Upcoming</span>' : ''}
+                                    ${isActive ? '<span class="status-badge success">● En Cours</span>' : ''}
+                                    ${isUpcoming ? '<span class="status-badge info">À Venir</span>' : ''}
                                 </div>
-                                <p class="mb-1"><strong>📅 Date:</strong> ${Helpers.formatDate(start)}</p>
-                                <p class="mb-1"><strong>⏰ Time:</strong> ${Helpers.formatTime(start)} - ${Helpers.formatTime(end)}</p>
-                                <p class="mb-1"><strong>⏱️ Duration:</strong> ${duration}</p>
-                                <p class="mb-1"><strong>🚗 Vehicle:</strong> ${reservation.vehicle_plate || 'N/A'}</p>
-                                ${isActive ? `<p class="mb-1"><strong>⏳ Remaining:</strong> <span class="time-remaining" data-end="${end.toISOString()}">${Helpers.getTimeRemaining(end).text}</span></p>` : ''}
+                                <p class="mb-1"><strong>📅 Date:</strong> ${formatDateFr(start)}</p>
+                                <p class="mb-1"><strong>⏰ Horaire:</strong> ${formatTimeFr(start)} - ${formatTimeFr(end)}</p>
+                                <p class="mb-1"><strong>⏱️ Durée:</strong> ${duration}</p>
+                                <p class="mb-1"><strong>🚗 Véhicule:</strong> ${reservation.vehicle_plate || 'N/A'}</p>
+                                ${isActive ? `<p class="mb-1"><strong>⏳ Restant:</strong> <span class="time-remaining" data-end="${end.toISOString()}">${getTimeRemainingText(end)}</span></p>` : ''}
                             </div>
                             
-                            <!-- Cost & Actions -->
+                            <!-- Coût & Actions -->
                             <div class="text-right" style="min-width: 150px;">
                                 <div class="mb-4">
-                                    <p class="text-muted mb-1">Estimated Cost</p>
+                                    <p class="text-muted mb-1">Coût Estimé</p>
                                     <p style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--primary);">
-                                        ${Helpers.formatCurrency(cost)}
+                                        $${cost.toFixed(2)}
                                     </p>
                                 </div>
                                 
                                 ${!isPast ? `
                                     <div class="flex flex-col gap-2">
                                         <a href="/frontend/pages/user/access-codes.html?reservation=${reservation.id}" class="btn btn-primary btn-sm">
-                                            🔑 Access Code
+                                            🔑 Code d'Accès
                                         </a>
                                         ${isActive ? `
                                             <button class="btn btn-outline btn-sm" onclick="openExtendModal('${reservation.id}', '${end.toISOString()}')">
-                                                ⏰ Extend
+                                                ⏰ Prolonger
                                             </button>
                                         ` : ''}
                                         ${isUpcoming ? `
                                             <button class="btn btn-outline btn-sm btn-danger" onclick="cancelReservation('${reservation.id}')">
-                                                ✕ Cancel
+                                                ✕ Annuler
                                             </button>
                                         ` : ''}
                                     </div>
                                 ` : `
                                     ${reservation.status === 'completed' ? `
                                         <a href="/frontend/pages/user/payments.html?reservation=${reservation.id}" class="btn btn-outline btn-sm">
-                                            View Receipt
+                                            Voir Reçu
                                         </a>
                                     ` : ''}
                                 `}
@@ -297,7 +377,7 @@
                 `;
             }).join('');
             
-            // Start countdown timers
+            // Démarrer les compteurs
             startCountdownTimers();
         }
         
@@ -335,18 +415,32 @@
         function startCountdownTimers() {
             setInterval(() => {
                 document.querySelectorAll('.time-remaining').forEach(el => {
-                    const endTime = el.dataset.end;
-                    const remaining = Helpers.getTimeRemaining(endTime);
-                    el.textContent = remaining.expired ? 'Expired' : remaining.text;
+                    const endTime = new Date(el.dataset.end);
+                    el.textContent = getTimeRemainingText(endTime);
                 });
             }, 1000);
         }
         
+        function getTimeRemainingText(endTime) {
+            const now = new Date();
+            const diff = endTime - now;
+            
+            if (diff <= 0) return 'Expiré';
+            
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}min`;
+            }
+            return `${minutes} min`;
+        }
+        
         function openExtendModal(reservationId, currentEndTime) {
             document.getElementById('extend-reservation-id').value = reservationId;
-            document.getElementById('current-end-time').value = Helpers.formatDateTime(currentEndTime);
+            document.getElementById('current-end-time').value = formatDateTimeFr(currentEndTime);
             
-            // Set minimum new end time
+            // Définir l'heure minimum de fin
             const minTime = new Date(new Date(currentEndTime).getTime() + 30*60*1000); // +30 min
             document.getElementById('new-end-time').min = minTime.toISOString().slice(0, 16);
             document.getElementById('new-end-time').value = minTime.toISOString().slice(0, 16);
@@ -360,13 +454,22 @@
         }
         
         function calculateExtendCost() {
-            const currentEnd = new Date(document.getElementById('current-end-time').value);
+            const currentEndStr = document.getElementById('current-end-time').value;
             const newEnd = new Date(document.getElementById('new-end-time').value);
+            
+            // Parse French date format or ISO
+            let currentEnd;
+            if (currentEndStr.includes('/')) {
+                // French format
+                currentEnd = new Date(); // Fallback
+            } else {
+                currentEnd = new Date(currentEndStr);
+            }
             
             if (newEnd > currentEnd) {
                 const additionalHours = Math.ceil((newEnd - currentEnd) / (1000 * 60 * 60));
-                const cost = additionalHours * 5; // $5/hour
-                document.getElementById('additional-cost').textContent = Helpers.formatCurrency(cost);
+                const cost = additionalHours * 2.5; // $2.50/heure
+                document.getElementById('additional-cost').textContent = '$' + cost.toFixed(2);
             } else {
                 document.getElementById('additional-cost').textContent = '$0.00';
             }
@@ -377,32 +480,70 @@
             const newEndTime = document.getElementById('new-end-time').value;
             
             if (!newEndTime) {
-                NotificationService.error('Please select a new end time');
+                showToast('Veuillez sélectionner une nouvelle heure de fin', 'warning');
                 return;
             }
             
             try {
                 await ApiService.extendReservation(reservationId, new Date(newEndTime).toISOString());
-                NotificationService.success('Reservation extended successfully');
+                showToast('Réservation prolongée avec succès', 'success');
                 closeExtendModal();
                 await loadReservations();
             } catch (error) {
-                NotificationService.error(error.message || 'Failed to extend reservation');
+                showToast(error.message || 'Échec de la prolongation', 'error');
             }
         }
         
         async function cancelReservation(reservationId) {
-            if (!confirm('Are you sure you want to cancel this reservation?')) {
+            if (!confirm('Êtes-vous sûr de vouloir annuler cette réservation?')) {
                 return;
             }
             
             try {
                 await ApiService.cancelReservation(reservationId);
-                NotificationService.success('Reservation cancelled');
+                showToast('Réservation annulée', 'success');
                 await loadReservations();
             } catch (error) {
-                NotificationService.error(error.message || 'Failed to cancel reservation');
+                showToast(error.message || 'Échec de l\'annulation', 'error');
             }
+        }
+        
+        // ===== UTILITAIRES =====
+        function formatDateFr(date) {
+            return date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric'
+            });
+        }
+        
+        function formatTimeFr(date) {
+            return date.toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit'
+            });
+        }
+        
+        function formatDateTimeFr(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function getStatusClass(status) {
+            const classes = {
+                'active': 'status-active',
+                'reserved': 'status-pending',
+                'completed': 'status-active',
+                'cancelled': 'status-cancelled',
+                'pending': 'status-pending'
+            };
+            return classes[status] || 'status-pending';
         }
     </script>
 </body>

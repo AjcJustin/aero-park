@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - AeroPark GOMA</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="auth-page">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <i class="fas fa-plane"></i>
+            <span>AeroPark GOMA</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../index.html"><i class="fas fa-home"></i> Accueil</a></li>
+            <li><a href="reservation.html"><i class="fas fa-ticket-alt"></i> Réserver</a></li>
+            <li id="auth-links">
+                <a href="login.html" class="btn btn-outline"><i class="fas fa-sign-in-alt"></i> Connexion</a>
+                <a href="register.html" class="btn btn-primary active"><i class="fas fa-user-plus"></i> Inscription</a>
+            </li>
+            <li id="user-menu" class="hidden">
+                <span class="user-name"></span>
+                <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+            </li>
+        </ul>
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </nav>
+
+    <!-- Registration Form -->
+    <main class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i class="fas fa-user-plus"></i>
+                <h1>Créer un compte</h1>
+                <p>Rejoignez AeroPark GOMA pour réserver vos places</p>
+            </div>
+
+            <div class="alert hidden" id="alert-message">
+                <i class="fas fa-info-circle"></i>
+                <span></span>
+            </div>
+
+            <form class="auth-form" id="register-form">
+                <div class="form-group">
+                    <label for="name">Nom complet</label>
+                    <div class="input-icon">
+                        <i class="fas fa-user"></i>
+                        <input 
+                            type="text" 
+                            id="name" 
+                            name="name" 
+                            placeholder="Votre nom complet"
+                            autocomplete="name"
+                            required
+                        >
+                    </div>
+                    <span class="error-message" id="name-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Adresse email</label>
+                    <div class="input-icon">
+                        <i class="fas fa-envelope"></i>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            placeholder="votre@email.com"
+                            autocomplete="email"
+                            required
+                        >
+                    </div>
+                    <span class="error-message" id="email-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <div class="input-icon">
+                        <i class="fas fa-lock"></i>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            placeholder="Minimum 6 caractères"
+                            autocomplete="new-password"
+                            required
+                            minlength="6"
+                        >
+                    </div>
+                    <span class="error-message" id="password-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password">Confirmer le mot de passe</label>
+                    <div class="input-icon">
+                        <i class="fas fa-lock"></i>
+                        <input 
+                            type="password" 
+                            id="confirm-password" 
+                            name="confirm-password" 
+                            placeholder="Répétez votre mot de passe"
+                            autocomplete="new-password"
+                            required
+                        >
+                    </div>
+                    <span class="error-message" id="confirm-password-error"></span>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i>
+                    S'inscrire
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Vous avez déjà un compte ? <a href="login.html">Se connecter</a></p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <i class="fas fa-plane"></i>
+                    <span>AeroPark GOMA - Parking Automatisé</span>
+                </div>
+                <p>&copy; 2025 AeroPark GOMA. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/main.js"></script>
+    <script>
+        // Gestion du formulaire d'inscription
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Réinitialiser les erreurs
+            clearErrors();
+
+            // Récupérer les valeurs
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            // Validation côté client
+            let isValid = true;
+
+            if (name.length < 2) {
+                showFieldError('name', 'Le nom doit contenir au moins 2 caractères');
+                isValid = false;
+            }
+
+            if (!Auth.isValidEmail(email)) {
+                showFieldError('email', 'Adresse email invalide');
+                isValid = false;
+            }
+
+            if (password.length < 6) {
+                showFieldError('password', 'Le mot de passe doit contenir au moins 6 caractères');
+                isValid = false;
+            }
+
+            if (password !== confirmPassword) {
+                showFieldError('confirm-password', 'Les mots de passe ne correspondent pas');
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            // Tentative d'inscription
+            const result = Auth.register(name, email, password);
+
+            if (result.success) {
+                showAlert('success', 'Inscription réussie ! Redirection...');
+                
+                // Connexion automatique après inscription
+                Auth.login(email, password);
+                
+                setTimeout(() => {
+                    window.location.href = 'reservation.html';
+                }, 1500);
+            } else {
+                showAlert('error', result.message);
+            }
+        });
+
+        // Fonctions utilitaires
+        function showFieldError(fieldId, message) {
+            const input = document.getElementById(fieldId);
+            const errorSpan = document.getElementById(fieldId + '-error');
+            
+            input.classList.add('error');
+            errorSpan.textContent = message;
+            errorSpan.classList.add('show');
+        }
+
+        function clearErrors() {
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.textContent = '';
+                el.classList.remove('show');
+            });
+            document.querySelectorAll('input').forEach(input => {
+                input.classList.remove('error');
+            });
+            hideAlert();
+        }
+
+        function showAlert(type, message) {
+            const alert = document.getElementById('alert-message');
+            alert.className = `alert ${type}`;
+            alert.querySelector('span').textContent = message;
+            alert.classList.remove('hidden');
+        }
+
+        function hideAlert() {
+            const alert = document.getElementById('alert-message');
+            alert.classList.add('hidden');
+        }
+
+        // Initialiser la navigation mobile
+        document.addEventListener('DOMContentLoaded', function() {
+            const hamburger = document.querySelector('.hamburger');
+            const navLinks = document.querySelector('.nav-links');
+
+            if (hamburger && navLinks) {
+                hamburger.addEventListener('click', () => {
+                    hamburger.classList.toggle('active');
+                    navLinks.classList.toggle('active');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

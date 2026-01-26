@@ -1024,12 +1024,68 @@ a:hover {
         margin-left: 0;
     }
     
-    .nav-menu {
-        display: none;
+    /* Mobile Navigation - FIXED */
+    .nav-toggle {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        background: rgba(255,255,255,0.1);
+        border-radius: var(--radius);
+        border: none;
+        color: var(--white);
+        font-size: 24px;
+        cursor: pointer;
+        transition: all var(--transition);
+        z-index: 1000;
     }
     
-    .nav-toggle {
+    .nav-toggle:hover {
+        background: rgba(255,255,255,0.2);
+    }
+    
+    .nav-toggle.active {
+        background: var(--secondary);
+        color: var(--gray-900);
+    }
+    
+    .nav-menu {
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        right: 0;
+        background: var(--primary-dark);
+        padding: var(--spacing-4);
+        flex-direction: column;
+        gap: var(--spacing-2);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-100%);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        z-index: var(--z-dropdown);
+    }
+    
+    .nav-menu.active {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .nav-menu li {
+        width: 100%;
+    }
+    
+    .nav-link {
         display: block;
+        padding: var(--spacing-3) var(--spacing-4);
+        border-radius: var(--radius);
+        text-align: center;
+    }
+    
+    .nav-link:hover {
+        background: rgba(255,255,255,0.15);
     }
 }
 
@@ -1135,3 +1191,339 @@ body.role-admin .admin-only { display: block; }
 body.role-admin .user-only { display: none; }
 body.role-user .user-only { display: block; }
 body.role-user .admin-only { display: none; }
+
+/* ============================================
+   PAYMENT PROVIDERS
+   ============================================ */
+.payment-methods {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--spacing-4);
+    margin-bottom: var(--spacing-6);
+}
+
+.payment-method {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-4);
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition);
+    min-height: 100px;
+}
+
+.payment-method:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.payment-method.selected {
+    border-color: var(--primary);
+    background: rgba(30, 58, 95, 0.05);
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+
+.payment-method input[type="radio"] {
+    display: none;
+}
+
+.payment-method-logo {
+    height: 40px;
+    max-width: 100px;
+    object-fit: contain;
+    margin-bottom: var(--spacing-2);
+}
+
+.payment-method-name {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--gray-700);
+    text-align: center;
+}
+
+/* Orange Money */
+.payment-method.orange-money .payment-method-logo {
+    filter: none;
+}
+
+/* Airtel Money */
+.payment-method.airtel-money .payment-method-logo {
+    filter: none;
+}
+
+/* M-Pesa */
+.payment-method.mpesa .payment-method-logo {
+    filter: none;
+}
+
+/* ============================================
+   HERO SECTION IMPROVEMENTS
+   ============================================ */
+.hero {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: var(--white);
+    padding: var(--spacing-16) var(--spacing-4);
+    border-radius: var(--radius-xl);
+    margin-bottom: var(--spacing-8);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.hero h1 {
+    color: var(--white);
+    font-size: var(--font-size-4xl);
+    margin-bottom: var(--spacing-4);
+}
+
+.hero p {
+    color: rgba(255,255,255,0.9);
+    font-size: var(--font-size-lg);
+}
+
+.hero .btn-primary {
+    background: var(--secondary);
+    color: var(--gray-900);
+}
+
+.hero .btn-primary:hover {
+    background: var(--secondary-light);
+}
+
+.hero .btn-outline {
+    border-color: var(--white);
+    color: var(--white);
+}
+
+.hero .btn-outline:hover {
+    background: var(--white);
+    color: var(--primary);
+}
+
+/* ============================================
+   AIRPORT ICON STYLES
+   ============================================ */
+.airplane-icon {
+    display: inline-block;
+    animation: fly 3s ease-in-out infinite;
+}
+
+@keyframes fly {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-5px) rotate(2deg); }
+}
+
+/* ============================================
+   ALERT BOXES
+   ============================================ */
+.alert {
+    padding: var(--spacing-4);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-4);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+}
+
+.alert-success {
+    background: var(--success-light);
+    border-left: 4px solid var(--success);
+    color: #22543d;
+}
+
+.alert-warning {
+    background: var(--warning-light);
+    border-left: 4px solid var(--warning);
+    color: #744210;
+}
+
+.alert-danger {
+    background: var(--danger-light);
+    border-left: 4px solid var(--danger);
+    color: #742a2a;
+}
+
+.alert-info {
+    background: var(--info-light);
+    border-left: 4px solid var(--info);
+    color: #2b6cb0;
+}
+
+/* ============================================
+   FEATURE CARDS
+   ============================================ */
+.feature-card {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-8);
+    text-align: center;
+    transition: all var(--transition);
+    border: 1px solid var(--gray-100);
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.feature-card-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--spacing-4);
+    font-size: 2.5rem;
+}
+
+.feature-card h3 {
+    margin-bottom: var(--spacing-3);
+    color: var(--gray-900);
+}
+
+.feature-card p {
+    color: var(--gray-600);
+    margin: 0;
+}
+
+/* ============================================
+   COUNTDOWN TIMER
+   ============================================ */
+.countdown {
+    display: flex;
+    gap: var(--spacing-4);
+    justify-content: center;
+}
+
+.countdown-item {
+    text-align: center;
+}
+
+.countdown-value {
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--gray-100);
+    padding: var(--spacing-3) var(--spacing-4);
+    border-radius: var(--radius-lg);
+    min-width: 60px;
+    display: block;
+}
+
+.countdown-label {
+    font-size: var(--font-size-xs);
+    color: var(--gray-500);
+    text-transform: uppercase;
+    margin-top: var(--spacing-2);
+}
+
+/* ============================================
+   QUICK ACTION BUTTONS
+   ============================================ */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--spacing-4);
+}
+
+.quick-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-6);
+    background: var(--white);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition);
+    text-decoration: none;
+    color: var(--gray-700);
+}
+
+.quick-action-btn:hover {
+    border-color: var(--primary);
+    background: rgba(30, 58, 95, 0.02);
+    transform: translateY(-2px);
+    color: var(--primary);
+}
+
+.quick-action-btn .icon {
+    font-size: 2rem;
+    margin-bottom: var(--spacing-2);
+}
+
+.quick-action-btn .label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+/* ============================================
+   FOOTER IMPROVEMENTS
+   ============================================ */
+.footer {
+    background: linear-gradient(135deg, var(--gray-800) 0%, var(--gray-900) 100%);
+    color: var(--gray-400);
+    padding: var(--spacing-12) 0 var(--spacing-8);
+    margin-top: var(--spacing-12);
+}
+
+.footer a {
+    color: var(--gray-400);
+    transition: color var(--transition);
+}
+
+.footer a:hover {
+    color: var(--white);
+}
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    color: var(--white);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    margin-bottom: var(--spacing-4);
+}
+
+.footer-logo svg {
+    width: 40px;
+    height: 40px;
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+    .header, .sidebar, .nav-toggle, .btn, .toast-container {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid var(--gray-300);
+    }
+}

@@ -1,65 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Login to AeroPark GOMA - Access your parking reservations">
+    <meta name="description" content="Connexion à AeroPark GOMA - Accédez à vos réservations de parking">
     <meta name="theme-color" content="#1e3a5f">
     
-    <title>Login - AeroPark GOMA</title>
+    <title>Connexion - AeroPark GOMA</title>
     
     <link rel="icon" type="image/png" href="../../assets/icons/favicon-32x32.png">
     <link rel="manifest" href="../../manifest.json">
     <link rel="stylesheet" href="../../css/styles.css">
 </head>
 <body>
-    <!-- Offline Banner -->
+    <!-- Bannière Hors Ligne -->
     <div class="offline-banner" id="offline-banner">
-        ⚠️ You are currently offline. Some features may be limited.
+        ⚠️ Vous êtes actuellement hors ligne. Certaines fonctionnalités peuvent être limitées.
     </div>
     
-    <!-- Header -->
+    <!-- En-tête -->
     <header class="header">
         <div class="header-container">
             <a href="/frontend/index.html" class="logo">
                 <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <path d="M20 8 L20 32 M12 16 L28 16 M14 24 L26 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <circle cx="20" cy="20" r="4" fill="currentColor"/>
+                    <path d="M12 24 L20 8 L28 24 M15 20 L25 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="20" cy="28" r="3" fill="currentColor"/>
                 </svg>
                 <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">GOMA</span></span>
             </a>
             
+            <button class="nav-toggle" id="nav-toggle" aria-label="Menu de navigation" aria-expanded="false">
+                <span id="nav-toggle-icon">☰</span>
+            </button>
+            
             <nav>
-                <ul class="nav-menu">
-                    <li><a href="/frontend/index.html" class="nav-link">Home</a></li>
-                    <li><a href="/frontend/pages/public/login.html" class="nav-link active">Login</a></li>
-                    <li><a href="/frontend/pages/public/register.html" class="nav-link btn btn-secondary btn-sm">Register</a></li>
+                <ul class="nav-menu" id="nav-menu">
+                    <li><a href="/frontend/index.html" class="nav-link">🏠 Accueil</a></li>
+                    <li><a href="/frontend/pages/public/login.html" class="nav-link active">🔐 Connexion</a></li>
+                    <li><a href="/frontend/pages/public/register.html" class="nav-link btn btn-secondary btn-sm">📝 Inscription</a></li>
                 </ul>
             </nav>
         </div>
     </header>
     
-    <!-- Main Content -->
+    <!-- Contenu Principal -->
     <main class="main-content">
         <div class="container" style="max-width: 450px;">
             <div class="card" style="margin-top: var(--spacing-8);">
                 <div class="text-center" style="margin-bottom: var(--spacing-6);">
-                    <h1 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-2);">Welcome Back</h1>
-                    <p class="text-muted">Sign in to your AeroPark account</p>
+                    <div style="font-size: 3rem; margin-bottom: var(--spacing-4);">✈️</div>
+                    <h1 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-2);">Bon Retour !</h1>
+                    <p class="text-muted">Connectez-vous à votre compte AeroPark</p>
                 </div>
                 
-                <!-- Login Form -->
+                <!-- Formulaire de Connexion -->
                 <form id="login-form">
                     <div class="form-group">
-                        <label class="form-label" for="email">Email Address</label>
+                        <label class="form-label" for="email">📧 Adresse Email</label>
                         <input type="email" class="form-input" id="email" name="email" 
-                               placeholder="you@example.com" required autocomplete="email">
+                               placeholder="vous@exemple.com" required autocomplete="email">
                         <span class="form-error" id="email-error"></span>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label" for="password">Password</label>
+                        <label class="form-label" for="password">🔒 Mot de Passe</label>
                         <input type="password" class="form-input" id="password" name="password" 
                                placeholder="••••••••" required autocomplete="current-password">
                         <span class="form-error" id="password-error"></span>
@@ -68,24 +73,24 @@
                     <div class="flex justify-between items-center" style="margin-bottom: var(--spacing-4);">
                         <label class="flex items-center gap-2" style="cursor: pointer;">
                             <input type="checkbox" id="remember" name="remember">
-                            <span style="font-size: var(--font-size-sm);">Remember me</span>
+                            <span style="font-size: var(--font-size-sm);">Se souvenir de moi</span>
                         </label>
-                        <a href="#" id="forgot-password" style="font-size: var(--font-size-sm);">Forgot password?</a>
+                        <a href="#" id="forgot-password" style="font-size: var(--font-size-sm);">Mot de passe oublié ?</a>
                     </div>
                     
                     <button type="submit" class="btn btn-primary btn-block btn-lg" id="login-btn">
-                        Sign In
+                        🔐 Se Connecter
                     </button>
                 </form>
                 
-                <!-- Divider -->
+                <!-- Séparateur -->
                 <div class="flex items-center gap-4" style="margin: var(--spacing-6) 0;">
                     <hr style="flex: 1; border: none; border-top: 1px solid var(--gray-200);">
-                    <span class="text-muted" style="font-size: var(--font-size-sm);">OR</span>
+                    <span class="text-muted" style="font-size: var(--font-size-sm);">OU</span>
                     <hr style="flex: 1; border: none; border-top: 1px solid var(--gray-200);">
                 </div>
                 
-                <!-- Google Sign In -->
+                <!-- Connexion Google -->
                 <button type="button" class="btn btn-outline btn-block" id="google-login">
                     <svg width="18" height="18" viewBox="0 0 18 18">
                         <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
@@ -93,22 +98,25 @@
                         <path fill="#FBBC05" d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
                         <path fill="#EA4335" d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.428 0 9.002 0 5.48 0 2.438 2.017.956 4.958L3.964 7.29c.708-2.127 2.692-3.71 5.036-3.71z"/>
                     </svg>
-                    Continue with Google
+                    Continuer avec Google
                 </button>
                 
-                <!-- Demo Login (for testing) -->
+                <!-- Connexion Démo -->
                 <button type="button" class="btn btn-outline btn-block mt-4" id="demo-login" style="border-style: dashed;">
-                    🎮 Demo Login (No Firebase Required)
+                    🎮 Connexion Démo (Sans Firebase)
                 </button>
                 
-                <!-- Register Link -->
+                <!-- Lien Inscription -->
                 <p class="text-center mt-6" style="font-size: var(--font-size-sm);">
-                    Don't have an account? 
-                    <a href="/frontend/pages/public/register.html" style="font-weight: 600;">Create one</a>
+                    Pas encore de compte ? 
+                    <a href="/frontend/pages/public/register.html" style="font-weight: 600;">Créer un compte</a>
                 </p>
             </div>
         </div>
     </main>
+    
+    <!-- Conteneur Toast -->
+    <div class="toast-container" id="toast-container"></div>
     
     <!-- Scripts -->
     <script src="../../js/services/api.js"></script>
@@ -122,20 +130,23 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
-    <!-- Page Script -->
+    <!-- Script de la Page -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialiser le menu hamburger
+            initHamburgerMenu();
+            
             const loginForm = document.getElementById('login-form');
             const googleLoginBtn = document.getElementById('google-login');
             const demoLoginBtn = document.getElementById('demo-login');
             const forgotPasswordLink = document.getElementById('forgot-password');
             
-            // Check if already logged in
-            if (AuthService?.isAuthenticated && AuthService.isAuthenticated()) {
+            // Vérifier si déjà connecté
+            if (localStorage.getItem('aeropark_token')) {
                 redirectToDashboard();
             }
             
-            // Form submission
+            // Soumission du formulaire
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 clearErrors();
@@ -144,75 +155,88 @@
                 const password = document.getElementById('password').value;
                 
                 // Validation
-                if (!Helpers.isValidEmail(email)) {
-                    showError('email', 'Please enter a valid email address');
+                if (!isValidEmail(email)) {
+                    showError('email', 'Veuillez entrer une adresse email valide');
                     return;
                 }
                 
                 if (password.length < 6) {
-                    showError('password', 'Password must be at least 6 characters');
+                    showError('password', 'Le mot de passe doit contenir au moins 6 caractères');
                     return;
                 }
                 
-                // Submit
+                // Soumettre
                 const loginBtn = document.getElementById('login-btn');
                 loginBtn.disabled = true;
-                loginBtn.innerHTML = '<span class="loading-spinner"></span> Signing in...';
+                loginBtn.innerHTML = '<span class="loading-spinner"></span> Connexion...';
                 
                 try {
                     if (typeof firebase !== 'undefined' && firebase.auth) {
                         const result = await AuthService.login(email, password);
                         
                         if (result.success) {
-                            NotificationService.success('Welcome back!', 'Login Successful');
+                            // Récupérer le profil utilisateur depuis le backend
+                            try {
+                                const profile = await ApiService.getProfile();
+                                localStorage.setItem('aeropark_role', profile.profile?.role || 'user');
+                            } catch (profileError) {
+                                console.warn('Impossible de récupérer le profil:', profileError);
+                            }
+                            showToast('Connexion Réussie', 'Bienvenue !', 'success');
                             redirectToDashboard();
                         } else {
-                            NotificationService.error(result.error);
+                            showToast('Erreur', result.error, 'error');
                         }
                     } else {
-                        // Demo mode - simulate login
-                        await simulateDemoLogin(email);
+                        showToast('Information', 'Firebase non disponible. Utilisez le mode démo.', 'warning');
                     }
                 } catch (error) {
-                    NotificationService.error(error.message || 'Login failed. Please try again.');
+                    showToast('Erreur', error.message || 'Échec de la connexion.', 'error');
                 } finally {
                     loginBtn.disabled = false;
-                    loginBtn.innerHTML = 'Sign In';
+                    loginBtn.innerHTML = '🔐 Se Connecter';
                 }
             });
             
-            // Google login
+            // Connexion Google
             googleLoginBtn.addEventListener('click', async () => {
                 try {
                     if (typeof firebase !== 'undefined' && firebase.auth) {
                         const result = await AuthService.loginWithGoogle();
                         
                         if (result.success) {
-                            NotificationService.success('Welcome!', 'Login Successful');
+                            // Récupérer le profil utilisateur depuis le backend
+                            try {
+                                const profile = await ApiService.getProfile();
+                                localStorage.setItem('aeropark_role', profile.profile?.role || 'user');
+                            } catch (profileError) {
+                                console.warn('Impossible de récupérer le profil:', profileError);
+                            }
+                            showToast('Connexion Réussie', 'Bienvenue !', 'success');
                             redirectToDashboard();
                         } else {
-                            NotificationService.error(result.error);
+                            showToast('Erreur', result.error, 'error');
                         }
                     } else {
-                        NotificationService.warning('Google login requires Firebase SDK');
+                        showToast('Information', 'La connexion Google nécessite Firebase SDK', 'warning');
                     }
                 } catch (error) {
-                    NotificationService.error(error.message || 'Google login failed');
+                    showToast('Erreur', error.message || 'Échec de la connexion Google', 'error');
                 }
             });
             
-            // Demo login
+            // Connexion Démo
             demoLoginBtn.addEventListener('click', async () => {
                 await simulateDemoLogin('demo@aeropark.com');
             });
             
-            // Forgot password
+            // Mot de passe oublié
             forgotPasswordLink.addEventListener('click', async (e) => {
                 e.preventDefault();
                 const email = document.getElementById('email').value.trim();
                 
-                if (!email || !Helpers.isValidEmail(email)) {
-                    showError('email', 'Please enter your email address first');
+                if (!email || !isValidEmail(email)) {
+                    showError('email', 'Veuillez d\'abord entrer votre adresse email');
                     document.getElementById('email').focus();
                     return;
                 }
@@ -221,18 +245,43 @@
                     if (typeof firebase !== 'undefined' && firebase.auth) {
                         const result = await AuthService.resetPassword(email);
                         if (result.success) {
-                            NotificationService.success(`Password reset email sent to ${email}`, 'Check Your Email');
+                            showToast('Email Envoyé', `Un email de réinitialisation a été envoyé à ${email}`, 'success');
                         } else {
-                            NotificationService.error(result.error);
+                            showToast('Erreur', result.error, 'error');
                         }
                     } else {
-                        NotificationService.info('Password reset is not available in demo mode');
+                        showToast('Information', 'La réinitialisation du mot de passe n\'est pas disponible en mode démo', 'info');
                     }
                 } catch (error) {
-                    NotificationService.error('Failed to send password reset email');
+                    showToast('Erreur', 'Impossible d\'envoyer l\'email de réinitialisation', 'error');
                 }
             });
         });
+        
+        // Initialiser le menu hamburger
+        function initHamburgerMenu() {
+            const navToggle = document.getElementById('nav-toggle');
+            const navMenu = document.getElementById('nav-menu');
+            const navToggleIcon = document.getElementById('nav-toggle-icon');
+            
+            if (navToggle && navMenu) {
+                navToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isActive = navMenu.classList.toggle('active');
+                    navToggle.classList.toggle('active', isActive);
+                    navToggle.setAttribute('aria-expanded', isActive);
+                    if (navToggleIcon) navToggleIcon.textContent = isActive ? '✕' : '☰';
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (!navMenu.contains(e.target) && !navToggle.contains(e.target)) {
+                        navMenu.classList.remove('active');
+                        navToggle.classList.remove('active');
+                        if (navToggleIcon) navToggleIcon.textContent = '☰';
+                    }
+                });
+            }
+        }
         
         async function simulateDemoLogin(email) {
             const demoUser = {
@@ -246,7 +295,7 @@
             localStorage.setItem('aeropark_token', 'demo-token-' + Date.now());
             localStorage.setItem('aeropark_role', demoUser.role);
             
-            NotificationService.success('Demo login successful!', 'Welcome');
+            showToast('Connexion Réussie', 'Bienvenue en mode démo !', 'success');
             
             setTimeout(() => {
                 redirectToDashboard();
@@ -261,6 +310,10 @@
             window.location.href = redirectUrl;
         }
         
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+        
         function showError(field, message) {
             const errorEl = document.getElementById(`${field}-error`);
             const inputEl = document.getElementById(field);
@@ -271,6 +324,28 @@
         function clearErrors() {
             document.querySelectorAll('.form-error').forEach(el => el.textContent = '');
             document.querySelectorAll('.form-input').forEach(el => el.classList.remove('error'));
+        }
+        
+        // Fonction Toast simple
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+            `;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
         }
     </script>
 </body>
