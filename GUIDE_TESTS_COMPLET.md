@@ -1,462 +1,851 @@
-# 🧪 Guide de Tests Complet - AeroPark Smart System
-
-## 📋 Prérequis
-- Serveur démarré : `cd backend && uvicorn main:app --host 0.0.0.0 --port 8000`
-- URL Backend : `http://localhost:8000`
-- Documentation Swagger : `http://localhost:8000/docs`
+# AeroPark GOMA - Guide de Test Complet
+## Plan de Validation Avant Production
 
 ---
 
-# PHASE 1 : Tests Backend (API REST)
+# TABLE DES MATIÈRES
 
-## 1.1 Health Check
-**Endpoint:** `GET /health`
-
-**Résultat attendu:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2026-01-19T15:40:00.000Z",
-  "version": "1.0.0"
-}
-```
+1. [Configuration Préalable](#1-configuration-préalable)
+2. [Tests Manuels - Utilisateurs](#2-tests-manuels---utilisateurs)
+3. [Tests Manuels - Admin](#3-tests-manuels---admin)
+4. [Scripts de Test API](#4-scripts-de-test-api)
+5. [Checklist de Débogage](#5-checklist-de-débogage)
+6. [Vérification Frontend](#6-vérification-frontend)
+7. [Tests ESP32/Capteurs](#7-tests-esp32capteurs)
 
 ---
 
-## 1.2 Statut du Parking
-**Endpoint:** `GET /api/v1/sensor/status`  
-**Header:** `X-API-Key: aeropark-sensor-key-2024`
+# 1. CONFIGURATION PRÉALABLE
 
-**Résultat attendu:**
-```json
-{
-  "total_places": 6,
-  "libres": 6,
-  "occupees": 0,
-  "reservees": 0,
-  "places": [
-    {"place_id": "a1", "etat": "free", "last_update": "..."},
-    {"place_id": "a2", "etat": "free", "last_update": "..."},
-    {"place_id": "a3", "etat": "free", "last_update": "..."},
-    {"place_id": "a4", "etat": "free", "last_update": "..."},
-    {"place_id": "a5", "etat": "free", "last_update": "..."},
-    {"place_id": "a6", "etat": "free", "last_update": "..."}
-  ]
-}
-```
-
----
-
-## 1.3 Mise à jour Capteur (Simuler ESP32)
-**Endpoint:** `POST /api/v1/sensor/update`  
-**Header:** `X-API-Key: aeropark-sensor-key-2024`  
-**Content-Type:** `application/json`
-
-**Corps de la requête (place occupée):**
-```json
-{
-  "place_id": "a1",
-  "etat": "occupied",
-  "force_signal": -65
-}
-```
-
-**Résultat attendu:**
-```json
-{
-  "success": true,
-  "place_id": "a1",
-  "new_etat": "occupied",
-  "message": "État mis à jour avec succès"
-}
-```
-
-**Corps de la requête (place libre):**
-```json
-{
-  "place_id": "a1",
-  "etat": "free",
-  "force_signal": -65
-}
-```
-
-**Résultat attendu:**
-```json
-{
-  "success": true,
-  "place_id": "a1",
-  "new_etat": "free",
-  "message": "État mis à jour avec succès"
-}
-```
-
----
-
-## 1.4 Test Clé API Invalide
-**Endpoint:** `GET /api/v1/sensor/status`  
-**Header:** `X-API-Key: mauvaise-cle`
-
-**Résultat attendu (401 Unauthorized):**
-```json
-{
-  "detail": "Clé API invalide"
-}
-```
-
----
-
-## 1.5 Test Sans Clé API
-**Endpoint:** `GET /api/v1/sensor/status`  
-**Aucun header X-API-Key**
-
-**Résultat attendu (401 Unauthorized):**
-```json
-{
-  "detail": "Clé API manquante. Ajoutez l'en-tête 'X-API-Key'."
-}
-```
-
----
-
-## 1.6 Health Check Capteur
-**Endpoint:** `GET /api/v1/sensor/health`  
-**Header:** `X-API-Key: aeropark-sensor-key-2024`
-
-**Résultat attendu:**
-```json
-{
-  "status": "ok",
-  "message": "Connexion capteur validée",
-  "server_time": "2026-01-19T15:40:00.000Z"
-}
-```
-
----
-
-# PHASE 2 : Tests WebSocket
-
-## 2.1 Connexion WebSocket
-**URL:** `ws://localhost:8000/ws/parking`
-
-**À la connexion, vous recevez:**
-```json
-{
-  "type": "connection_established",
-  "message": "Connecté au système AeroPark",
-  "timestamp": "2026-01-19T15:40:00.000Z"
-}
-```
-
-## 2.2 Mise à jour en temps réel
-Quand un capteur envoie une mise à jour, tous les clients WebSocket reçoivent:
-```json
-{
-  "type": "place_update",
-  "place_id": "a1",
-  "etat": "occupied",
-  "timestamp": "2026-01-19T15:40:00.000Z"
-}
-```
-
----
-
-# PHASE 3 : Tests ESP32
-
-## 3.1 Configuration ESP32
-
-### Fichier `aeropark_sensor.ino` - Variables à configurer:
-```cpp
-// WiFi
-const char* ssid = "VOTRE_WIFI";           // Nom de votre réseau WiFi
-const char* password = "VOTRE_MOT_DE_PASSE"; // Mot de passe WiFi
-
-// Serveur Backend
-const char* serverUrl = "http://VOTRE_IP:8000";  // IP de votre PC
-// Exemple: "http://192.168.1.100:8000"
-
-// Clé API (NE PAS CHANGER)
-const char* apiKey = "aeropark-sensor-key-2024";
-```
-
-### Pour trouver l'IP de votre PC:
-```powershell
-ipconfig | findstr "IPv4"
-# Exemple résultat: 192.168.1.100
-```
-
----
-
-## 3.2 Branchements ESP32
-
-| Composant | Pin ESP32 | Description |
-|-----------|-----------|-------------|
-| IR Sensor Place A1 | GPIO 13 | Détecteur infrarouge place 1 |
-| IR Sensor Place A2 | GPIO 14 | Détecteur infrarouge place 2 |
-| IR Sensor Place A3 | GPIO 25 | Détecteur infrarouge place 3 |
-| IR Sensor Place A4 | GPIO 26 | Détecteur infrarouge place 4 |
-| IR Sensor Place A5 | GPIO 27 | Détecteur infrarouge place 5 |
-| IR Sensor Place A6 | GPIO 34 | Détecteur infrarouge place 6 |
-| Servo Barrière | GPIO 4 | Contrôle de la barrière |
-| IR Entrée | GPIO 32 | Détection véhicule entrée |
-| IR Sortie | GPIO 33 | Détection véhicule sortie |
-| LCD SDA | GPIO 21 | I2C Data |
-| LCD SCL | GPIO 22 | I2C Clock |
-
----
-
-## 3.3 Tests ESP32 - Comportements attendus
-
-### Test A: Démarrage ESP32
-**Action:** Allumer l'ESP32
-
-**Attendu sur LCD:**
-```
-AeroPark System
-Connexion WiFi...
-```
-Puis après connexion:
-```
-AeroPark Ready!
-Libres: 6/6
-```
-
-**Attendu sur Serial Monitor (115200 baud):**
-```
-AeroPark Smart Parking System
-Connexion WiFi...
-Connecté! IP: 192.168.1.xxx
-Force du signal: -65 dBm
-Connexion au serveur...
-Serveur connecté!
-```
-
----
-
-### Test B: Détection véhicule sur place A1
-**Action:** Placer un objet devant le capteur IR de la place A1
-
-**Attendu sur LCD:**
-```
-Place A1: OCCUPEE
-Libres: 5/6
-```
-
-**Attendu sur Serial Monitor:**
-```
-Place a1: occupied
-Envoi au serveur...
-Réponse: {"success":true,"place_id":"a1","new_etat":"occupied"...}
-```
-
-**Attendu sur Backend (logs):**
-```
-INFO - Mise à jour capteur: a1 -> occupied
-```
-
----
-
-### Test C: Libération place A1
-**Action:** Retirer l'objet du capteur IR de la place A1
-
-**Attendu sur LCD:**
-```
-Place A1: LIBRE
-Libres: 6/6
-```
-
-**Attendu sur Serial Monitor:**
-```
-Place a1: free
-Envoi au serveur...
-Réponse: {"success":true,"place_id":"a1","new_etat":"free"...}
-```
-
----
-
-### Test D: Barrière d'entrée
-**Action:** Placer un objet devant le capteur IR d'entrée (GPIO 32)
-
-**Attendu:**
-1. Servo tourne à 90° (barrière ouvre)
-2. LCD affiche: `Barrière: OUVERTE`
-3. Après 5 secondes sans détection: Servo revient à 0° (barrière ferme)
-
----
-
-### Test E: Barrière de sortie
-**Action:** Placer un objet devant le capteur IR de sortie (GPIO 33)
-
-**Attendu:**
-1. Servo tourne à 90° (barrière ouvre)
-2. LCD affiche: `Sortie: Ouvert`
-3. Après 5 secondes: Servo revient à 0°
-
----
-
-### Test F: Parking plein
-**Action:** Occuper les 6 places (objets devant tous les capteurs IR)
-
-**Attendu sur LCD:**
-```
-PARKING COMPLET!
-Libres: 0/6
-```
-
-**Attendu:** Barrière d'entrée ne s'ouvre plus (optionnel selon config)
-
----
-
-### Test G: Perte de connexion WiFi
-**Action:** Désactiver temporairement le WiFi
-
-**Attendu sur LCD:**
-```
-WiFi perdu!
-Reconnexion...
-```
-
-**Attendu:** ESP32 tente de se reconnecter automatiquement
-
----
-
-### Test H: Serveur inaccessible
-**Action:** Arrêter le serveur backend
-
-**Attendu sur Serial Monitor:**
-```
-Erreur HTTP: -1
-Tentative reconnexion...
-```
-
-**Attendu:** ESP32 continue à fonctionner localement et réessaie
-
----
-
-# PHASE 4 : Tests d'intégration complète
-
-## 4.1 Scénario complet : Arrivée d'un véhicule
-
-**Étapes:**
-1. ESP32 et Backend en marche
-2. Véhicule arrive à l'entrée (IR entrée détecte)
-3. Barrière s'ouvre
-4. Véhicule se gare sur place A1 (IR A1 détecte)
-5. Backend reçoit la mise à jour
-6. LCD met à jour le compteur
-
-**Vérifications:**
-- [ ] Barrière s'ouvre à la détection entrée
-- [ ] LCD affiche la place occupée
-- [ ] Backend enregistre le changement
-- [ ] WebSocket envoie la notification
-- [ ] Firestore contient le bon état
-
----
-
-## 4.2 Scénario complet : Départ d'un véhicule
-
-**Étapes:**
-1. Place A1 occupée
-2. Véhicule quitte la place A1 (IR A1 ne détecte plus)
-3. Véhicule arrive à la sortie (IR sortie détecte)
-4. Barrière s'ouvre
-5. Véhicule sort
-
-**Vérifications:**
-- [ ] Place A1 passe à "free"
-- [ ] Barrière sortie s'ouvre
-- [ ] LCD met à jour le compteur
-- [ ] Backend enregistre le changement
-
----
-
-# PHASE 5 : Vérification Firebase
-
-## 5.1 Vérifier les données dans Firestore
-
-**URL:** https://console.firebase.google.com/project/aeropark-a191e/firestore
-
-**Collection attendue:** `parking_places`
-
-**Documents attendus:**
-```
-parking_places/
-  ├── a1
-  │   ├── place_id: "a1"
-  │   ├── etat: "free" ou "occupied"
-  │   ├── last_update: timestamp
-  │   └── force_signal: -65
-  ├── a2
-  │   └── ...
-  ├── a3
-  │   └── ...
-  ├── a4
-  │   └── ...
-  ├── a5
-  │   └── ...
-  └── a6
-      └── ...
-```
-
----
-
-# 📊 Résumé des Tests
-
-| Test | Endpoint/Action | Résultat Attendu |
-|------|-----------------|------------------|
-| Health Check | GET /health | status: "healthy" |
-| Statut Parking | GET /api/v1/sensor/status | Liste 6 places |
-| Update Capteur | POST /api/v1/sensor/update | success: true |
-| Clé API invalide | Mauvais X-API-Key | 401 Unauthorized |
-| WebSocket | ws://localhost:8000/ws/parking | connection_established |
-| ESP32 Boot | Allumer ESP32 | LCD: "AeroPark Ready!" |
-| Détection IR | Objet devant capteur | LCD met à jour |
-| Barrière | IR entrée/sortie | Servo 0° ↔ 90° |
-
----
-
-# 🔧 Commandes de Test Rapides (PowerShell)
+## 1.1 Démarrer le Backend
 
 ```powershell
-# Health Check
-curl.exe http://localhost:8000/health
+cd c:\Users\abrah\OneDrive\Desktop\aeropack\backend
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-# Statut Parking
-curl.exe -H "X-API-Key: aeropark-sensor-key-2024" http://localhost:8000/api/v1/sensor/status
+**Vérification:** Ouvrir http://localhost:8000/docs → Swagger UI doit s'afficher
 
-# Simuler place occupée
-curl.exe -X POST -H "Content-Type: application/json" -H "X-API-Key: aeropark-sensor-key-2024" -d "{\"place_id\":\"a1\",\"etat\":\"occupied\",\"force_signal\":-65}" http://localhost:8000/api/v1/sensor/update
+## 1.2 Démarrer le Frontend
 
-# Simuler place libre
-curl.exe -X POST -H "Content-Type: application/json" -H "X-API-Key: aeropark-sensor-key-2024" -d "{\"place_id\":\"a1\",\"etat\":\"free\",\"force_signal\":-65}" http://localhost:8000/api/v1/sensor/update
+```powershell
+cd c:\Users\abrah\OneDrive\Desktop\aeropack\frontend
+# Utiliser un serveur HTTP simple
+python -m http.server 3000
+```
+
+**Vérification:** Ouvrir http://localhost:3000 → Page d'accueil AeroPark
+
+## 1.3 Créer un Utilisateur Admin dans Firebase
+
+### Étape 1: Créer un compte Firebase
+1. Aller sur https://console.firebase.google.com
+2. Sélectionner le projet `aeropark-a191e`
+3. Aller dans **Authentication** → **Users**
+4. Cliquer **Add user**
+5. Entrer: `admin@aeropark.com` / mot de passe fort
+
+### Étape 2: Ajouter le rôle admin dans Firestore
+1. Aller dans **Firestore Database**
+2. Créer/modifier la collection `users`
+3. Créer un document avec l'UID de l'utilisateur admin
+4. Ajouter le champ: `role: "admin"`
+
+```json
+{
+  "uid": "FIREBASE_USER_UID",
+  "email": "admin@aeropark.com",
+  "role": "admin",
+  "displayName": "Administrateur"
+}
+```
+
+### Étape 3: Vérifier dans le backend
+Le backend vérifie le rôle dans `security/firebase_auth.py` via `get_current_admin()`
+
+---
+
+# 2. TESTS MANUELS - UTILISATEURS
+
+## Test U-01: Inscription Utilisateur
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Ouvrir `/frontend/pages/public/register.html` | Page inscription s'affiche |
+| 2 | Remplir: Nom, Email, Mot de passe (8+ chars) | Champs validés |
+| 3 | Cocher "J'accepte les conditions" | Case cochée |
+| 4 | Cliquer "Créer mon Compte" | Spinner de chargement |
+| 5 | Attendre | Toast "Compte Créé" + Redirection dashboard |
+
+**Vérification Firebase:** Nouveau user dans Authentication
+
+---
+
+## Test U-02: Connexion Utilisateur
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Ouvrir `/frontend/pages/public/login.html` | Page connexion s'affiche |
+| 2 | Entrer email + mot de passe valides | Champs remplis |
+| 3 | Cliquer "Se Connecter" | Spinner de chargement |
+| 4 | Attendre | Toast "Connexion Réussie" |
+| 5 | Vérifier redirection | Dashboard utilisateur |
+| 6 | Vérifier localStorage | `aeropark_token` présent |
+
+**Test négatif:** Email invalide → Message d'erreur
+**Test négatif:** Mot de passe incorrect → Message d'erreur
+
+---
+
+## Test U-03: Connexion Google
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Cliquer "Continuer avec Google" | Popup Google s'ouvre |
+| 2 | Sélectionner compte Google | Authentification |
+| 3 | Attendre | Redirection dashboard |
+
+---
+
+## Test U-04: Voir État du Parking (Page Accueil)
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Ouvrir `/frontend/index.html` | Page accueil |
+| 2 | Scroller vers "État du Parking" | Grille parking visible |
+| 3 | Vérifier statistiques | Compteurs: Disponibles, Réservées, Occupées |
+| 4 | Vérifier couleurs | 🟢 Libre, 🟡 Réservée, 🔴 Occupée |
+| 5 | Cliquer "Actualiser" | Données rechargées |
+
+---
+
+## Test U-05: Réserver une Place
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Être connecté | Token valide |
+| 2 | Cliquer sur place verte (libre) | Modal de réservation s'ouvre |
+| 3 | Sélectionner date/heure début | Champ rempli |
+| 4 | Sélectionner date/heure fin | Champ rempli |
+| 5 | Entrer plaque véhicule | Ex: "CD-123-GO" |
+| 6 | Vérifier coût estimé | Calcul automatique ($5/heure) |
+| 7 | Cliquer "Confirmer" | Spinner de traitement |
+| 8 | Attendre | Toast "Réservation Confirmée" |
+| 9 | Vérifier place | Couleur → 🟡 Réservée |
+| 10 | Vérifier redirection | Page réservations |
+
+**État place:** `free` → `reserved`
+
+---
+
+## Test U-06: Consulter Mes Réservations
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Aller `/frontend/pages/user/reservations.html` | Page réservations |
+| 2 | Vérifier liste | Réservation créée visible |
+| 3 | Vérifier statut | Badge "Réservé" ou "Actif" |
+| 4 | Vérifier détails | Place, dates, durée, véhicule |
+| 5 | Vérifier boutons | "Code d'Accès", "Prolonger", "Annuler" |
+
+---
+
+## Test U-07: Générer Code d'Accès
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Aller `/frontend/pages/user/access-codes.html` | Page codes d'accès |
+| 2 | Sélectionner réservation | Dropdown peuplé |
+| 3 | Sélectionner type "Entrée" | Bouton sélectionné |
+| 4 | Cliquer "Générer le Code" | Spinner |
+| 5 | Attendre | Code 6 chiffres affiché |
+| 6 | Vérifier compte à rebours | Ex: "Valide pour: 14m 30s" |
+| 7 | Cliquer "Copier" | Toast "Code copié" |
+
+**Le code doit:** 
+- Être à 3 caractères (format ESP32) ou 6 chiffres
+- Avoir une expiration de 15 minutes
+- Apparaître dans "Codes Récents"
+
+---
+
+## Test U-08: Simuler Paiement Orange Money
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Aller `/frontend/pages/user/payments.html` | Page paiements |
+| 2 | Vérifier "Paiements en Attente" | Réservation listée |
+| 3 | Cliquer "Payer" | Formulaire apparaît |
+| 4 | Sélectionner "Orange Money" | Méthode sélectionnée (bordure orange) |
+| 5 | Entrer numéro: `+243999000000` | Champ rempli |
+| 6 | Cliquer "Payer Maintenant" | Spinner |
+| 7 | Attendre (2-3 sec simulation) | Toast "Paiement effectué" |
+| 8 | Vérifier historique | Nouveau paiement statut "Complété" |
+
+**Tester aussi:** Airtel Money, M-Pesa
+
+---
+
+## Test U-09: Annuler Réservation
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Page réservations | Réservation visible |
+| 2 | Cliquer "Annuler" | Confirmation demandée |
+| 3 | Confirmer | Réservation disparaît |
+| 4 | Vérifier parking | Place redevient 🟢 libre |
+
+**État place:** `reserved` → `free`
+
+---
+
+## Test U-10: Prolonger Réservation
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Réservation active | Bouton "Prolonger" visible |
+| 2 | Cliquer "Prolonger" | Modal s'ouvre |
+| 3 | Sélectionner nouvelle fin | +2 heures |
+| 4 | Vérifier coût additionnel | Calcul affiché |
+| 5 | Confirmer | Toast "Réservation prolongée" |
+
+---
+
+## Test U-11: Déconnexion
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Cliquer "Déconnexion" | Action exécutée |
+| 2 | Attendre | Toast "Déconnexion réussie" |
+| 3 | Vérifier redirection | Page login |
+| 4 | Vérifier localStorage | Token supprimé |
+
+---
+
+## Test U-12: Mode Hors Ligne
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Se connecter normalement | Token stocké |
+| 2 | Désactiver réseau (DevTools > Network > Offline) | Hors ligne |
+| 3 | Rafraîchir page | Bannière "Hors ligne" visible |
+| 4 | Vérifier codes | Dernier code en cache affiché |
+
+---
+
+# 3. TESTS MANUELS - ADMIN
+
+## Test A-01: Connexion Admin
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Login avec `admin@aeropark.com` | Connexion réussie |
+| 2 | Vérifier localStorage | `aeropark_role` = "admin" |
+| 3 | Vérifier redirection | Dashboard admin |
+| 4 | Vérifier menu | Liens admin visibles |
+
+---
+
+## Test A-02: Dashboard Admin
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Ouvrir `/frontend/pages/admin/dashboard.html` | Dashboard admin |
+| 2 | Vérifier statistiques | Places totales, libres, occupées, taux |
+| 3 | Vérifier graphiques | Données affichées |
+| 4 | Vérifier activité récente | Liste des événements |
+
+---
+
+## Test A-03: Gestion des Places
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Ouvrir `/frontend/pages/admin/places.html` | Liste des places |
+| 2 | Vérifier grille | Toutes les places visibles |
+| 3 | Cliquer sur place occupée | Détails affichés |
+| 4 | Cliquer "Libérer" | Confirmation demandée |
+| 5 | Confirmer | Place devient libre |
+
+---
+
+## Test A-04: Forcer Libération
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Sélectionner place réservée/occupée | Actions disponibles |
+| 2 | Cliquer "Forcer Libération" | Modal confirmation |
+| 3 | Entrer raison (optionnel) | Champ texte |
+| 4 | Confirmer | Place → `free` |
+| 5 | Vérifier logs | Action enregistrée |
+
+---
+
+## Test A-05: Voir Tous les Codes d'Accès
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Page admin codes | Liste tous les codes |
+| 2 | Filtrer par statut | "Actif", "Utilisé", "Expiré" |
+| 3 | Voir détails code | User, place, expiration |
+
+---
+
+## Test A-06: Invalider Code d'Accès
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Trouver code actif | Dans la liste |
+| 2 | Cliquer "Invalider" | Confirmation |
+| 3 | Confirmer | Code → statut "invalidé" |
+| 4 | Tester code à la barrière | Accès refusé |
+
+---
+
+## Test A-07: Voir Tous les Paiements
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Ouvrir `/frontend/pages/admin/payments.html` | Liste paiements |
+| 2 | Vérifier colonnes | Date, User, Montant, Méthode, Statut |
+| 3 | Filtrer par statut | "Complété", "En attente", "Échoué" |
+| 4 | Voir totaux | Somme des paiements |
+
+---
+
+## Test A-08: Voir Tous les Utilisateurs
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Ouvrir `/frontend/pages/admin/users.html` | Liste utilisateurs |
+| 2 | Vérifier infos | Email, Nom, Rôle, Date inscription |
+| 3 | Voir statistiques user | Nb réservations, heures parking |
+
+---
+
+## Test A-09: Statut Système
+
+| Étape | Action | Résultat Attendu |
+|-------|--------|------------------|
+| 1 | Page settings/système | Infos système |
+| 2 | Vérifier statuts | Firebase: ✅, Scheduler: ✅ |
+| 3 | Voir connexions WebSocket | Nombre de clients |
+
+---
+
+# 4. SCRIPTS DE TEST API
+
+## 4.1 Variables d'Environnement
+
+```powershell
+# Définir le token (récupérer depuis localStorage après login)
+$TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+$API_KEY = "your-sensor-api-key"  # Depuis config.py
+$BASE_URL = "http://localhost:8000"
 ```
 
 ---
 
-# ✅ Checklist Finale
+## 4.2 Tests Health Check
 
-## Backend
-- [ ] Serveur démarre sans erreur
+```powershell
+# Test 1: Vérifier que l'API est en ligne
+curl -X GET "$BASE_URL/health"
+# Attendu: {"status":"healthy","services":{"firebase":"connected",...}}
+
+# Test 2: Infos API
+curl -X GET "$BASE_URL/api/v1/info"
+# Attendu: {"name":"AeroPark Smart System API","version":"1.0.0",...}
+```
+
+---
+
+## 4.3 Tests Parking (Public)
+
+```powershell
+# Test 3: État du parking
+curl -X GET "$BASE_URL/parking/status"
+# Attendu: {"total":6,"free":4,"reserved":1,"occupied":1,"places":[...]}
+
+# Test 4: Places disponibles
+curl -X GET "$BASE_URL/parking/available"
+# Attendu: {"available":[...],"count":4}
+
+# Test 5: Détails d'une place
+curl -X GET "$BASE_URL/parking/place/a1"
+# Attendu: {"id":"a1","etat":"free",...}
+```
+
+---
+
+## 4.4 Tests Réservation (Authentifié)
+
+```powershell
+# Test 6: Réserver une place
+curl -X POST "$BASE_URL/parking/reserve" `
+  -H "Authorization: Bearer $TOKEN" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "place_id": "a1",
+    "duration_minutes": 120,
+    "vehicle_plate": "CD-123-GO"
+  }'
+# Attendu: {"success":true,"reservation":{...},"access_code":"ABC"}
+
+# Test 7: Ma réservation active
+curl -X GET "$BASE_URL/users/me/reservation" `
+  -H "Authorization: Bearer $TOKEN"
+# Attendu: {"has_reservation":true,"reservation":{...}}
+```
+
+---
+
+## 4.5 Tests Profil Utilisateur
+
+```powershell
+# Test 8: Mon profil
+curl -X GET "$BASE_URL/users/me" `
+  -H "Authorization: Bearer $TOKEN"
+# Attendu: {"profile":{"uid":"...","email":"...","role":"user"},...}
+
+# Test 9: Mettre à jour profil
+curl -X PUT "$BASE_URL/users/me/profile?display_name=Jean&vehicle_plate=AB-123" `
+  -H "Authorization: Bearer $TOKEN"
+# Attendu: {"success":true}
+```
+
+---
+
+## 4.6 Tests Codes d'Accès (Capteur/ESP32)
+
+```powershell
+# Test 10: Valider code à l'entrée
+curl -X POST "$BASE_URL/api/v1/access/validate-code" `
+  -H "X-API-Key: $API_KEY" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "code": "ABC",
+    "sensor_presence": true,
+    "barrier_id": "entry"
+  }'
+# Attendu (code valide): {"access_granted":true,"message":"Accès autorisé","place_id":"a1"}
+# Attendu (code invalide): {"access_granted":false,"message":"Code invalide"}
+
+# Test 11: Vérifier accès entrée (auto)
+curl -X POST "$BASE_URL/api/v1/access/check-entry?sensor_presence=true" `
+  -H "X-API-Key: $API_KEY"
+# Attendu (places libres): {"access_granted":true,"reason":"places_available"}
+# Attendu (parking plein): {"access_granted":false,"message":"Parking complet - code requis"}
+```
+
+---
+
+## 4.7 Tests Barrière
+
+```powershell
+# Test 12: Statut barrière
+curl -X GET "$BASE_URL/api/v1/barrier/status?barrier_id=entry" `
+  -H "X-API-Key: $API_KEY"
+# Attendu: {"barrier_id":"entry","status":"closed","parking_available_spots":4,...}
+
+# Test 13: Ouvrir barrière (manuel)
+curl -X POST "$BASE_URL/api/v1/barrier/open" `
+  -H "X-API-Key: $API_KEY" `
+  -H "Content-Type: application/json" `
+  -d '{"barrier_id":"entry","reason":"manual"}'
+# Attendu: {"success":true,"action":"opened","open_duration_seconds":30}
+```
+
+---
+
+## 4.8 Tests Paiement
+
+```powershell
+# Test 14: Tarification
+curl -X GET "$BASE_URL/api/v1/payment/pricing"
+# Attendu: {"hourly_rate":5.0,"daily_max":50.0,"first_minutes_free":15,...}
+
+# Test 15: Calculer montant
+curl -X POST "$BASE_URL/api/v1/payment/calculate?hours=2&minutes=30"
+# Attendu: {"duration_hours":2.5,"amount":12.50,...}
+
+# Test 16: Simuler paiement Orange Money
+curl -X POST "$BASE_URL/api/v1/payment/simulate" `
+  -H "X-API-Key: $API_KEY" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "place_id": "a1",
+    "duration_minutes": 120,
+    "method": "ORANGE_MONEY",
+    "simulate_failure": false
+  }'
+# Attendu: {"success":true,"payment_id":"...","status":"completed","access_code":"XYZ"}
+```
+
+---
+
+## 4.9 Tests Capteur (ESP32)
+
+```powershell
+# Test 17: Mise à jour capteur - Véhicule détecté
+curl -X POST "$BASE_URL/api/v1/sensor/update" `
+  -H "X-API-Key: $API_KEY" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "sensor_id": "sensor_a1",
+    "place_id": "a1",
+    "presence": true
+  }'
+# Attendu: {"success":true,"place_id":"a1","new_status":"occupied"}
+
+# Test 18: Mise à jour capteur - Véhicule parti
+curl -X POST "$BASE_URL/api/v1/sensor/update" `
+  -H "X-API-Key: $API_KEY" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "sensor_id": "sensor_a1",
+    "place_id": "a1",
+    "presence": false
+  }'
+# Attendu: {"success":true,"place_id":"a1","new_status":"free"}
+```
+
+---
+
+## 4.10 Tests Admin
+
+```powershell
+# Test 19: Statistiques admin
+curl -X GET "$BASE_URL/admin/parking/stats" `
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+# Attendu: {"total_places":6,"libres":4,"occupees":1,"reservees":1,"taux_occupation":33.33}
+
+# Test 20: Toutes les places (admin)
+curl -X GET "$BASE_URL/admin/parking/all" `
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+# Attendu: {"total":6,"places":[...],"admin":"admin@aeropark.com"}
+
+# Test 21: Forcer libération
+curl -X POST "$BASE_URL/admin/parking/force-release/a1?reason=maintenance" `
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+# Attendu: {"success":true,"message":"Place a1 libérée"}
+
+# Test 22: Tous les codes d'accès
+curl -X GET "$BASE_URL/admin/parking/access-codes" `
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+# Attendu: {"total":5,"codes":[...],"admin":"admin@aeropark.com"}
+
+# Test 23: Invalider code
+curl -X POST "$BASE_URL/admin/parking/access-codes/ABC/invalidate" `
+  -H "Authorization: Bearer $ADMIN_TOKEN" `
+  -H "Content-Type: application/json" `
+  -d '{"reason":"test invalidation"}'
+# Attendu: {"success":true}
+```
+
+---
+
+# 5. CHECKLIST DE DÉBOGAGE
+
+## 5.1 Si la Réservation Échoue
+
+| Vérifier | Comment | Solution |
+|----------|---------|----------|
+| Token valide | Console > localStorage > `aeropark_token` | Re-login |
+| Token non expiré | Décoder JWT sur jwt.io | Re-login |
+| Place disponible | API `/parking/place/{id}` | Choisir autre place |
+| Backend en ligne | `curl http://localhost:8000/health` | Redémarrer uvicorn |
+| CORS | Console > Erreur CORS | Vérifier `config.py` CORS_ORIGINS |
+| Format requête | Network tab > Request payload | Vérifier JSON |
+
+---
+
+## 5.2 Si le Paiement Échoue
+
+| Vérifier | Comment | Solution |
+|----------|---------|----------|
+| Méthode supportée | ORANGE_MONEY, AIRTEL_MONEY, MPESA | Vérifier nom méthode |
+| Format téléphone | +243XXXXXXXXX | Format valide |
+| Réservation existe | `/users/me/reservation` | Créer réservation d'abord |
+| Simulation d'échec | `simulate_failure: false` | Mettre false |
+| Clé API | Header X-API-Key | Vérifier config.py |
+
+---
+
+## 5.3 Si la Barrière Ne S'ouvre Pas
+
+| Vérifier | Comment | Solution |
+|----------|---------|----------|
+| Code valide | API `/api/v1/access/validate-code` | Générer nouveau code |
+| Code non expiré | Vérifier `expires_at` | Générer nouveau code |
+| Code non utilisé | Vérifier `status` | Générer nouveau code |
+| Présence véhicule | `sensor_presence: true` | Capteur doit détecter |
+| Clé API ESP32 | Header X-API-Key | Vérifier dans ESP32 |
+| Places disponibles | `/parking/status` | Si plein, code requis |
+
+---
+
+## 5.4 Si l'Accès Admin Est Refusé
+
+| Vérifier | Comment | Solution |
+|----------|---------|----------|
+| Rôle dans Firestore | Collection `users` > document UID | Ajouter `role: "admin"` |
+| Token contient rôle | Décoder JWT | Re-login après modification |
+| Endpoint correct | `/admin/parking/*` | Pas `/admin/*` |
+| Token présent | Header `Authorization: Bearer ...` | Ajouter header |
+
+---
+
+## 5.5 Si le Token Est Invalide
+
+| Vérifier | Comment | Solution |
+|----------|---------|----------|
+| Token présent | localStorage.getItem('aeropark_token') | Re-login |
+| Format Bearer | `Authorization: Bearer TOKEN` | Ajouter "Bearer " |
+| Firebase config | `auth.js` firebaseConfig | Vérifier API keys |
+| Token expiré | jwt.io > exp claim | Re-login (token refresh) |
+
+---
+
+## 5.6 Si les Données Ne Chargent Pas
+
+| Vérifier | Comment | Solution |
+|----------|---------|----------|
+| Console errors | F12 > Console | Lire erreur |
+| Network requests | F12 > Network | Vérifier status codes |
+| CORS | Console > CORS error | Backend CORS config |
+| API_BASE_URL | `api.js` ligne 14 | `http://localhost:8000` |
+| Backend running | Terminal | Vérifier uvicorn |
+
+---
+
+# 6. VÉRIFICATION FRONTEND
+
+## 6.1 États Visuels des Places
+
+| État | Couleur | Icône | Classe CSS | API `etat` |
+|------|---------|-------|------------|------------|
+| Libre | 🟢 Vert | ✓ | `.free`, `.status-dot.online` | `"free"` |
+| Réservée | 🟡 Jaune | ⏳ | `.reserved`, `.status-dot.pending` | `"reserved"` |
+| Occupée | 🔴 Rouge | ✗ | `.occupied`, `.status-dot.offline` | `"occupied"` |
+
+---
+
+## 6.2 Transitions d'État Attendues
+
+```
+SCÉNARIO COMPLET:
+
+1. Place libre (🟢 free)
+        ↓ [Utilisateur réserve]
+2. Place réservée (🟡 reserved)
+        ↓ [Véhicule entre + code validé]
+3. Place occupée (🔴 occupied)
+        ↓ [Véhicule sort]
+4. Place libre (🟢 free)
+```
+
+---
+
+## 6.3 Comportements UI à Vérifier
+
+### Page Accueil
+- [ ] Grille parking affiche toutes les places
+- [ ] Compteurs mis à jour en temps réel
+- [ ] Clic sur place libre → Modal réservation
+- [ ] Clic sur place occupée → Rien / info
+
+### Page Dashboard User
+- [ ] Statistiques personnelles affichées
+- [ ] Réservation active visible
+- [ ] Bouton "Code d'Accès" fonctionne
+- [ ] Compte à rebours temps restant
+
+### Page Réservations
+- [ ] Liste toutes les réservations
+- [ ] Filtres fonctionnent (statut, date)
+- [ ] Bouton Annuler (si à venir)
+- [ ] Bouton Prolonger (si actif)
+
+### Page Codes d'Accès
+- [ ] Dropdown réservations peuplé
+- [ ] Génération code fonctionne
+- [ ] Code affiché en grand
+- [ ] Compte à rebours expiration
+- [ ] Bouton copier fonctionne
+
+### Page Paiements
+- [ ] Paiements en attente listés
+- [ ] Sélection méthode (Orange/Airtel/M-Pesa)
+- [ ] Champ téléphone apparaît
+- [ ] Historique paiements affiché
+
+### Navigation Mobile
+- [ ] Menu hamburger fonctionne
+- [ ] Menu se ferme après clic
+- [ ] Liens corrects
+
+---
+
+## 6.4 Messages Toast Attendus
+
+| Action | Toast Succès | Toast Erreur |
+|--------|--------------|--------------|
+| Login | "Connexion Réussie" | "Identifiants incorrects" |
+| Register | "Compte Créé" | "Email déjà utilisé" |
+| Réservation | "Réservation Confirmée" | "Place non disponible" |
+| Paiement | "Paiement effectué" | "Échec du paiement" |
+| Annulation | "Réservation annulée" | "Impossible d'annuler" |
+| Code généré | "Code généré avec succès" | "Échec de génération" |
+| Déconnexion | "Déconnexion réussie" | - |
+
+---
+
+# 7. TESTS ESP32/CAPTEURS
+
+## 7.1 Simulation Capteur (Sans Matériel)
+
+```powershell
+# Simuler détection véhicule sur place a1
+curl -X POST "http://localhost:8000/api/v1/sensor/update" `
+  -H "X-API-Key: YOUR_API_KEY" `
+  -H "Content-Type: application/json" `
+  -d '{"sensor_id":"sensor_a1","place_id":"a1","presence":true}'
+
+# Simuler départ véhicule
+curl -X POST "http://localhost:8000/api/v1/sensor/update" `
+  -H "X-API-Key: YOUR_API_KEY" `
+  -H "Content-Type: application/json" `
+  -d '{"sensor_id":"sensor_a1","place_id":"a1","presence":false}'
+```
+
+---
+
+## 7.2 Test Flux Complet ESP32
+
+### Scénario: Entrée avec Places Libres
+
+```
+1. ESP32 détecte véhicule à l'entrée
+   → POST /api/v1/access/check-entry?sensor_presence=true
+   
+2. Backend répond: access_granted=true (places libres)
+   
+3. ESP32 ouvre barrière
+   → POST /api/v1/barrier/open (reason="auto_free")
+   
+4. Véhicule entre, se gare sur place a1
+   
+5. Capteur a1 détecte présence
+   → POST /api/v1/sensor/update (place_id=a1, presence=true)
+   
+6. Place a1 devient "occupied"
+```
+
+### Scénario: Entrée avec Code (Parking Plein)
+
+```
+1. ESP32 détecte véhicule à l'entrée
+   → POST /api/v1/access/check-entry?sensor_presence=true
+   
+2. Backend répond: access_granted=false (parking plein)
+   
+3. Utilisateur entre code "ABC"
+   → POST /api/v1/access/validate-code (code="ABC")
+   
+4. Backend répond: access_granted=true, place_id="a2"
+   
+5. ESP32 ouvre barrière
+   
+6. Véhicule se gare sur a2
+   
+7. Place a2 → "occupied"
+```
+
+### Scénario: Sortie
+
+```
+1. Capteur a1 ne détecte plus véhicule
+   → POST /api/v1/sensor/update (place_id=a1, presence=false)
+   
+2. Place a1 → "free" (si réservation terminée)
+   OU → "reserved" (si réservation encore active)
+   
+3. Véhicule arrive à barrière sortie
+   
+4. ESP32 détecte présence
+   → POST /api/v1/access/exit?sensor_presence=true
+   
+5. Barrière s'ouvre automatiquement
+```
+
+---
+
+## 7.3 Vérification WebSocket (Temps Réel)
+
+```javascript
+// Ouvrir dans la console du navigateur
+const ws = new WebSocket('ws://localhost:8000/ws/parking');
+
+ws.onopen = () => console.log('WebSocket connecté');
+
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log('Mise à jour reçue:', data);
+};
+
+ws.onerror = (error) => console.error('Erreur WS:', error);
+```
+
+**Test:** Changer état d'une place via curl, vérifier que le message arrive.
+
+---
+
+# 8. RÉSUMÉ DES TESTS
+
+## Checklist Finale Avant Production
+
+### Backend
+- [ ] Health check OK
+- [ ] Tous les endpoints répondent
 - [ ] Firebase connecté
-- [ ] 6 places initialisées
-- [ ] Health check répond
-- [ ] Authentification API Key fonctionne
-- [ ] Mise à jour capteur fonctionne
-- [ ] WebSocket envoie les notifications
+- [ ] Scheduler actif
+- [ ] WebSocket fonctionnel
 
-## ESP32
-- [ ] Connexion WiFi réussie
-- [ ] Connexion serveur réussie
-- [ ] LCD affiche correctement
-- [ ] 6 capteurs IR détectent
-- [ ] Servo barrière fonctionne
-- [ ] Mises à jour envoyées au serveur
+### Frontend - Public
+- [ ] Page accueil charge
+- [ ] Login fonctionne
+- [ ] Register fonctionne
+- [ ] État parking visible
 
-## Firebase
-- [ ] Collection parking_places existe
-- [ ] 6 documents (a1-a6) présents
-- [ ] États mis à jour en temps réel
+### Frontend - User
+- [ ] Dashboard charge
+- [ ] Réservation fonctionne
+- [ ] Codes d'accès générés
+- [ ] Paiements fonctionnent
+- [ ] Annulation fonctionne
+
+### Frontend - Admin
+- [ ] Accès admin OK
+- [ ] Stats affichées
+- [ ] Force release OK
+- [ ] Liste codes OK
+- [ ] Liste paiements OK
+
+### Intégration ESP32
+- [ ] Capteurs envoient données
+- [ ] Barrière répond aux commandes
+- [ ] Codes validés correctement
+- [ ] Transitions d'état correctes
+
+### Mobile/PWA
+- [ ] Responsive OK
+- [ ] Menu hamburger OK
+- [ ] PWA installable
+- [ ] Mode hors ligne basique
 
 ---
 
-**🎉 Si tous les tests passent, votre système AeroPark est prêt pour la production !**
+**Document généré le:** 26 janvier 2026
+**Version:** 1.0
+**Projet:** AeroPark GOMA - Système de Parking Intelligent
