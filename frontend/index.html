@@ -3,570 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <meta name="description" content="AeroPark GOMA - Système de Gestion de Parking Aéroportuaire Intelligent. Réservez vos places, générez des codes d'accès et gérez vos paiements facilement.">
-    <meta name="theme-color" content="#1e3a5f">
+    <meta name="description" content="AeroPark GOMA - Système de parking automatisé à l'aéroport de Goma. Réservez votre place en ligne 24/7.">
+    <meta name="keywords" content="parking, aéroport, Goma, RDC, réservation, automatisé">
+    <meta name="theme-color" content="#2563eb">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="AeroPark">
-    
-    <title>AeroPark GOMA - Parking Aéroportuaire Intelligent</title>
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16x16.png">
-    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
-    
+    <title>AeroPark GOMA - Parking Automatisé</title>
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
-    
-    <!-- Stylesheets -->
-    <link rel="stylesheet" href="css/styles.css">
-    
-    <!-- Preconnect for performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="dns-prefetch" href="//localhost:8000">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Preload critical resources -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 </head>
 <body>
-    <!-- Bannière Hors Ligne -->
-    <div class="offline-banner" id="offline-banner">
-        ⚠️ Vous êtes actuellement hors ligne. Certaines fonctionnalités peuvent être limitées.
-    </div>
-    
-    <!-- En-tête -->
-    <header class="header">
-        <div class="header-container">
-            <a href="/frontend/index.html" class="logo">
-                <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <path d="M12 24 L20 8 L28 24 M15 20 L25 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <circle cx="20" cy="28" r="3" fill="currentColor"/>
-                </svg>
-                <span>AeroPark <span style="font-weight: 400; opacity: 0.8;">GOMA</span></span>
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+    <!-- Navigation -->
+    <nav class="navbar" role="navigation" aria-label="Navigation principale">
+        <a href="index.html" class="nav-brand" aria-label="AeroPark GOMA - Accueil">
+            <i class="fas fa-plane" aria-hidden="true"></i>
+            <span>AeroPark GOMA</span>
+        </a>
+        <ul class="nav-links" id="nav-links" role="menubar">
+            <li role="none"><a href="index.html" class="active" role="menuitem"><i class="fas fa-home" aria-hidden="true"></i> Accueil</a></li>
+            <li role="none"><a href="#" onclick="handleReserveClick(event)" role="menuitem"><i class="fas fa-ticket-alt" aria-hidden="true"></i> Réserver</a></li>
+            <li id="auth-links" role="none">
+                <a href="pages/login.html" class="btn btn-outline" role="menuitem"><i class="fas fa-sign-in-alt" aria-hidden="true"></i> Connexion</a>
+                <a href="pages/register.html" class="btn btn-primary" role="menuitem"><i class="fas fa-user-plus" aria-hidden="true"></i> Inscription</a>
+            </li>
+            <li id="user-menu" class="hidden" role="none">
+                <span class="user-name" aria-label="Utilisateur connecté"></span>
+                <a href="#" class="btn btn-outline" id="logout-btn" role="menuitem"><i class="fas fa-sign-out-alt" aria-hidden="true"></i> Déconnexion</a>
+            </li>
+        </ul>
+        <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false" aria-controls="nav-links">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero" role="banner">
+        <div class="hero-content">
+            <h1>Bienvenue sur <span class="highlight">AeroPark GOMA</span></h1>
+            <p>Système de parking automatisé aéroportuaire</p>
+            <a href="#" class="btn btn-large btn-primary" id="reserve-btn" onclick="handleReserveClick(event)" role="button">
+                <i class="fas fa-car" aria-hidden="true"></i> Réserver une place
             </a>
-            
-            <button class="nav-toggle" id="nav-toggle" aria-label="Menu de navigation" aria-expanded="false">
-                <span id="nav-toggle-icon">☰</span>
-            </button>
-            
-            <nav>
-                <ul class="nav-menu" id="nav-menu">
-                    <li><a href="index.html" class="nav-link active">🏠 Accueil</a></li>
-                    
-                    <!-- Liens Visiteurs -->
-                    <li class="guest-only"><a href="pages/public/login.html" class="nav-link">🔐 Connexion</a></li>
-                    <li class="guest-only"><a href="pages/public/register.html" class="nav-link btn btn-secondary btn-sm">📝 Inscription</a></li>
-                    
-                    <!-- Liens Utilisateurs Connectés -->
-                    <li class="auth-only"><a href="/frontend/pages/user/dashboard.html" class="nav-link">📊 Tableau de bord</a></li>
-                    <li class="auth-only"><a href="/frontend/pages/user/reservations.html" class="nav-link">📅 Mes Réservations</a></li>
-                    
-                    <!-- Liens Admin -->
-                    <li class="admin-only"><a href="/frontend/pages/admin/dashboard.html" class="nav-link">⚙️ Administration</a></li>
-                    
-                    <!-- Déconnexion -->
-                    <li class="auth-only">
-                        <a href="#" class="nav-link" id="logout-btn">🚪 Déconnexion</a>
-                    </li>
-                </ul>
-            </nav>
+        </div>
+        <div class="hero-illustration" aria-hidden="true">
+            <i class="fas fa-parking"></i>
         </div>
     </header>
-    
-    <!-- Contenu Principal -->
-    <main class="main-content">
-        <div class="container">
-            <!-- Section Hero -->
-            <section class="hero" style="text-align: center; padding: var(--spacing-12) 0;">
-                <div class="airplane-icon" style="font-size: 4rem; margin-bottom: var(--spacing-4);">✈️</div>
-                <h1 style="font-size: 3rem; margin-bottom: var(--spacing-4);">
-                    Parking Aéroportuaire Intelligent
-                </h1>
-                <p style="font-size: 1.25rem; max-width: 600px; margin: 0 auto var(--spacing-8);">
-                    Réservez votre place de parking à l'avance, générez des codes d'accès uniques et profitez d'un stationnement sans stress à l'Aéroport de GOMA.
-                </p>
-                <div class="flex justify-center gap-4" style="flex-wrap: wrap;">
-                    <a href="/frontend/pages/public/register.html" class="btn btn-primary btn-lg guest-only">🚀 Commencer</a>
-                    <a href="/frontend/pages/user/reservations.html" class="btn btn-primary btn-lg auth-only">📅 Réserver Maintenant</a>
-                    <a href="#parking-status" class="btn btn-outline btn-lg">📍 Voir Disponibilité</a>
-                </div>
-            </section>
-            
-            <!-- Section Statistiques -->
-            <section class="stats-section" style="margin-bottom: var(--spacing-12);">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-card-icon success">🟢</div>
-                        <div class="stat-card-value" id="available-count">--</div>
-                        <div class="stat-card-label">Places Disponibles</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-icon warning">🟡</div>
-                        <div class="stat-card-value" id="reserved-count">--</div>
-                        <div class="stat-card-label">Réservées</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-icon danger">🔴</div>
-                        <div class="stat-card-value" id="occupied-count">--</div>
-                        <div class="stat-card-label">Occupées</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-icon primary">🅿️</div>
-                        <div class="stat-card-value" id="total-count">--</div>
-                        <div class="stat-card-label">Capacité Totale</div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Section Grille Parking -->
-            <section id="parking-status" class="parking-section" style="margin-bottom: var(--spacing-12);">
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">🅿️ État du Parking en Temps Réel</h2>
-                        <button class="btn btn-sm btn-outline" id="refresh-parking">
-                            🔄 Actualiser
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <!-- Légende -->
-                        <div class="flex gap-6 mb-6" style="flex-wrap: wrap;">
-                            <div class="flex items-center gap-2">
-                                <span class="status-dot online"></span>
-                                <span>Disponible</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="status-dot pending"></span>
-                                <span>Réservée</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="status-dot offline"></span>
-                                <span>Occupée</span>
-                            </div>
+
+    <!-- Main Content -->
+    <main id="main-content">
+        <!-- Stats Section -->
+        <section class="stats-section" aria-labelledby="stats-title">
+            <div class="container">
+                <h2 class="section-title" id="stats-title">État du Parking en Temps Réel</h2>
+                <div class="stats-grid" role="list">
+                    <!-- Total Places -->
+                    <article class="stat-card" role="listitem">
+                        <div class="stat-icon total" aria-hidden="true">
+                            <i class="fas fa-warehouse"></i>
                         </div>
-                        
-                        <!-- Grille Parking -->
-                        <div class="parking-grid" id="parking-grid">
-                            <!-- Skeleton de chargement -->
-                            <div class="skeleton" style="height: 120px;"></div>
-                            <div class="skeleton" style="height: 120px;"></div>
-                            <div class="skeleton" style="height: 120px;"></div>
-                            <div class="skeleton" style="height: 120px;"></div>
-                            <div class="skeleton" style="height: 120px;"></div>
-                            <div class="skeleton" style="height: 120px;"></div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="total-places" aria-live="polite">0</span>
+                            <span class="stat-label">Places Totales</span>
                         </div>
-                    </div>
+                    </article>
+
+                    <!-- Places Disponibles -->
+                    <article class="stat-card" role="listitem">
+                        <div class="stat-icon available" aria-hidden="true">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="available-places" aria-live="polite">0</span>
+                            <span class="stat-label">Places Disponibles</span>
+                        </div>
+                    </article>
+
+                    <!-- Places Occupées -->
+                    <article class="stat-card" role="listitem">
+                        <div class="stat-icon occupied" aria-hidden="true">
+                            <i class="fas fa-car"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="occupied-places" aria-live="polite">0</span>
+                            <span class="stat-label">Places Occupées</span>
+                        </div>
+                    </article>
+
+                    <!-- Taux d'occupation -->
+                    <article class="stat-card" role="listitem">
+                        <div class="stat-icon rate" aria-hidden="true">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="occupation-rate" aria-live="polite">0%</span>
+                            <span class="stat-label">Taux d'Occupation</span>
+                        </div>
+                    </article>
                 </div>
-            </section>
-            
-            <!-- Section Fonctionnalités -->
-            <section class="features-section" style="margin-bottom: var(--spacing-12);">
-                <h2 class="text-center" style="margin-bottom: var(--spacing-8);">✨ Pourquoi Choisir AeroPark ?</h2>
-                <div class="grid grid-cols-3" style="gap: var(--spacing-6);">
-                    <div class="feature-card">
-                        <div class="feature-card-icon">📱</div>
-                        <h3>Application Mobile</h3>
-                        <p>Accédez depuis n'importe quel appareil. Installez l'application pour un accès rapide.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-card-icon">🔐</div>
-                        <h3>Accès Sécurisé</h3>
-                        <p>Codes d'accès uniques pour l'entrée et la sortie. Plus besoin de tickets physiques.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-card-icon">💳</div>
-                        <h3>Paiement Facile</h3>
-                        <p>Orange Money, Airtel Money, M-Pesa. Payez en ligne avant de partir.</p>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Bannière Installation PWA -->
-            <section class="install-banner card" id="install-section" style="display: none; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white;">
-                <div class="flex items-center justify-between" style="flex-wrap: wrap; gap: var(--spacing-4);">
-                    <div>
-                        <h3 style="color: white; margin-bottom: var(--spacing-2);">📲 Installer l'Application AeroPark</h3>
-                        <p style="color: rgba(255,255,255,0.8); margin: 0;">Accès rapide depuis votre écran d'accueil</p>
-                    </div>
-                    <button class="btn btn-secondary" id="install-btn">Installer</button>
-                </div>
-            </section>
-        </div>
-    </main>
-    
-    <!-- Pied de Page -->
-    <footer class="footer">
-        <div class="container text-center">
-            <div class="footer-logo" style="justify-content: center;">
-                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <path d="M12 24 L20 8 L28 24 M15 20 L25 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                <span>AeroPark GOMA</span>
             </div>
-            <p style="margin-bottom: var(--spacing-4);">
-                &copy; 2024 AeroPark GOMA. Système de Gestion de Parking Aéroportuaire Intelligent.
-            </p>
-            <p style="font-size: var(--font-size-sm);">
-                <a href="#">Politique de Confidentialité</a> &bull; 
-                <a href="#">Conditions d'Utilisation</a> &bull; 
-                <a href="#">Nous Contacter</a>
-            </p>
+        </section>
+
+        <!-- Visual Indicator Section -->
+        <section class="visual-section" aria-labelledby="visual-title">
+            <div class="container">
+                <h2 class="section-title visually-hidden" id="visual-title">Indicateur Visuel</h2>
+                <div class="visual-indicator">
+                    <figure class="progress-ring" role="img" aria-label="Indicateur de taux d'occupation">
+                        <svg class="progress-svg" viewBox="0 0 200 200" aria-hidden="true">
+                            <circle class="progress-bg" cx="100" cy="100" r="90"></circle>
+                            <circle class="progress-bar" cx="100" cy="100" r="90" id="progress-circle"></circle>
+                        </svg>
+                        <figcaption class="progress-text">
+                            <span id="progress-percent" aria-live="polite">0%</span>
+                            <small>Occupé</small>
+                        </figcaption>
+                    </figure>
+                    <div class="status-indicator" id="status-indicator" role="status" aria-live="polite">
+                        <div class="status-light" aria-hidden="true"></div>
+                        <span class="status-text">Chargement...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Parking Map Preview -->
+        <section class="map-section" aria-labelledby="map-title">
+            <div class="container">
+                <h2 class="section-title" id="map-title">Aperçu du Parking</h2>
+                <p class="section-subtitle">Vue en temps réel des places disponibles</p>
+                <div class="parking-map-preview" id="parking-preview" role="grid" aria-label="Plan du parking">
+                    <!-- Les places seront générées par JavaScript -->
+                </div>
+                <div class="map-legend" role="list" aria-label="Légende du plan">
+                    <div class="legend-item" role="listitem">
+                        <span class="legend-color available" aria-hidden="true"></span>
+                        <span>Disponible</span>
+                    </div>
+                    <div class="legend-item" role="listitem">
+                        <span class="legend-color occupied" aria-hidden="true"></span>
+                        <span>Occupée</span>
+                    </div>
+                    <div class="legend-item" role="listitem">
+                        <span class="legend-color reserved" aria-hidden="true"></span>
+                        <span>Réservée</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features-section" aria-labelledby="features-title">
+            <div class="container">
+                <h2 class="section-title" id="features-title">Nos Services</h2>
+                <div class="features-grid">
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3>Réservation 24/7</h3>
+                        <p>Réservez votre place à tout moment, depuis n'importe où.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h3>Sécurité Maximale</h3>
+                        <p>Surveillance vidéo et contrôle d'accès sécurisé.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h3>Accès Mobile</h3>
+                        <p>Interface responsive adaptée à tous les appareils.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h3>Temps Réel</h3>
+                        <p>Informations actualisées en permanence.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <i class="fas fa-plane" aria-hidden="true"></i>
+                    <span>AeroPark GOMA - Parking Automatisé</span>
+                </div>
+                <p><small>&copy; 2025 AeroPark GOMA. Tous droits réservés.</small></p>
+            </div>
         </div>
     </footer>
-    
-    <!-- Modal de Réservation -->
-    <div class="modal-backdrop" id="reservation-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">📅 Réserver une Place</h3>
-                <button class="modal-close" id="close-modal" aria-label="Fermer">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="reservation-form">
-                    <div class="form-group">
-                        <label class="form-label">Place de Parking</label>
-                        <input type="text" class="form-input" id="modal-spot-id" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Date et Heure de Début</label>
-                        <input type="datetime-local" class="form-input" id="start-time" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Date et Heure de Fin</label>
-                        <input type="datetime-local" class="form-input" id="end-time" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Numéro de Plaque</label>
-                        <input type="text" class="form-input" id="vehicle-plate" placeholder="ex: ABC-1234" required>
-                    </div>
-                    <div class="card" style="background: var(--gray-50); margin-top: var(--spacing-4);">
-                        <div class="flex justify-between">
-                            <span>Coût Estimé:</span>
-                            <strong id="estimated-cost">$0.00</strong>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" id="cancel-reservation" type="button">Annuler</button>
-                <button class="btn btn-primary" id="confirm-reservation" type="button">✅ Confirmer</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Conteneur Toast -->
-    <div class="toast-container" id="toast-container"></div>
-    
-    <!-- Scripts -->
-    <script src="js/services/api.js"></script>
-    <script src="js/services/auth.js"></script>
-    <script src="js/services/state.js"></script>
-    <script src="js/services/notifications.js"></script>
-    <script src="js/utils/helpers.js"></script>
-    <script src="js/app.js"></script>
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    
-    <!-- Script de la Page -->
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
     <script>
-        // Traductions françaises
-        const STATUS_FR = {
-            free: 'Disponible',
-            reserved: 'Réservée',
-            occupied: 'Occupée'
-        };
-        
-        const STATUS_ICONS = {
-            free: '🟢',
-            reserved: '🟡',
-            occupied: '🔴'
-        };
-        
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Initialiser le menu hamburger
-            initHamburgerMenu();
+        function handleReserveClick(event) {
+            event.preventDefault();
             
-            // Charger les données du parking
-            await loadParkingData();
-            
-            // Bouton actualiser
-            const refreshBtn = document.getElementById('refresh-parking');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', loadParkingData);
-            }
-            
-            // Gestionnaires de modal
-            setupModalHandlers();
-            
-            // Calculer le coût lors du changement de date
-            const startTimeInput = document.getElementById('start-time');
-            const endTimeInput = document.getElementById('end-time');
-            if (startTimeInput) startTimeInput.addEventListener('change', calculateEstimatedCost);
-            if (endTimeInput) endTimeInput.addEventListener('change', calculateEstimatedCost);
-            
-            // Bouton de déconnexion
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    localStorage.clear();
-                    showToast('Déconnexion réussie', 'À bientôt !', 'success');
-                    setTimeout(() => {
-                        window.location.href = '/frontend/pages/public/login.html';
-                    }, 1000);
-                });
-            }
-        });
-        
-        // Initialiser le menu hamburger
-        function initHamburgerMenu() {
-            const navToggle = document.getElementById('nav-toggle');
-            const navMenu = document.getElementById('nav-menu');
-            const navToggleIcon = document.getElementById('nav-toggle-icon');
-            
-            if (navToggle && navMenu) {
-                navToggle.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const isActive = navMenu.classList.toggle('active');
-                    navToggle.classList.toggle('active', isActive);
-                    navToggle.setAttribute('aria-expanded', isActive);
-                    if (navToggleIcon) navToggleIcon.textContent = isActive ? '✕' : '☰';
-                });
-                
-                // Fermer le menu en cliquant ailleurs
-                document.addEventListener('click', (e) => {
-                    if (!navMenu.contains(e.target) && !navToggle.contains(e.target)) {
-                        navMenu.classList.remove('active');
-                        navToggle.classList.remove('active');
-                        navToggle.setAttribute('aria-expanded', 'false');
-                        if (navToggleIcon) navToggleIcon.textContent = '☰';
-                    }
-                });
-                
-                // Fermer le menu lors du clic sur un lien
-                navMenu.querySelectorAll('.nav-link').forEach(link => {
-                    link.addEventListener('click', () => {
-                        navMenu.classList.remove('active');
-                        navToggle.classList.remove('active');
-                        if (navToggleIcon) navToggleIcon.textContent = '☰';
-                    });
-                });
-            }
-        }
-        
-        async function loadParkingData() {
-            const grid = document.getElementById('parking-grid');
-            
-            try {
-                const response = await ApiService.getParkingStatus();
-                const spots = response.places || response.spots || [];
-                
-                // Normaliser le format des places
-                const normalizedSpots = spots.map(spot => ({
-                    id: spot.id || spot.place_id,
-                    status: spot.etat || spot.status || 'free'
-                }));
-                
-                updateStats(normalizedSpots);
-                if (typeof StateService !== 'undefined') {
-                    StateService.cacheParkingSpots(normalizedSpots);
-                }
-                renderParkingGrid(normalizedSpots);
-            } catch (error) {
-                console.error('Erreur de chargement:', error);
-                
-                // Essayer les données en cache
-                if (typeof StateService !== 'undefined') {
-                    const cached = StateService.getCachedParkingSpots();
-                    if (cached && cached.spots && cached.spots.length > 0) {
-                        updateStats(cached.spots);
-                        renderParkingGrid(cached.spots);
-                        showToast('Mode hors ligne', 'Affichage des données en cache.', 'warning');
-                    } else {
-                        showNoDataMessage();
-                    }
-                } else {
-                    showNoDataMessage();
-                }
-            }
-        }
-        
-        function showNoDataMessage() {
-            const grid = document.getElementById('parking-grid');
-            grid.innerHTML = `
-                <div class="text-center p-6" style="grid-column: 1 / -1;">
-                    <p class="text-muted">Impossible de charger les données du parking. Vérifiez votre connexion.</p>
-                    <button class="btn btn-primary mt-4" onclick="loadParkingData()">Réessayer</button>
-                </div>
-            `;
-            document.getElementById('available-count').textContent = '--';
-            document.getElementById('reserved-count').textContent = '--';
-            document.getElementById('occupied-count').textContent = '--';
-            document.getElementById('total-count').textContent = '--';
-        }
-        
-        function updateStats(spots) {
-            const available = spots.filter(s => s.status === 'free').length;
-            const reserved = spots.filter(s => s.status === 'reserved').length;
-            const occupied = spots.filter(s => s.status === 'occupied').length;
-            
-            document.getElementById('available-count').textContent = available;
-            document.getElementById('reserved-count').textContent = reserved;
-            document.getElementById('occupied-count').textContent = occupied;
-            document.getElementById('total-count').textContent = spots.length;
-        }
-        
-        function renderParkingGrid(spots) {
-            const grid = document.getElementById('parking-grid');
-            const isAuthenticated = localStorage.getItem('aeropark_token');
-            
-            grid.innerHTML = spots.map(spot => `
-                <div class="parking-spot ${spot.status}" 
-                     data-spot-id="${spot.id}" 
-                     data-status="${spot.status}"
-                     ${spot.status === 'free' ? 'onclick="openReservationModal(\'' + spot.id + '\')"' : ''}
-                     role="button"
-                     tabindex="0"
-                     aria-label="Place ${spot.id} - ${STATUS_FR[spot.status]}">
-                    <span class="parking-spot-id">${spot.id}</span>
-                    <span class="parking-spot-status">${STATUS_ICONS[spot.status]} ${STATUS_FR[spot.status]}</span>
-                </div>
-            `).join('');
-        }
-        
-        function setupModalHandlers() {
-            const modal = document.getElementById('reservation-modal');
-            const closeBtn = document.getElementById('close-modal');
-            const cancelBtn = document.getElementById('cancel-reservation');
-            const confirmBtn = document.getElementById('confirm-reservation');
-            
-            if (closeBtn) closeBtn.addEventListener('click', closeModal);
-            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-            if (modal) {
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) closeModal();
-                });
-            }
-            
-            if (confirmBtn) confirmBtn.addEventListener('click', submitReservation);
-        }
-        
-        function openReservationModal(spotId) {
-            const isAuthenticated = localStorage.getItem('aeropark_token');
-            
-            if (!isAuthenticated) {
-                showToast('Connexion Requise', 'Veuillez vous connecter pour réserver.', 'warning');
-                setTimeout(() => {
-                    window.location.href = '/frontend/pages/public/login.html';
+            if (Auth.isLoggedIn()) {
+                window.location.href = 'pages/reservation.html';
+            } else {
+                showNotification('Veuillez vous connecter pour réserver une place.', 'warning');
+                setTimeout(function() {
+                    window.location.href = 'pages/login.html';
                 }, 1500);
-                return;
             }
-            
-            document.getElementById('modal-spot-id').value = spotId;
-            
-            // Définir les heures par défaut
-            const now = new Date();
-            now.setMinutes(0, 0, 0);
-            now.setHours(now.getHours() + 1);
-            
-            const end = new Date(now);
-            end.setHours(end.getHours() + 4);
-            
-            document.getElementById('start-time').value = formatDateTimeLocal(now);
-            document.getElementById('end-time').value = formatDateTimeLocal(end);
-            
-            calculateEstimatedCost();
-            
-            document.getElementById('reservation-modal').classList.add('active');
-        }
-        
-        function closeModal() {
-            document.getElementById('reservation-modal').classList.remove('active');
-        }
-        
-        function formatDateTimeLocal(date) {
-            return date.toISOString().slice(0, 16);
-        }
-        
-        function calculateEstimatedCost() {
-            const startTime = document.getElementById('start-time').value;
-            const endTime = document.getElementById('end-time').value;
-            
-            if (startTime && endTime) {
-                const start = new Date(startTime);
-                const end = new Date(endTime);
-                const hours = Math.ceil((end - start) / (1000 * 60 * 60));
-                const cost = Math.max(0, hours * 5);
-                document.getElementById('estimated-cost').textContent = '$' + cost.toFixed(2);
-            }
-        }
-        
-        async function submitReservation() {
-            const spotId = document.getElementById('modal-spot-id').value;
-            const startTime = document.getElementById('start-time').value;
-            const endTime = document.getElementById('end-time').value;
-            const vehiclePlate = document.getElementById('vehicle-plate').value;
-            
-            if (!startTime || !endTime || !vehiclePlate) {
-                showToast('Erreur', 'Veuillez remplir tous les champs.', 'error');
-                return;
-            }
-            
-            const confirmBtn = document.getElementById('confirm-reservation');
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML = '<span class="loading-spinner"></span> Traitement...';
-            
-            try {
-                const reservation = await ApiService.createReservation({
-                    spot_id: spotId,
-                    start_time: new Date(startTime).toISOString(),
-                    end_time: new Date(endTime).toISOString(),
-                    vehicle_plate: vehiclePlate
-                });
-                
-                if (typeof StateService !== 'undefined') {
-                    StateService.saveLastReservation(reservation);
-                }
-                
-                showToast('Réservation Confirmée', `Place ${spotId} réservée avec succès !`, 'success');
-                closeModal();
-                loadParkingData();
-                
-                setTimeout(() => {
-                    window.location.href = '/frontend/pages/user/reservations.html';
-                }, 1500);
-            } catch (error) {
-                showToast('Erreur', error.message || 'Échec de la réservation.', 'error');
-            } finally {
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = '✅ Confirmer';
-            }
-        }
-        
-        // Fonction Toast simple
-        function showToast(title, message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
-            
-            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
-            
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `
-                <span class="toast-icon">${icons[type]}</span>
-                <div class="toast-content">
-                    <div class="toast-title">${title}</div>
-                    <div class="toast-message">${message}</div>
-                </div>
-                <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
-            `;
-            
-            container.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.remove();
-            }, 5000);
         }
     </script>
 </body>

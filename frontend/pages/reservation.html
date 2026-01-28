@@ -246,108 +246,118 @@
         </div>
     </footer>
 
-    <script src="../js/data.js"></script>
+    <script src="../js/api.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/main.js"></script>
     <script>
-        // Vérifier si l'utilisateur est connecté au chargement
-        document.addEventListener('DOMContentLoaded', function() {
-            // Rediriger vers la connexion si non connecté
-            if (!Auth.isLoggedIn()) {
-                // Stocker l'URL de retour
-                sessionStorage.setItem('redirectAfterLogin', 'reservation.html');
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            // Si connecté, initialiser la page
-            initReservationPage();
-            initNavigation();
-        });
-
-        // Variables globales
-        let selectedSpot = null;
-        let selectedPaymentMethod = null;
-        const RATE_PER_HOUR = 1000; // 1000 FC par heure
-
-        function initReservationPage() {
-            updateParkingGrid();
-            updateQuickStats();
-            loadUserReservations();
-            updatePaymentAmount();
-
-            // Event listeners
-            document.getElementById('cancel-selection').addEventListener('click', clearSelection);
+        // Check if logged in
+        if (!Auth.isLoggedIn()) {
+            sessionStorage.setItem('redirectAfterLogin', 'reservation.html');
+            window.location.href = 'login.html';
         }
-
-        function initNavigation() {
-            const hamburger = document.querySelector('.hamburger');
-            const navLinks = document.querySelector('.nav-links');
-
-            if (hamburger && navLinks) {
-                hamburger.addEventListener('click', () => {
-                    hamburger.classList.toggle('active');
-                    navLinks.classList.toggle('active');
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            Auth.updateNavigation();
+            await initReservationPage();
+            initNavigation();
+            
+            // Logout button
+            var logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    Auth.logout();
                 });
             }
-        }
+        });
 
-        // Mettre à jour les stats rapides
-        function updateQuickStats() {
-            const stats = ParkingData.getStats();
-            document.getElementById('available-count').textContent = stats.available;
-            document.getElementById('occupied-count').textContent = stats.occupied + stats.reserved;
-        }
+        // Variables
+        var selectedSpot = null;
+        var selectedPaymentMethod = null;
+        var RATE_PER_HOUR = 1000;
+        var parkingData = { places: [], stats: {} };
 
-        // Générer la grille du parking
-        function updateParkingGrid() {
-            const container = document.getElementById('parking-grid');
-            container.innerHTML = '';
+        async function initReservationPage() {
+            await updateParkingGrid();
+            await loadUserReservations();
+            updatePaymentAmount();
+            document.getElementById('cancel-selection').addEventListener('click', clearSelection);
             
-            const spots = ParkingData.getAllSpots();
-            const user = Auth.getCurrentUser();
-
-            spots.forEach(spot => {
-                const spotElement = document.createElement('div');
-                spotElement.className = `parking-spot ${spot.status}`;
-                spotElement.dataset.id = spot.id;
-                
-                // Vérifier si c'est une réservation de l'utilisateur courant
-                let icon = 'fa-car';
-                if (spot.status === 'available') {
-                    icon = 'fa-plus';
-                } else if (spot.status === 'reserved') {
-                    icon = 'fa-clock';
-                    if (user && spot.reservedBy === user.userId) {
-                        spotElement.classList.add('my-reservation');
-                    }
-                }
-
-                spotElement.innerHTML = `
-                    <i class="fas ${icon}"></i>
-                    <span>${spot.id}</span>
-                `;
-
-                // Event click uniquement pour les places disponibles
-                if (spot.status === 'available') {
-                    spotElement.addEventListener('click', () => selectSpot(spot.id));
-                }
-
-                container.appendChild(spotElement);
-            });
-
-            updateQuickStats();
+            // Calcul automatique du prix quand la durée change
+            var durationInput = document.getElementById('duration');
+            durationInput.addEventListener('input', updatePaymentAmount);
+            durationInput.addEventListener('change', updatePaymentAmount);
         }
 
-        // Sélectionner une place
+        // Update quick stats
+        function updateQuickStats(stats) {
+            if (stats) {
+                document.getElementById('available-count').textContent = stats.available || 0;
+                document.getElementById('occupied-count').textContent = (stats.occupied || 0) + (stats.reserved || 0);
+            }
+        }
+
+        // Generate parking grid
+        async function updateParkingGrid() {
+            var container = document.getElementById('parking-grid');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>';
+            
+            try {
+                var response = await API.getParkingStatus();
+                parkingData = response;
+                
+                var spots = response.places || [];
+                var user = Auth.getUser();
+                
+                container.innerHTML = '';
+                
+                spots.forEach(function(spot) {
+                    var spotElement = document.createElement('div');
+                    // Backend uses 'etat' field: free, reserved, occupied
+                    var spotStatus = spot.etat || spot.status || 'free';
+                    var statusClass = spotStatus === 'free' ? 'available' : spotStatus;
+                    spotElement.className = 'parking-spot ' + statusClass;
+                    spotElement.dataset.id = spot.id;
+                    
+                    var icon = 'fa-car';
+                    if (spotStatus === 'free') {
+                        icon = 'fa-plus';
+                    } else if (spotStatus === 'reserved') {
+                        icon = 'fa-clock';
+                        if (user && spot.reserved_by === user.uid) {
+                            spotElement.classList.add('my-reservation');
+                        }
+                    }
+
+                    var spotId = spot.place_id || spot.id;
+                    spotElement.innerHTML = '<i class="fas ' + icon + '"></i><span>' + spotId + '</span>';
+
+                    if (spotStatus === 'free') {
+                        spotElement.addEventListener('click', function() { selectSpot(spotId); });
+                    }
+
+                    container.appendChild(spotElement);
+                });
+
+                var available = spots.filter(function(s) { return (s.etat || s.status) === 'free'; }).length;
+                var reserved = spots.filter(function(s) { return (s.etat || s.status) === 'reserved'; }).length;
+                var occupied = spots.filter(function(s) { return (s.etat || s.status) === 'occupied'; }).length;
+                updateQuickStats({ available: available, reserved: reserved, occupied: occupied });
+                
+            } catch (error) {
+                console.error('Error loading parking:', error);
+                container.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i> Erreur de chargement</div>';
+                showNotification('Impossible de charger les places de parking.', 'error');
+            }
+        }
+
+        // Select spot
         function selectSpot(spotId) {
-            // Retirer la sélection précédente
-            document.querySelectorAll('.parking-spot.selected').forEach(el => {
+            document.querySelectorAll('.parking-spot.selected').forEach(function(el) {
                 el.classList.remove('selected');
             });
 
-            // Sélectionner la nouvelle place
-            const spotElement = document.querySelector(`[data-id="${spotId}"]`);
+            var spotElement = document.querySelector('[data-id="' + spotId + '"]');
             if (spotElement) {
                 spotElement.classList.add('selected');
             }
@@ -365,35 +375,75 @@
             });
         }
 
-        // Annuler la sélection
+        // Clear selection
         function clearSelection() {
-            document.querySelectorAll('.parking-spot.selected').forEach(el => {
+            document.querySelectorAll('.parking-spot.selected').forEach(function(el) {
                 el.classList.remove('selected');
             });
             selectedSpot = null;
             selectedPaymentMethod = null;
             document.getElementById('reservation-form-container').classList.add('hidden');
-            document.querySelectorAll('.payment-option').forEach(opt => {
+            document.querySelectorAll('.payment-option').forEach(function(opt) {
                 opt.classList.remove('selected');
             });
             document.getElementById('phone-number').value = '';
         }
 
-        // Charger les réservations de l'utilisateur
-        function loadUserReservations() {
-            const container = document.getElementById('user-reservations');
-            const list = document.getElementById('reservation-list');
+        // Load user reservations
+        async function loadUserReservations() {
+            var container = document.getElementById('user-reservations');
+            var list = document.getElementById('reservation-list');
             
             if (!Auth.isLoggedIn()) {
                 container.classList.add('hidden');
                 return;
             }
 
-            const user = Auth.getCurrentUser();
-            // Utiliser getActiveUserReservations pour avoir uniquement les réservations actives et valides
-            const reservations = ParkingData.getActiveUserReservations(user.userId);
+            var user = Auth.getUser();
+            
+            try {
+                // Get active reservation from API
+                var response = await API.getMyReservation();
+                var reservation = response.reservation;
+                
+                if (!response.has_reservation || !reservation) {
+                    container.classList.remove('hidden');
+                    list.innerHTML = `
+                        <div class="no-reservations">
+                            <i class="fas fa-inbox" style="font-size: 3rem; color: var(--text-light); margin-bottom: 1rem;"></i>
+                            <p>Vous n'avez aucune réservation active.</p>
+                        </div>
+                    `;
+                    return;
+                }
 
-            if (reservations.length === 0) {
+                container.classList.remove('hidden');
+                
+                const statusLabel = reservation.status === 'occupied' ? 
+                    '<span class="status-badge occupied"><i class="fas fa-car"></i> Occupée</span>' : 
+                    '<span class="status-badge reserved"><i class="fas fa-clock"></i> Réservée</span>';
+                
+                const remaining = calculateRemainingTime(reservation.expires_at);
+                
+                list.innerHTML = `
+                    <div class="reservation-item" data-spot-id="${reservation.place_id}">
+                        <div class="info">
+                            <span class="spot-name"><i class="fas fa-parking"></i> Place ${reservation.place_id}</span>
+                            ${statusLabel}
+                            <span class="date"><i class="fas fa-calendar"></i> Réservée le ${formatDate(reservation.reserved_at)}</span>
+                            <div class="countdown-timer" data-spot="${reservation.place_id}" data-expires="${reservation.expires_at}">
+                                <i class="fas fa-hourglass-half"></i> 
+                                <span class="time-remaining">${formatRemainingTime(remaining)}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-danger" onclick="cancelReservation('${reservation.place_id}')">
+                            <i class="fas fa-times"></i> Annuler
+                        </button>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Erreur chargement réservations:', error);
                 container.classList.remove('hidden');
                 list.innerHTML = `
                     <div class="no-reservations">
@@ -401,37 +451,24 @@
                         <p>Vous n'avez aucune réservation active.</p>
                     </div>
                 `;
-                return;
             }
-
-            container.classList.remove('hidden');
-            list.innerHTML = reservations.map(res => {
-                const remaining = ParkingData.getRemainingTime(res.spotId);
-                const spot = ParkingData.getSpotById(res.spotId);
-                // Vérifier que la place existe toujours
-                if (!spot) return '';
-                
-                const statusLabel = spot.status === 'occupied' ? 
-                    '<span class="status-badge occupied"><i class="fas fa-car"></i> Occupée</span>' : 
-                    '<span class="status-badge reserved"><i class="fas fa-clock"></i> Réservée</span>';
-                
-                return `
-                    <div class="reservation-item" data-spot-id="${res.spotId}">
-                        <div class="info">
-                            <span class="spot-name"><i class="fas fa-parking"></i> Place ${res.spotId}</span>
-                            ${statusLabel}
-                            <span class="date"><i class="fas fa-calendar"></i> Réservée le ${formatDate(res.createdAt)}</span>
-                            <div class="countdown-timer" data-spot="${res.spotId}">
-                                <i class="fas fa-hourglass-half"></i> 
-                                <span class="time-remaining">${formatRemainingTime(remaining)}</span>
-                            </div>
-                        </div>
-                        <button class="btn btn-danger" onclick="cancelReservation('${res.spotId}')">
-                            <i class="fas fa-times"></i> Annuler
-                        </button>
-                    </div>
-                `;
-            }).join('');
+        }
+        
+        // Calculer le temps restant depuis expires_at
+        function calculateRemainingTime(expiresAt) {
+            if (!expiresAt) return { expired: true };
+            
+            const now = new Date();
+            const expires = new Date(expiresAt);
+            const diff = expires - now;
+            
+            if (diff <= 0) return { expired: true };
+            
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            return { hours, minutes, seconds, expired: false };
         }
 
         // Formater le temps restant
@@ -456,8 +493,8 @@
             const countdownElements = document.querySelectorAll('.countdown-timer');
             
             countdownElements.forEach(el => {
-                const spotId = el.dataset.spot;
-                const remaining = ParkingData.getRemainingTime(spotId);
+                const expiresAt = el.dataset.expires;
+                const remaining = calculateRemainingTime(expiresAt);
                 const timeSpan = el.querySelector('.time-remaining');
                 
                 if (timeSpan) {
@@ -469,27 +506,33 @@
                     } else {
                         el.classList.remove('urgent');
                     }
+                    
+                    // Si expiré, recharger les données
+                    if (remaining && remaining.expired) {
+                        updateParkingGrid();
+                        loadUserReservations();
+                    }
                 }
             });
-            
-            // Vérifier les réservations expirées
-            ParkingData.checkExpiredReservations();
         }
 
-        // Annuler une réservation
-        function cancelReservation(spotId) {
-            const user = Auth.getCurrentUser();
+        // Cancel reservation
+        async function cancelReservation(spotId) {
+            var user = Auth.getUser();
             if (!user) return;
 
-            if (confirm(`Voulez-vous vraiment annuler la réservation de la place ${spotId} ?`)) {
-                const success = ParkingData.cancelReservation(spotId, user.userId);
-                
-                if (success) {
+            if (confirm('Voulez-vous vraiment annuler la réservation de la place ' + spotId + ' ?')) {
+                try {
+                    // API call to release place
+                    await API.releasePlace(spotId);
+                    
                     showNotification(`Réservation de la place ${spotId} annulée.`, 'success');
-                    updateParkingGrid();
-                    loadUserReservations();
-                } else {
-                    showNotification('Impossible d\'annuler cette réservation.', 'error');
+                    await updateParkingGrid();
+                    await loadUserReservations();
+                    
+                } catch (error) {
+                    console.error('Erreur annulation:', error);
+                    showNotification('Impossible d\'annuler cette réservation: ' + error.message, 'error');
                 }
             }
         }
@@ -506,11 +549,15 @@
             return new Date(dateString).toLocaleDateString('fr-FR', options);
         }
 
-        // Mise à jour en temps réel (grille et compteurs)
+        // Mise à jour en temps réel (compteurs seulement)
         setInterval(() => {
-            updateParkingGrid();
             updateCountdowns();
         }, 1000);
+        
+        // Rafraîchir la grille toutes les 30 secondes
+        setInterval(async () => {
+            await updateParkingGrid();
+        }, 30000);
 
         // ========================================
         // Fonctions de Paiement
@@ -518,13 +565,14 @@
 
         // Mettre à jour le montant à payer
         function updatePaymentAmount() {
-            let duration = parseInt(document.getElementById('duration').value) || 0;
+            let duration = parseFloat(document.getElementById('duration').value) || 0;
             
-            // Validation des limites
-            if (duration < 1) duration = 1;
+            // Validation des limites (accepter décimales comme 0.01h)
+            if (duration < 0.01) duration = 0.01;
             if (duration > 168) duration = 168;
             
-            const amount = duration * RATE_PER_HOUR;
+            // Calcul: 1000 FC/h, arrondi au franc supérieur
+            const amount = Math.ceil(duration * RATE_PER_HOUR);
             const formattedAmount = amount.toLocaleString('fr-FR');
             
             document.getElementById('payment-amount').textContent = formattedAmount;
@@ -538,7 +586,7 @@
                 if (remainingHours === 0) {
                     durationText = days + ' jour' + (days > 1 ? 's' : '') + ' (' + duration + 'h)';
                 } else {
-                    durationText = days + 'j ' + remainingHours + 'h (' + duration + 'h total)';
+                    durationText = days + 'j ' + remainingHours.toFixed(1) + 'h (' + duration + 'h total)';
                 }
             }
             
@@ -561,7 +609,7 @@
         }
 
         // Traiter le paiement
-        function processPayment() {
+        async function processPayment() {
             const phoneNumber = document.getElementById('phone-number').value.trim();
             const duration = parseInt(document.getElementById('duration').value) || 0;
             
@@ -572,7 +620,7 @@
             }
 
             if (duration < 1) {
-                showNotification('Veuillez entrer une durée valide (minimum 1 heure).', 'error');
+                showNotification('Veuillez entrer une durée valide (minimum 1 heure ou 0.01h pour test).', 'error');
                 return;
             }
 
@@ -594,62 +642,67 @@
             // Afficher le modal de traitement
             showPaymentModal('processing');
 
-            // Simuler le traitement du paiement (3 secondes)
-            setTimeout(() => {
-                // Simuler une réponse réussie (90% de chance de succès)
-                const success = Math.random() < 0.9;
+            // Mapper les méthodes de paiement au format backend
+            const paymentProviderMap = {
+                'orange': 'ORANGE_MONEY',
+                'airtel': 'AIRTEL_MONEY',
+                'mpesa': 'MPESA'
+            };
+            
+            const vehiclePlate = document.getElementById('vehicle-plate').value.trim();
+            const amount = duration * RATE_PER_HOUR;
+            const durationMinutes = duration * 60; // Convertir heures en minutes
+            
+            try {
+                // 1. Create reservation via API (15-480 minutes)
+                var reservationResponse = await API.createReservation(
+                    selectedSpot,
+                    durationMinutes
+                );
                 
-                if (success) {
-                    // Paiement réussi
-                    showPaymentModal('success');
-                    
-                    // Effectuer la réservation avec la durée
-                    const user = Auth.getCurrentUser();
-                    const vehiclePlate = document.getElementById('vehicle-plate').value.trim();
-                    const amount = duration * RATE_PER_HOUR;
-                    
-                    // Utiliser la nouvelle fonction avec durée
-                    ParkingData.reserveSpotWithDuration(
-                        selectedSpot, 
-                        user.userId, 
-                        duration,
-                        vehiclePlate
-                    );
-                    
-                    // Sauvegarder les détails du paiement
-                    savePaymentRecord({
-                        spotId: selectedSpot,
-                        userId: user.userId,
-                        userName: user.name,
-                        amount: amount,
-                        duration: duration,
-                        paymentMethod: selectedPaymentMethod,
-                        phoneNumber: phoneNumber,
-                        vehiclePlate: vehiclePlate,
-                        status: 'completed',
-                        paidAt: new Date().toISOString()
-                    });
-                    
-                } else {
-                    // Paiement échoué
-                    showPaymentModal('error');
+                // Get reservation ID for payment
+                var reservationId = reservationResponse.reservation_id || selectedSpot;
+                
+                // 2. Process Mobile Money payment via API
+                var paymentResponse = await API.processMobilePayment(
+                    paymentProviderMap[selectedPaymentMethod],
+                    phoneNumber,
+                    amount,
+                    reservationId
+                );
+                
+                // Store access code for offline access
+                if (paymentResponse.access_code) {
+                    localStorage.setItem('aeropark_last_access_code', paymentResponse.access_code);
+                    localStorage.setItem('aeropark_last_place', selectedSpot);
                 }
-            }, 3000);
+                
+                // Paiement réussi - show access code
+                showPaymentModal('success', paymentResponse.access_code);
+                
+            } catch (error) {
+                console.error('Erreur paiement/réservation:', error);
+                showPaymentModal('error');
+                
+                // Afficher le message d'erreur spécifique
+                const errorMessage = error.data?.detail || error.message || 'Une erreur est survenue';
+                document.getElementById('modal-message').textContent = errorMessage;
+            }
         }
 
         // Afficher le modal de paiement
-        function showPaymentModal(status) {
-            const modal = document.getElementById('payment-modal');
-            const icon = document.getElementById('modal-icon');
-            const title = document.getElementById('modal-title');
-            const message = document.getElementById('modal-message');
-            const btn = document.getElementById('modal-btn');
+        function showPaymentModal(status, accessCode) {
+            var modal = document.getElementById('payment-modal');
+            var icon = document.getElementById('modal-icon');
+            var title = document.getElementById('modal-title');
+            var message = document.getElementById('modal-message');
+            var btn = document.getElementById('modal-btn');
             
             modal.classList.add('active');
             
             if (status === 'processing') {
                 icon.className = 'modal-icon processing';
-                icon.innerHTML = '<i class="fas fa-spinner"></i>';
+                icon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 title.textContent = 'Traitement en cours...';
                 message.textContent = 'Veuillez confirmer le paiement sur votre téléphone';
                 btn.classList.add('hidden');
@@ -657,7 +710,19 @@
                 icon.className = 'modal-icon success';
                 icon.innerHTML = '<i class="fas fa-check-circle"></i>';
                 title.textContent = 'Paiement réussi !';
-                message.textContent = 'Votre place a été réservée avec succès.';
+                
+                // Show access code prominently
+                if (accessCode) {
+                    message.innerHTML = '<p>Votre place a été réservée avec succès.</p>' +
+                        '<div class="access-code-display" style="margin-top:1rem;padding:1rem;background:#f0f9ff;border-radius:10px;text-align:center;">' +
+                        '<p style="margin:0;color:#666;font-size:0.9rem;">Votre code d\'accès :</p>' +
+                        '<div style="font-size:2.5rem;font-weight:bold;color:#2563eb;letter-spacing:0.5rem;margin:0.5rem 0;">' + accessCode + '</div>' +
+                        '<p style="margin:0;color:#666;font-size:0.8rem;">Présentez ce code à la barrière</p>' +
+                        '</div>';
+                } else {
+                    message.textContent = 'Votre place a été réservée avec succès.';
+                }
+                
                 btn.classList.remove('hidden');
                 btn.className = 'btn btn-success';
                 btn.innerHTML = '<i class="fas fa-check"></i> Parfait !';
@@ -673,7 +738,7 @@
         }
 
         // Fermer le modal de paiement
-        function closePaymentModal() {
+        async function closePaymentModal() {
             const modal = document.getElementById('payment-modal');
             const icon = document.getElementById('modal-icon');
             
@@ -682,22 +747,14 @@
             // Si paiement réussi, réinitialiser la page
             if (icon.classList.contains('success')) {
                 clearSelection();
-                updateParkingGrid();
-                loadUserReservations();
+                await updateParkingGrid();
+                await loadUserReservations();
                 selectedPaymentMethod = null;
                 document.querySelectorAll('.payment-option').forEach(opt => {
                     opt.classList.remove('selected');
                 });
                 document.getElementById('phone-number').value = '';
             }
-        }
-
-        // Sauvegarder l'enregistrement du paiement
-        function savePaymentRecord(payment) {
-            let payments = JSON.parse(localStorage.getItem('aeropark_payments') || '[]');
-            payment.id = Date.now().toString();
-            payments.push(payment);
-            localStorage.setItem('aeropark_payments', JSON.stringify(payments));
         }
     </script>
 </body>

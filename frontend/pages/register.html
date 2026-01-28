@@ -10,10 +10,10 @@
 <body class="auth-page">
     <!-- Navigation -->
     <nav class="navbar">
-        <div class="nav-brand">
+        <a href="../index.html" class="nav-brand">
             <i class="fas fa-plane"></i>
             <span>AeroPark GOMA</span>
-        </div>
+        </a>
         <ul class="nav-links">
             <li><a href="../index.html"><i class="fas fa-home"></i> Accueil</a></li>
             <li><a href="reservation.html"><i class="fas fa-ticket-alt"></i> Réserver</a></li>
@@ -26,11 +26,11 @@
                 <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
             </li>
         </ul>
-        <div class="hamburger">
+        <button class="hamburger" aria-label="Menu">
             <span></span>
             <span></span>
             <span></span>
-        </div>
+        </button>
     </nav>
 
     <!-- Registration Form -->
@@ -113,9 +113,9 @@
                     <span class="error-message" id="confirm-password-error"></span>
                 </div>
 
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary btn-block" id="register-btn">
                     <i class="fas fa-user-plus"></i>
-                    S'inscrire
+                    <span>S'inscrire</span>
                 </button>
             </form>
 
@@ -138,110 +138,120 @@
         </div>
     </footer>
 
-    <script src="../js/data.js"></script>
+    <script src="../js/api.js"></script>
     <script src="../js/auth.js"></script>
-    <script src="../js/main.js"></script>
+    
     <script>
-        // Gestion du formulaire d'inscription
-        document.getElementById('register-form').addEventListener('submit', function(e) {
+        // Redirect if already logged in
+        if (Auth.isLoggedIn()) {
+            window.location.href = 'reservation.html';
+        }
+
+        // Register form handler
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // Réinitialiser les erreurs
             clearErrors();
 
-            // Récupérer les valeurs
-            const name = document.getElementById('name').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
+            var name = document.getElementById('name').value.trim();
+            var email = document.getElementById('email').value.trim();
+            var password = document.getElementById('password').value;
+            var confirmPassword = document.getElementById('confirm-password').value;
+            var submitBtn = document.getElementById('register-btn');
 
-            // Validation côté client
-            let isValid = true;
-
+            // Validation
             if (name.length < 2) {
                 showFieldError('name', 'Le nom doit contenir au moins 2 caractères');
-                isValid = false;
+                return;
             }
 
-            if (!Auth.isValidEmail(email)) {
+            if (!email || email.indexOf('@') === -1) {
                 showFieldError('email', 'Adresse email invalide');
-                isValid = false;
+                return;
             }
 
             if (password.length < 6) {
                 showFieldError('password', 'Le mot de passe doit contenir au moins 6 caractères');
-                isValid = false;
+                return;
             }
 
             if (password !== confirmPassword) {
                 showFieldError('confirm-password', 'Les mots de passe ne correspondent pas');
-                isValid = false;
+                return;
             }
 
-            if (!isValid) return;
+            // Disable button
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inscription...';
 
-            // Tentative d'inscription
-            const result = Auth.register(name, email, password);
-
-            if (result.success) {
-                showAlert('success', 'Inscription réussie ! Redirection...');
+            try {
+                var result = await Auth.register(name, email, password);
                 
-                // Connexion automatique après inscription
-                Auth.login(email, password);
+                if (result.success) {
+                    showAlert('success', 'Inscription réussie ! Redirection...');
+                    
+                    setTimeout(function() {
+                        window.location.href = 'reservation.html';
+                    }, 1500);
+                } else {
+                    showAlert('error', result.message);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> S\'inscrire';
+                }
                 
-                setTimeout(() => {
-                    window.location.href = 'reservation.html';
-                }, 1500);
-            } else {
-                showAlert('error', result.message);
+            } catch (error) {
+                showAlert('error', error.message || 'Erreur d\'inscription');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> S\'inscrire';
             }
         });
 
-        // Fonctions utilitaires
         function showFieldError(fieldId, message) {
-            const input = document.getElementById(fieldId);
-            const errorSpan = document.getElementById(fieldId + '-error');
+            var input = document.getElementById(fieldId);
+            var errorSpan = document.getElementById(fieldId + '-error');
             
-            input.classList.add('error');
-            errorSpan.textContent = message;
-            errorSpan.classList.add('show');
+            if (input) input.classList.add('error');
+            if (errorSpan) {
+                errorSpan.textContent = message;
+                errorSpan.classList.add('show');
+            }
         }
 
         function clearErrors() {
-            document.querySelectorAll('.error-message').forEach(el => {
+            document.querySelectorAll('.error-message').forEach(function(el) {
                 el.textContent = '';
                 el.classList.remove('show');
             });
-            document.querySelectorAll('input').forEach(input => {
+            document.querySelectorAll('input').forEach(function(input) {
                 input.classList.remove('error');
             });
             hideAlert();
         }
 
         function showAlert(type, message) {
-            const alert = document.getElementById('alert-message');
-            alert.className = `alert ${type}`;
+            var alert = document.getElementById('alert-message');
+            alert.className = 'alert ' + type;
             alert.querySelector('span').textContent = message;
             alert.classList.remove('hidden');
         }
 
         function hideAlert() {
-            const alert = document.getElementById('alert-message');
-            alert.classList.add('hidden');
+            var alert = document.getElementById('alert-message');
+            if (alert) alert.classList.add('hidden');
         }
 
-        // Initialiser la navigation mobile
-        document.addEventListener('DOMContentLoaded', function() {
-            const hamburger = document.querySelector('.hamburger');
-            const navLinks = document.querySelector('.nav-links');
+        // Mobile navigation
+        (function() {
+            var hamburger = document.querySelector('.hamburger');
+            var navLinks = document.querySelector('.nav-links');
 
             if (hamburger && navLinks) {
-                hamburger.addEventListener('click', () => {
+                hamburger.addEventListener('click', function() {
                     hamburger.classList.toggle('active');
                     navLinks.classList.toggle('active');
                 });
             }
-        });
+        })();
     </script>
 </body>
 </html>

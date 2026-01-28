@@ -1,185 +1,146 @@
-/* 
-   AeroPark Smart System - Authentication
-   Gestion de l'authentification côté client
+/**
+ * AeroPark GOMA - Auth Service
+ * Simple token-based authentication
  */
 
 const Auth = {
-    // Clé de stockage
-    storageKey: 'aeropark_users',
-    sessionKey: 'aeropark_session',
+    TOKEN_KEY: 'aeropark_token',
+    USER_KEY: 'aeropark_user',
 
-    // Initialiser le stockage des utilisateurs
-    init() {
-        if (!localStorage.getItem(this.storageKey)) {
-            localStorage.setItem(this.storageKey, JSON.stringify([]));
-        }
+    // ========================================
+    // TOKEN MANAGEMENT
+    // ========================================
+
+    getToken() {
+        return localStorage.getItem(this.TOKEN_KEY);
     },
 
-    // Obtenir tous les utilisateurs
-    getUsers() {
-        const users = localStorage.getItem(this.storageKey);
-        return users ? JSON.parse(users) : [];
+    setToken(token) {
+        localStorage.setItem(this.TOKEN_KEY, token);
     },
 
-    // Trouver un utilisateur par email
-    findUserByEmail(email) {
-        const users = this.getUsers();
-        return users.find(user => user.email.toLowerCase() === email.toLowerCase());
+    getUser() {
+        const user = localStorage.getItem(this.USER_KEY);
+        return user ? JSON.parse(user) : null;
     },
 
-    // Inscription d'un nouvel utilisateur
-    register(name, email, password) {
-        // Validation
-        if (!name || !email || !password) {
-            return { success: false, message: 'Tous les champs sont obligatoires.' };
-        }
-
-        if (!this.isValidEmail(email)) {
-            return { success: false, message: 'Adresse email invalide.' };
-        }
-
-        if (password.length < 6) {
-            return { success: false, message: 'Le mot de passe doit contenir au moins 6 caractères.' };
-        }
-
-        // Vérifier si l'email existe déjà
-        if (this.findUserByEmail(email)) {
-            return { success: false, message: 'Cette adresse email est déjà utilisée.' };
-        }
-
-        // Créer le nouvel utilisateur
-        const users = this.getUsers();
-        const newUser = {
-            id: Date.now().toString(),
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            password: this.hashPassword(password), // Simulation de hashage
-            createdAt: new Date().toISOString()
-        };
-
-        users.push(newUser);
-        localStorage.setItem(this.storageKey, JSON.stringify(users));
-
-        return { success: true, message: 'Inscription réussie !', user: this.sanitizeUser(newUser) };
+    setUser(user) {
+        localStorage.setItem(this.USER_KEY, JSON.stringify(user));
     },
 
-    // Connexion d'un utilisateur
-    login(email, password) {
-        // Validation
-        if (!email || !password) {
-            return { success: false, message: 'Email et mot de passe requis.' };
-        }
-
-        const user = this.findUserByEmail(email);
-        
-        if (!user) {
-            return { success: false, message: 'Aucun compte trouvé avec cette adresse email.' };
-        }
-
-        if (user.password !== this.hashPassword(password)) {
-            return { success: false, message: 'Mot de passe incorrect.' };
-        }
-
-        // Créer la session
-        const session = {
-            userId: user.id,
-            name: user.name,
-            email: user.email,
-            loginAt: new Date().toISOString()
-        };
-
-        localStorage.setItem(this.sessionKey, JSON.stringify(session));
-
-        return { success: true, message: 'Connexion réussie !', user: this.sanitizeUser(user) };
-    },
-
-    // Déconnexion
-    logout() {
-        localStorage.removeItem(this.sessionKey);
-        return { success: true, message: 'Déconnexion réussie.' };
-    },
-
-    // Vérifier si l'utilisateur est connecté
     isLoggedIn() {
-        return localStorage.getItem(this.sessionKey) !== null;
+        return !!this.getToken();
     },
 
-    // Obtenir l'utilisateur connecté
-    getCurrentUser() {
-        const session = localStorage.getItem(this.sessionKey);
-        if (session) {
-            return JSON.parse(session);
+    isAdmin() {
+        const user = this.getUser();
+        return user && user.role === 'admin';
+    },
+
+    clear() {
+        localStorage.removeItem(this.TOKEN_KEY);
+        localStorage.removeItem(this.USER_KEY);
+    },
+
+    // ========================================
+    // AUTH ACTIONS
+    // ========================================
+
+    async register(name, email, password) {
+        try {
+            const response = await fetch(API.BASE_URL + '/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return { success: false, message: data.detail || 'Erreur inscription' };
+            }
+
+            // Store token and user
+            this.setToken(data.token);
+            this.setUser(data.user);
+
+            return { success: true, user: data.user };
+        } catch (error) {
+            return { success: false, message: error.message || 'Erreur de connexion' };
         }
-        return null;
     },
 
-    // Validation de l'email
-    isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    },
+    async login(email, password) {
+        try {
+            const response = await fetch(API.BASE_URL + '/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
 
-    // Simulation de hashage (à remplacer par un vrai hash côté backend)
-    hashPassword(password) {
-        // Simple simulation - NE PAS UTILISER EN PRODUCTION
-        let hash = 0;
-        for (let i = 0; i < password.length; i++) {
-            const char = password.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
+            const data = await response.json();
+
+            if (!response.ok) {
+                return { success: false, message: data.detail || 'Email ou mot de passe incorrect' };
+            }
+
+            // Store token and user
+            this.setToken(data.token);
+            this.setUser(data.user);
+
+            return { success: true, user: data.user };
+        } catch (error) {
+            return { success: false, message: error.message || 'Erreur de connexion' };
         }
-        return 'hash_' + Math.abs(hash).toString(16);
     },
 
-    // Nettoyer les données utilisateur (retirer le mot de passe)
-    sanitizeUser(user) {
-        const { password, ...safeUser } = user;
-        return safeUser;
+    logout() {
+        this.clear();
+        // Redirect to login - works from any page
+        var currentPath = window.location.pathname;
+        if (currentPath.indexOf('/admin/') !== -1) {
+            window.location.href = 'login.html';
+        } else if (currentPath.indexOf('/pages/') !== -1) {
+            window.location.href = 'login.html';
+        } else {
+            window.location.href = 'pages/login.html';
+        }
     },
 
-    // Mettre à jour l'interface selon l'état de connexion
-    updateUI() {
+    // ========================================
+    // UI HELPERS
+    // ========================================
+
+    updateNavigation() {
         const authLinks = document.getElementById('auth-links');
         const userMenu = document.getElementById('user-menu');
         const userName = document.querySelector('.user-name');
 
         if (this.isLoggedIn()) {
-            const user = this.getCurrentUser();
+            const user = this.getUser();
             if (authLinks) authLinks.classList.add('hidden');
-            if (userMenu) {
-                userMenu.classList.remove('hidden');
-                if (userName) userName.textContent = user.name;
-            }
+            if (userMenu) userMenu.classList.remove('hidden');
+            if (userName) userName.textContent = user?.name || user?.email || 'Utilisateur';
         } else {
             if (authLinks) authLinks.classList.remove('hidden');
             if (userMenu) userMenu.classList.add('hidden');
         }
     },
 
-    // Protéger une page (rediriger si non connecté)
-    requireAuth(redirectUrl = '../pages/login.html') {
+    requireAuth() {
         if (!this.isLoggedIn()) {
-            window.location.href = redirectUrl;
+            sessionStorage.setItem('redirectAfterLogin', window.location.href);
+            window.location.href = '/frontend/pages/login.html';
+            return false;
+        }
+        return true;
+    },
+
+    requireAdmin() {
+        if (!this.isLoggedIn() || !this.isAdmin()) {
+            window.location.href = '/frontend/admin/login.html';
             return false;
         }
         return true;
     }
 };
-
-// Initialiser l'authentification
-Auth.init();
-
-// Mettre à jour l'UI au chargement de la page
-document.addEventListener('DOMContentLoaded', () => {
-    Auth.updateUI();
-
-    // Gérer le bouton de déconnexion
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            Auth.logout();
-            window.location.href = window.location.pathname.includes('/pages/') ? '../index.html' : 'index.html';
-        });
-    }
-});

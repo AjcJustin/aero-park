@@ -269,7 +269,7 @@
                             </button>
                         </div>
                         <p class="text-muted" style="margin-top: 1rem; font-size: 0.85rem;">
-                            <i class="fas fa-info-circle"></i> Les données sont stockées localement dans le navigateur.
+                            <i class="fas fa-info-circle"></i> Les données sont stockées sur le serveur backend.
                         </p>
                     </div>
                 </div>
@@ -277,164 +277,190 @@
         </div>
     </main>
 
-    <script src="../js/data.js"></script>
+    <!-- AeroPark API Services -->
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script src="../js/admin.js"></script>
-    <script src="../js/services/api.js"></script>
     <script>
-        // Vérifier l'authentification
-        if (!AdminAuth.isLoggedIn()) {
-            window.location.href = 'login.html';
-        }
+        var currentSettings = {};
 
-        document.addEventListener('DOMContentLoaded', async function() {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check authentication
+            if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Initialize sidebar
+            Admin.initSidebar();
+
+            // Load data
             loadSettings();
-            await loadDataStats();
+            loadDataStats();
             initForms();
-            initSidebar();
 
-            const admin = AdminAuth.getCurrentAdmin();
-            if (admin) {
-                document.getElementById('admin-name').textContent = admin.username;
-                document.getElementById('admin-username').value = admin.username;
+            // Set admin info
+            var user = Auth.getUser();
+            if (user) {
+                document.getElementById('admin-name').textContent = user.name || user.username || 'Admin';
+                document.getElementById('admin-username').value = user.name || user.username || '';
             }
         });
 
         function loadSettings() {
-            const settings = ParkingSettings.get();
+            // Settings are stored in localStorage since there's no backend endpoint
+            var storedSettings = localStorage.getItem('aeropark_admin_settings');
+            if (storedSettings) {
+                try {
+                    currentSettings = JSON.parse(storedSettings);
+                } catch (e) {
+                    currentSettings = {};
+                }
+            } else {
+                currentSettings = {};
+            }
 
-            // Informations générales
-            document.getElementById('parking-name').value = settings.name || 'AeroPark GOMA';
-            document.getElementById('parking-slogan').value = settings.slogan || 'Parking Automatisé';
-            document.getElementById('parking-address').value = settings.address || 'Aéroport de Goma, RDC';
+            // Informations générales (use defaults if not set)
+            document.getElementById('parking-name').value = currentSettings.parkingName || 'AeroPark GOMA';
+            document.getElementById('parking-slogan').value = currentSettings.slogan || 'Parking Automatisé';
+            document.getElementById('parking-address').value = currentSettings.address || 'Aéroport de Goma, RDC';
 
-            // Tarification
-            document.getElementById('hourly-rate').value = settings.hourlyRate || 1000;
-            document.getElementById('max-duration').value = settings.maxDuration || 168;
-            document.getElementById('currency').value = settings.currency || 'FC';
+            // Tarification - get from backend pricing if available
+            API.get('/api/v1/payment/pricing').then(function(pricing) {
+                document.getElementById('hourly-rate').value = pricing.rate_per_hour || currentSettings.ratePerHour || 1000;
+                document.getElementById('currency').value = pricing.currency || currentSettings.currency || 'FC';
+            }).catch(function() {
+                document.getElementById('hourly-rate').value = currentSettings.ratePerHour || 1000;
+                document.getElementById('currency').value = currentSettings.currency || 'FC';
+            });
+            document.getElementById('max-duration').value = currentSettings.maxDuration || 168;
 
             // Méthodes de paiement
-            document.getElementById('orange-enabled').checked = settings.paymentMethods?.orange !== false;
-            document.getElementById('airtel-enabled').checked = settings.paymentMethods?.airtel !== false;
-            document.getElementById('mpesa-enabled').checked = settings.paymentMethods?.mpesa !== false;
+            var paymentMethods = currentSettings.paymentMethods || {};
+            document.getElementById('orange-enabled').checked = paymentMethods.orange !== false;
+            document.getElementById('airtel-enabled').checked = paymentMethods.airtel !== false;
+            document.getElementById('mpesa-enabled').checked = paymentMethods.mpesa !== false;
 
             // Contact
-            document.getElementById('contact-phone').value = settings.phone || '';
-            document.getElementById('contact-email').value = settings.email || '';
-            document.getElementById('whatsapp').value = settings.whatsapp || '';
+            document.getElementById('contact-phone').value = currentSettings.phone || '';
+            document.getElementById('contact-email').value = currentSettings.email || '';
+            document.getElementById('whatsapp').value = currentSettings.whatsapp || '';
         }
 
-        async function loadDataStats() {
-            try {
-                // Charger les stats depuis l'API
-                const [usersResponse, reservationsResponse, paymentsResponse, spotsResponse] = await Promise.allSettled([
-                    ApiService.getAllUsers(),
-                    ApiService.getAllReservations(),
-                    ApiService.getAllPayments(),
-                    ApiService.getAllParkingPlaces()
-                ]);
-                
-                const users = usersResponse.status === 'fulfilled' ? (usersResponse.value.users || usersResponse.value || []) : [];
-                const reservations = reservationsResponse.status === 'fulfilled' ? (reservationsResponse.value.reservations || reservationsResponse.value || []) : [];
-                const payments = paymentsResponse.status === 'fulfilled' ? (paymentsResponse.value.payments || paymentsResponse.value || []) : [];
-                const spots = spotsResponse.status === 'fulfilled' ? (spotsResponse.value.places || spotsResponse.value || []) : [];
+        function loadDataStats() {
+            // Load reservations count (extract users from reservations)
+            API.getAdminReservations()
+                .then(function(response) {
+                    var reservations = response.reservations || response || [];
+                    document.getElementById('data-reservations').textContent = reservations.length || 0;
+                    
+                    // Extract unique users from reservations
+                    var usersMap = {};
+                    for (var i = 0; i < reservations.length; i++) {
+                        var r = reservations[i];
+                        var userId = r.user_id || r.userId;
+                        if (userId) usersMap[userId] = true;
+                    }
+                    document.getElementById('data-users').textContent = Object.keys(usersMap).length;
+                })
+                .catch(function(error) {
+                    console.error('Erreur chargement reservations:', error);
+                });
 
-                document.getElementById('data-users').textContent = users.length;
-                document.getElementById('data-reservations').textContent = reservations.length;
-                document.getElementById('data-payments').textContent = payments.length;
-                document.getElementById('data-spots').textContent = spots.length;
-            } catch (error) {
-                console.error('Erreur lors du chargement des stats:', error);
-                // Fallback sur les données locales en cas d'erreur
-                const usersLocal = JSON.parse(localStorage.getItem('aeropark_users') || '[]');
-                const reservationsLocal = ParkingData.getReservations ? ParkingData.getReservations() : [];
-                const paymentsLocal = JSON.parse(localStorage.getItem('aeropark_payments') || '[]');
-                const spotsLocal = ParkingData.getSpots ? ParkingData.getSpots() : [];
+            // Load payments count
+            API.getAdminPayments()
+                .then(function(response) {
+                    var payments = response.payments || response || [];
+                    document.getElementById('data-payments').textContent = payments.length || 0;
+                })
+                .catch(function(error) {
+                    console.error('Erreur chargement payments:', error);
+                });
 
-                document.getElementById('data-users').textContent = usersLocal.length;
-                document.getElementById('data-reservations').textContent = reservationsLocal.length;
-                document.getElementById('data-payments').textContent = paymentsLocal.length;
-                document.getElementById('data-spots').textContent = spotsLocal.length;
+            // Load parking status
+            API.getParkingStatus()
+                .then(function(status) {
+                    document.getElementById('data-spots').textContent = status.total || 0;
+                })
+                .catch(function(error) {
+                    console.error('Erreur chargement parking status:', error);
+                });
+        }
+
+        function saveSettings(newSettings) {
+            // Merge with current settings
+            for (var key in newSettings) {
+                currentSettings[key] = newSettings[key];
             }
+            // Save to localStorage
+            localStorage.setItem('aeropark_admin_settings', JSON.stringify(currentSettings));
         }
 
         function initForms() {
             // Informations générales
             document.getElementById('general-settings-form').addEventListener('submit', function(e) {
                 e.preventDefault();
-                const settings = ParkingSettings.get();
-                settings.name = document.getElementById('parking-name').value;
-                settings.slogan = document.getElementById('parking-slogan').value;
-                settings.address = document.getElementById('parking-address').value;
-                ParkingSettings.save(settings);
-                AdminUtils.showNotification('Informations enregistrées');
+                saveSettings({
+                    parkingName: document.getElementById('parking-name').value,
+                    slogan: document.getElementById('parking-slogan').value,
+                    address: document.getElementById('parking-address').value
+                });
+                Admin.showNotification('Informations enregistrées');
             });
 
             // Tarification
             document.getElementById('pricing-settings-form').addEventListener('submit', function(e) {
                 e.preventDefault();
-                const settings = ParkingSettings.get();
-                settings.hourlyRate = parseInt(document.getElementById('hourly-rate').value);
-                settings.maxDuration = parseInt(document.getElementById('max-duration').value);
-                settings.currency = document.getElementById('currency').value;
-                ParkingSettings.save(settings);
-                AdminUtils.showNotification('Tarification enregistrée');
+                saveSettings({
+                    ratePerHour: parseInt(document.getElementById('hourly-rate').value),
+                    maxDuration: parseInt(document.getElementById('max-duration').value),
+                    currency: document.getElementById('currency').value
+                });
+                Admin.showNotification('Tarification enregistrée (Note: les tarifs backend ne sont pas modifiés)');
             });
 
             // Méthodes de paiement
             document.getElementById('payment-methods-form').addEventListener('submit', function(e) {
                 e.preventDefault();
-                const settings = ParkingSettings.get();
-                settings.paymentMethods = {
-                    orange: document.getElementById('orange-enabled').checked,
-                    airtel: document.getElementById('airtel-enabled').checked,
-                    mpesa: document.getElementById('mpesa-enabled').checked
-                };
-                ParkingSettings.save(settings);
-                AdminUtils.showNotification('Méthodes de paiement enregistrées');
+                saveSettings({
+                    paymentMethods: {
+                        orange: document.getElementById('orange-enabled').checked,
+                        airtel: document.getElementById('airtel-enabled').checked,
+                        mpesa: document.getElementById('mpesa-enabled').checked
+                    }
+                });
+                Admin.showNotification('Méthodes de paiement enregistrées');
             });
 
             // Contact
             document.getElementById('contact-settings-form').addEventListener('submit', function(e) {
                 e.preventDefault();
-                const settings = ParkingSettings.get();
-                settings.phone = document.getElementById('contact-phone').value;
-                settings.email = document.getElementById('contact-email').value;
-                settings.whatsapp = document.getElementById('whatsapp').value;
-                ParkingSettings.save(settings);
-                AdminUtils.showNotification('Informations de contact enregistrées');
+                saveSettings({
+                    phone: document.getElementById('contact-phone').value,
+                    email: document.getElementById('contact-email').value,
+                    whatsapp: document.getElementById('whatsapp').value
+                });
+                Admin.showNotification('Informations de contact enregistrées');
             });
 
             // Compte admin
             document.getElementById('admin-settings-form').addEventListener('submit', function(e) {
                 e.preventDefault();
-                const currentPassword = document.getElementById('current-password').value;
-                const newPassword = document.getElementById('new-password').value;
-                const confirmPassword = document.getElementById('confirm-password').value;
+                var currentPassword = document.getElementById('current-password').value;
+                var newPassword = document.getElementById('new-password').value;
+                var confirmPassword = document.getElementById('confirm-password').value;
 
                 if (!currentPassword) {
-                    AdminUtils.showNotification('Veuillez entrer le mot de passe actuel', 'error');
-                    return;
-                }
-
-                const admin = AdminAuth.getCurrentAdmin();
-                if (currentPassword !== admin.password) {
-                    AdminUtils.showNotification('Mot de passe actuel incorrect', 'error');
+                    Admin.showNotification('Veuillez entrer le mot de passe actuel', 'error');
                     return;
                 }
 
                 if (newPassword && newPassword !== confirmPassword) {
-                    AdminUtils.showNotification('Les mots de passe ne correspondent pas', 'error');
+                    Admin.showNotification('Les mots de passe ne correspondent pas', 'error');
                     return;
                 }
 
-                // Mettre à jour les credentials
-                const credentials = {
-                    username: document.getElementById('admin-username').value || admin.username,
-                    password: newPassword || admin.password
-                };
-                
-                localStorage.setItem('aeropark_admin_credentials', JSON.stringify(credentials));
-                AdminUtils.showNotification('Compte administrateur mis à jour');
+                Admin.showNotification('La modification du mot de passe n\'est pas disponible actuellement', 'error');
 
                 // Reset form
                 document.getElementById('current-password').value = '';
@@ -444,59 +470,45 @@
         }
 
         function exportAllData() {
-            const data = {
-                users: JSON.parse(localStorage.getItem('aeropark_users') || '[]'),
-                reservations: ParkingData.getReservations(),
-                payments: JSON.parse(localStorage.getItem('aeropark_payments') || '[]'),
-                spots: ParkingData.getSpots(),
-                settings: ParkingSettings.get(),
+            var exportData = {
+                reservations: [],
+                payments: [],
+                spots: [],
+                settings: currentSettings,
                 exportDate: new Date().toISOString()
             };
 
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `aeropark_backup_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
+            // Load all data then export
+            Promise.all([
+                API.getAdminReservations().catch(function() { return { reservations: [] }; }),
+                API.getAdminPayments().catch(function() { return { payments: [] }; }),
+                API.getParkingStatus().catch(function() { return { places: [] }; })
+            ]).then(function(results) {
+                exportData.reservations = (results[0] && results[0].reservations) || results[0] || [];
+                exportData.payments = (results[1] && results[1].payments) || results[1] || [];
+                exportData.spots = (results[2] && results[2].places) || [];
 
-            AdminUtils.showNotification('Export complet terminé');
+                var blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'aeropark_backup_' + new Date().toISOString().split('T')[0] + '.json';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                Admin.showNotification('Export complet terminé');
+            }).catch(function(error) {
+                console.error('Erreur export:', error);
+                Admin.showNotification('Erreur lors de l\'export', 'error');
+            });
         }
 
         function resetData() {
-            if (!confirm('⚠️ ATTENTION: Cette action supprimera TOUTES les données (utilisateurs, réservations, paiements). Cette action est irréversible. Continuer ?')) {
+            if (!confirm('⚠️ ATTENTION: Cette action n\'est pas disponible via l\'API. Les données sont gérées par le backend.')) {
                 return;
             }
 
-            if (!confirm('Êtes-vous VRAIMENT sûr ? Tapez OK pour confirmer.')) {
-                return;
-            }
-
-            // Supprimer toutes les données
-            localStorage.removeItem('aeropark_users');
-            localStorage.removeItem('aeropark_reservations');
-            localStorage.removeItem('aeropark_payments');
-            localStorage.removeItem('aeropark_spots');
-            
-            // Réinitialiser les places de parking
-            ParkingData.init();
-
-            AdminUtils.showNotification('Données réinitialisées');
-            loadDataStats();
-        }
-
-        function initSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-            const mobileToggle = document.getElementById('mobile-menu-toggle');
-
-            sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
-            mobileToggle.addEventListener('click', () => sidebar.classList.toggle('mobile-open'));
-            document.getElementById('admin-logout').addEventListener('click', () => {
-                AdminAuth.logout();
-                window.location.href = 'login.html';
-            });
+            Admin.showNotification('La réinitialisation des données doit être effectuée via le backend', 'error');
         }
     </script>
 

@@ -1,158 +1,241 @@
-/* ========================================
-   AeroPark Smart System - Main JavaScript
-   Logique principale de l'application
-   ======================================== */
+/**
+ * AeroPark GOMA - Main JavaScript
+ * Common functions for all pages
+ */
 
-// Attendre que le DOM soit chargé
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialisation
+// Cached parking data
+var parkingData = null;
+
+// ========================================
+// SERVICE WORKER REGISTRATION
+// ========================================
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        // Try relative path first (works when served from frontend folder)
+        var swPath = './sw.js';
+        // Check if we're in a subfolder
+        if (window.location.pathname.includes('/pages/') || window.location.pathname.includes('/admin/')) {
+            swPath = '../sw.js';
+        }
+        navigator.serviceWorker.register(swPath)
+            .then(function(registration) {
+                console.log('[SW] Registered:', registration.scope);
+            })
+            .catch(function(error) {
+                console.log('[SW] Registration failed:', error);
+            });
+    });
+}
+
+// ========================================
+// OFFLINE DATA STORAGE
+// ========================================
+
+var OfflineStorage = {
+    // Save last access code for offline viewing
+    saveAccessCode: function(code, placeId, expiresAt) {
+        localStorage.setItem('aeropark_last_access_code', code);
+        localStorage.setItem('aeropark_last_place', placeId);
+        localStorage.setItem('aeropark_code_expires', expiresAt);
+    },
+    
+    // Get last access code
+    getAccessCode: function() {
+        var code = localStorage.getItem('aeropark_last_access_code');
+        var placeId = localStorage.getItem('aeropark_last_place');
+        var expiresAt = localStorage.getItem('aeropark_code_expires');
+        
+        if (!code) return null;
+        
+        // Check if expired
+        if (expiresAt && new Date(expiresAt) < new Date()) {
+            this.clearAccessCode();
+            return null;
+        }
+        
+        return {
+            code: code,
+            placeId: placeId,
+            expiresAt: expiresAt
+        };
+    },
+    
+    // Clear access code
+    clearAccessCode: function() {
+        localStorage.removeItem('aeropark_last_access_code');
+        localStorage.removeItem('aeropark_last_place');
+        localStorage.removeItem('aeropark_code_expires');
+    },
+    
+    // Save last parking status for offline
+    saveParkingStatus: function(data) {
+        try {
+            localStorage.setItem('aeropark_parking_cache', JSON.stringify({
+                data: data,
+                timestamp: new Date().toISOString()
+            }));
+        } catch (e) {
+            console.log('Could not cache parking data');
+        }
+    },
+    
+    // Get cached parking status
+    getParkingStatus: function() {
+        try {
+            var cached = localStorage.getItem('aeropark_parking_cache');
+            if (cached) {
+                var parsed = JSON.parse(cached);
+                // Cache valid for 5 minutes
+                var cacheAge = new Date() - new Date(parsed.timestamp);
+                if (cacheAge < 5 * 60 * 1000) {
+                    return parsed.data;
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+};
+
+// ========================================
+// INITIALIZATION
+// ========================================
+
+document.addEventListener('DOMContentLoaded', function() {
     initNavigation();
-    initHomePage();
-    startRealTimeSimulation();
+    Auth.updateNavigation();
+    
+    // Setup logout button
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            Auth.logout();
+        });
+    }
+
+    // Load home page data if on index
+    if (document.getElementById('total-places')) {
+        loadHomePageData();
+    }
 });
 
-/* ========================================
-   Navigation
-   ======================================== */
+// ========================================
+// NAVIGATION
+// ========================================
+
 function initNavigation() {
     const hamburger = document.querySelector('.hamburger');
     const navLinks = document.querySelector('.nav-links');
 
     if (hamburger && navLinks) {
-        hamburger.addEventListener('click', () => {
-            const isActive = hamburger.classList.toggle('active');
+        hamburger.addEventListener('click', function() {
+            hamburger.classList.toggle('active');
             navLinks.classList.toggle('active');
-            
-            // Accessibilité - mise à jour aria-expanded
-            hamburger.setAttribute('aria-expanded', isActive);
-            
-            // Empêcher le scroll du body quand le menu est ouvert
-            document.body.style.overflow = isActive ? 'hidden' : '';
         });
 
-        // Fermer le menu mobile au clic sur un lien
-        navLinks.querySelectorAll('a').forEach(link => {
-            link.addEventListener('click', () => {
+        // Close on link click
+        navLinks.querySelectorAll('a').forEach(function(link) {
+            link.addEventListener('click', function() {
                 hamburger.classList.remove('active');
                 navLinks.classList.remove('active');
-                hamburger.setAttribute('aria-expanded', 'false');
-                document.body.style.overflow = '';
             });
         });
 
-        // Fermer le menu avec la touche Escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && navLinks.classList.contains('active')) {
+        // Close on outside click
+        document.addEventListener('click', function(e) {
+            if (!navLinks.contains(e.target) && !hamburger.contains(e.target)) {
                 hamburger.classList.remove('active');
                 navLinks.classList.remove('active');
-                hamburger.setAttribute('aria-expanded', 'false');
-                document.body.style.overflow = '';
-                hamburger.focus();
-            }
-        });
-
-        // Fermer le menu au clic en dehors
-        document.addEventListener('click', (e) => {
-            if (navLinks.classList.contains('active') && 
-                !navLinks.contains(e.target) && 
-                !hamburger.contains(e.target)) {
-                hamburger.classList.remove('active');
-                navLinks.classList.remove('active');
-                hamburger.setAttribute('aria-expanded', 'false');
-                document.body.style.overflow = '';
             }
         });
     }
 }
 
-/* ========================================
-   Page d'accueil
-   ======================================== */
-function initHomePage() {
-    // Vérifier si on est sur la page d'accueil
-    if (!document.getElementById('total-places')) return;
+// ========================================
+// HOME PAGE
+// ========================================
 
-    updateStats();
-    updateProgressRing();
-    generateParkingPreview();
+async function loadHomePageData() {
+    try {
+        parkingData = await API.getParkingStatus();
+        updateStats(parkingData);
+        updateProgressRing(parkingData);
+        generateParkingPreview(parkingData);
+    } catch (error) {
+        console.error('Error loading parking data:', error);
+    }
 }
 
-// Mettre à jour les statistiques
-function updateStats() {
-    const stats = ParkingData.getStats();
+function updateStats(data) {
+    var places = data.places || [];
+    var total = places.length;
+    // Backend uses 'etat': free, reserved, occupied
+    var available = places.filter(function(p) { return (p.etat || p.status) === 'free'; }).length;
+    var occupied = places.filter(function(p) { return (p.etat || p.status) === 'occupied'; }).length;
+    var reserved = places.filter(function(p) { return (p.etat || p.status) === 'reserved'; }).length;
+    var rate = total > 0 ? Math.round(((occupied + reserved) / total) * 100) : 0;
 
-    // Animation des nombres
-    animateNumber('total-places', stats.total);
-    animateNumber('available-places', stats.available);
-    animateNumber('occupied-places', stats.occupied + stats.reserved);
-    animateNumber('occupation-rate', stats.occupationRate, '%');
+    animateNumber('total-places', total);
+    animateNumber('available-places', available);
+    animateNumber('occupied-places', occupied + reserved);
+    animateNumber('occupation-rate', rate, '%');
 
-    // Mettre à jour l'indicateur de statut
-    updateStatusIndicator(stats.occupationRate);
+    updateStatusIndicator(rate);
 }
 
-// Animation des nombres
-function animateNumber(elementId, targetValue, suffix = '') {
+function animateNumber(elementId, value, suffix) {
+    suffix = suffix || '';
     const element = document.getElementById(elementId);
     if (!element) return;
 
-    const startValue = 0;
-    const duration = 1000;
-    const startTime = performance.now();
-
-    function update(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Easing function
-        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-        const currentValue = Math.round(startValue + (targetValue - startValue) * easeOutQuart);
-        
-        element.textContent = currentValue + suffix;
-
-        if (progress < 1) {
-            requestAnimationFrame(update);
+    let current = 0;
+    const step = Math.ceil(value / 30);
+    const interval = setInterval(function() {
+        current += step;
+        if (current >= value) {
+            current = value;
+            clearInterval(interval);
         }
-    }
-
-    requestAnimationFrame(update);
+        element.textContent = current + suffix;
+    }, 30);
 }
 
-// Mettre à jour l'anneau de progression
-function updateProgressRing() {
-    const stats = ParkingData.getStats();
-    const progressCircle = document.getElementById('progress-circle');
-    const progressPercent = document.getElementById('progress-percent');
-    
-    if (!progressCircle || !progressPercent) return;
+function updateProgressRing(data) {
+    var places = data.places || [];
+    var total = places.length;
+    var available = places.filter(function(p) { return (p.etat || p.status) === 'free'; }).length;
+    var rate = total > 0 ? Math.round(((total - available) / total) * 100) : 0;
 
-    const circumference = 2 * Math.PI * 90; // rayon = 90
-    const offset = circumference - (stats.occupationRate / 100) * circumference;
-    
-    progressCircle.style.strokeDasharray = circumference;
-    progressCircle.style.strokeDashoffset = offset;
+    var progressCircle = document.getElementById('progress-circle');
+    var progressPercent = document.getElementById('progress-percent');
 
-    // Changer la couleur selon le taux d'occupation
-    if (stats.occupationRate < 50) {
-        progressCircle.style.stroke = 'var(--available-color)';
-    } else if (stats.occupationRate < 80) {
-        progressCircle.style.stroke = 'var(--reserved-color)';
-    } else {
-        progressCircle.style.stroke = 'var(--occupied-color)';
+    if (progressCircle && progressPercent) {
+        const circumference = 2 * Math.PI * 90;
+        const offset = circumference - (rate / 100) * circumference;
+
+        progressCircle.style.strokeDasharray = circumference;
+        progressCircle.style.strokeDashoffset = offset;
+
+        if (rate < 50) {
+            progressCircle.style.stroke = 'var(--available-color)';
+        } else if (rate < 80) {
+            progressCircle.style.stroke = 'var(--reserved-color)';
+        } else {
+            progressCircle.style.stroke = 'var(--occupied-color)';
+        }
+
+        progressPercent.textContent = rate + '%';
     }
-
-    progressPercent.textContent = stats.occupationRate + '%';
 }
 
-// Mettre à jour l'indicateur de statut
 function updateStatusIndicator(rate) {
     const indicator = document.getElementById('status-indicator');
     if (!indicator) return;
 
     const statusText = indicator.querySelector('.status-text');
-    
     indicator.classList.remove('warning', 'danger');
-    
+
     if (rate < 50) {
         statusText.textContent = 'Beaucoup de places disponibles';
     } else if (rate < 80) {
@@ -164,127 +247,90 @@ function updateStatusIndicator(rate) {
     }
 }
 
-// Générer l'aperçu du parking
-function generateParkingPreview() {
-    const container = document.getElementById('parking-preview');
+function generateParkingPreview(data) {
+    var container = document.getElementById('parking-preview');
     if (!container) return;
 
-    container.innerHTML = '';
-    const spots = ParkingData.getAllSpots();
-
-    spots.forEach(spot => {
-        const spotElement = document.createElement('div');
-        spotElement.className = `parking-spot-mini ${spot.status}`;
-        spotElement.textContent = spot.id;
-        spotElement.title = `Place ${spot.id} - ${getStatusLabel(spot.status)}`;
-        container.appendChild(spotElement);
-    });
+    var spots = data.places || [];
+    container.innerHTML = spots.map(function(spot) {
+        // Backend uses 'etat': free, reserved, occupied
+        var status = spot.etat || spot.status || 'free';
+        var statusClass = status === 'free' ? 'available' : status;
+        return '<div class="parking-spot-mini ' + statusClass + '" title="Place ' + spot.id + '">' + spot.id + '</div>';
+    }).join('');
 }
 
-// Obtenir le label du statut
-function getStatusLabel(status) {
-    const labels = {
-        'available': 'Disponible',
-        'occupied': 'Occupée',
-        'reserved': 'Réservée'
-    };
-    return labels[status] || status;
-}
+// ========================================
+// UTILITIES
+// ========================================
 
-/* ========================================
-   Mise à jour en temps réel
-   ======================================== */
-let updateInterval = null;
-
-function startRealTimeSimulation() {
-    // Mettre à jour toutes les 2 secondes
-    updateInterval = setInterval(() => {
-        // Vérifier les réservations expirées
-        ParkingData.checkExpiredReservations();
-        
-        // Mettre à jour l'affichage
-        updateStats();
-        updateProgressRing();
-        generateParkingPreview();
-        
-        // Mettre à jour aussi la page de réservation si on y est
-        if (typeof updateParkingGrid === 'function') {
-            updateParkingGrid();
-        }
-        if (typeof updateCountdowns === 'function') {
-            updateCountdowns();
-        }
-    }, 2000);
-}
-
-function stopRealTimeSimulation() {
-    if (updateInterval) {
-        clearInterval(updateInterval);
-        updateInterval = null;
-    }
-}
-
-/* ========================================
-   Utilitaires
-   ======================================== */
-
-// Formater une date
-function formatDate(dateString) {
-    const options = { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    };
-    return new Date(dateString).toLocaleDateString('fr-FR', options);
-}
-
-// Afficher une notification
-function showNotification(message, type = 'success') {
-    // Supprimer les notifications existantes
+function showNotification(message, type) {
+    type = type || 'success';
+    
     const existing = document.querySelector('.notification');
     if (existing) existing.remove();
 
     const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-        <span>${message}</span>
-    `;
+    notification.className = 'notification ' + type;
+    
+    const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+    notification.innerHTML = '<i class="fas fa-' + icon + '"></i><span>' + message + '</span>';
 
-    // Styles inline pour la notification
-    notification.style.cssText = `
-        position: fixed;
-        top: 100px;
-        right: 20px;
-        background: ${type === 'success' ? 'var(--secondary-color)' : type === 'error' ? 'var(--danger-color)' : 'var(--primary-color)'};
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-lg);
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-    `;
+    notification.style.cssText = 
+        'position:fixed;top:100px;right:20px;padding:1rem 1.5rem;border-radius:10px;' +
+        'box-shadow:0 5px 20px rgba(0,0,0,0.15);display:flex;align-items:center;gap:0.75rem;' +
+        'z-index:10000;color:white;background:' + 
+        (type === 'success' ? 'var(--secondary-color)' : type === 'error' ? 'var(--danger-color)' : 'var(--primary-color)');
 
     document.body.appendChild(notification);
 
-    // Auto-remove après 3 secondes
-    setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    setTimeout(function() { notification.remove(); }, 3000);
 }
 
-// Ajouter l'animation fadeOut
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes fadeOut {
-        from { opacity: 1; transform: translateX(0); }
-        to { opacity: 0; transform: translateX(100px); }
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function calculateRemainingTime(expiresAt) {
+    if (!expiresAt) return { expired: true };
+
+    const now = new Date();
+    const expires = new Date(expiresAt);
+    const diff = expires - now;
+
+    if (diff <= 0) return { expired: true };
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    return { hours: hours, minutes: minutes, seconds: seconds, expired: false };
+}
+
+function formatRemainingTime(remaining) {
+    if (!remaining || remaining.expired) {
+        return '<span class="expired">Expirée</span>';
     }
-`;
-document.head.appendChild(style);
+
+    if (remaining.hours > 24) {
+        var days = Math.floor(remaining.hours / 24);
+        var remainingHours = remaining.hours % 24;
+        return days + 'j ' + remainingHours + 'h ' + remaining.minutes + 'm';
+    }
+
+    return remaining.hours + 'h ' + remaining.minutes + 'm ' + remaining.seconds + 's';
+}
+
+// Refresh data every 30 seconds
+setInterval(function() {
+    if (document.getElementById('total-places')) {
+        loadHomePageData();
+    }
+}, 30000);

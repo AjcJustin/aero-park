@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Profil - AeroPark GOMA</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .profile-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem;
+            border-radius: var(--radius-md);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 3rem;
+            color: var(--primary-color);
+        }
+
+        .profile-card {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 1.5rem;
+        }
+
+        .profile-card h3 {
+            margin: 0 0 1.5rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--bg-color);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .info-item {
+            padding: 1rem;
+            background: var(--bg-color);
+            border-radius: var(--radius-sm);
+        }
+
+        .info-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .info-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            text-align: center;
+        }
+
+        .stat-card .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+
+        .stat-card .label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .access-code-box {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 2px solid var(--primary-color);
+            padding: 2rem;
+            border-radius: var(--radius-md);
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .access-code-box .code {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            letter-spacing: 0.5rem;
+            font-family: 'Courier New', monospace;
+            margin: 1rem 0;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="../index.html" class="nav-brand">
+            <i class="fas fa-plane"></i>
+            <span>AeroPark GOMA</span>
+        </a>
+        <ul class="nav-links" id="nav-links">
+            <li><a href="../index.html"><i class="fas fa-home"></i> Accueil</a></li>
+            <li><a href="reservation.html"><i class="fas fa-ticket-alt"></i> Réserver</a></li>
+            <li><a href="profile.html" class="active"><i class="fas fa-user"></i> Mon Profil</a></li>
+            <li id="user-menu">
+                <span class="user-name"></span>
+                <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+            </li>
+        </ul>
+        <button class="hamburger" id="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" style="padding-top: 80px;">
+        <div class="profile-container">
+            <!-- Profile Header -->
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h1 id="profile-name">Chargement...</h1>
+                <p id="profile-email"></p>
+            </div>
+
+            <!-- Current Reservation -->
+            <div class="profile-card" id="current-reservation-card" style="display: none;">
+                <h3><i class="fas fa-parking"></i> Ma Réservation Active</h3>
+                <div id="current-reservation-content"></div>
+            </div>
+
+            <!-- Access Code -->
+            <div class="profile-card" id="access-code-card" style="display: none;">
+                <h3><i class="fas fa-key"></i> Code d'Accès</h3>
+                <div class="access-code-box">
+                    <p style="margin: 0 0 0.5rem; color: #666;">Votre code d'accès à la barrière:</p>
+                    <div class="code" id="access-code-display">------</div>
+                    <p style="margin: 0.5rem 0 0; font-size: 0.9rem; color: #666;">
+                        <i class="fas fa-clock"></i> Expire le: <span id="code-expires"></span>
+                    </p>
+                    <button class="btn btn-primary" onclick="viewReservation()" style="margin-top: 1rem;">
+                        <i class="fas fa-eye"></i> Voir ma réservation
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Stats -->
+            <div class="profile-card">
+                <h3><i class="fas fa-chart-line"></i> Mes Statistiques</h3>
+                <div class="stat-cards">
+                    <div class="stat-card">
+                        <div class="icon" style="color: var(--primary-color);">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="value" id="stat-reservations">0</div>
+                        <div class="label">Réservations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon" style="color: var(--success-color);">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="value" id="stat-hours">0h</div>
+                        <div class="label">Heures de stationnement</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon" style="color: var(--warning-color);">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <div class="value" id="stat-total-spent">0 FC</div>
+                        <div class="label">Total dépensé</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="profile-card">
+                <h3><i class="fas fa-info-circle"></i> Informations Personnelles</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Email</div>
+                        <div class="info-value" id="info-email">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Membre depuis</div>
+                        <div class="info-value" id="info-member-since">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Plaque d'immatriculation</div>
+                        <div class="info-value" id="info-vehicle">Non renseignée</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Dernière connexion</div>
+                        <div class="info-value" id="info-last-login">Maintenant</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Profile -->
+            <div class="profile-card">
+                <h3><i class="fas fa-edit"></i> Modifier mon Profil</h3>
+                <form id="profile-form">
+                    <div class="form-group">
+                        <label for="display-name">Nom d'affichage</label>
+                        <input type="text" id="display-name" class="form-control" placeholder="Votre nom">
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicle-plate">Plaque d'immatriculation</label>
+                        <input type="text" id="vehicle-plate" class="form-control" placeholder="ABC-1234">
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Enregistrer
+                        </button>
+                        <button type="button" class="btn btn-outline" onclick="window.location.href='reservation.html'">
+                            <i class="fas fa-arrow-left"></i> Retour aux réservations
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <i class="fas fa-plane"></i>
+                    <span>AeroPark GOMA - Parking Automatisé</span>
+                </div>
+                <p>&copy; 2025 AeroPark GOMA. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/main.js"></script>
+    <script>
+        // Check if logged in
+        if (!Auth.isLoggedIn()) {
+            window.location.href = 'login.html';
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            Auth.updateNavigation();
+            initNavigation();
+            await loadProfile();
+            
+            // Logout button
+            var logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    Auth.logout();
+                });
+            }
+
+            // Profile form
+            document.getElementById('profile-form').addEventListener('submit', updateProfile);
+        });
+
+        async function loadProfile() {
+            try {
+                // Get user from Auth
+                var user = Auth.getUser();
+                if (!user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // Display basic info
+                document.getElementById('profile-name').textContent = user.name || user.email.split('@')[0];
+                document.getElementById('profile-email').textContent = user.email;
+                document.getElementById('info-email').textContent = user.email;
+
+                // Get profile from API
+                try {
+                    var profile = await API.request('/users/me');
+                    
+                    // Stats
+                    document.getElementById('stat-reservations').textContent = profile.reservation_count || 0;
+                    document.getElementById('stat-hours').textContent = (profile.total_parking_hours || 0).toFixed(1) + 'h';
+                    
+                    var totalSpent = (profile.total_parking_hours || 0) * 1000;
+                    document.getElementById('stat-total-spent').textContent = totalSpent.toLocaleString('fr-FR') + ' FC';
+
+                    // Vehicle info
+                    if (profile.profile && profile.profile.vehicle_plate) {
+                        document.getElementById('info-vehicle').textContent = profile.profile.vehicle_plate;
+                        document.getElementById('vehicle-plate').value = profile.profile.vehicle_plate;
+                    }
+
+                    // Display name
+                    if (profile.profile && profile.profile.display_name) {
+                        document.getElementById('display-name').value = profile.profile.display_name;
+                    }
+
+                    // Active reservation
+                    if (profile.active_reservation) {
+                        displayActiveReservation(profile.active_reservation);
+                    }
+
+                } catch (error) {
+                    console.error('Erreur chargement profil API:', error);
+                }
+
+                // Member since (from Auth token or default)
+                var memberSince = new Date();
+                document.getElementById('info-member-since').textContent = memberSince.toLocaleDateString('fr-FR');
+
+                // Check for saved access code (offline)
+                var savedCode = OfflineStorage.getAccessCode();
+                if (savedCode) {
+                    document.getElementById('access-code-card').style.display = 'block';
+                    document.getElementById('access-code-display').textContent = savedCode.code;
+                    
+                    if (savedCode.expiresAt) {
+                        var expiresDate = new Date(savedCode.expiresAt);
+                        document.getElementById('code-expires').textContent = expiresDate.toLocaleString('fr-FR');
+                    }
+                }
+
+            } catch (error) {
+                console.error('Erreur chargement profil:', error);
+                showNotification('Erreur de chargement du profil', 'error');
+            }
+        }
+
+        function displayActiveReservation(reservation) {
+            var card = document.getElementById('current-reservation-card');
+            var content = document.getElementById('current-reservation-content');
+            
+            card.style.display = 'block';
+            
+            var endTime = new Date(reservation.reservation_end_time || reservation.end_time);
+            var now = new Date();
+            var remaining = endTime - now;
+            
+            var remainingText = 'Expirée';
+            if (remaining > 0) {
+                var hours = Math.floor(remaining / (1000 * 60 * 60));
+                var minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+                remainingText = hours + 'h ' + minutes + 'm restantes';
+            }
+            
+            content.innerHTML = '<div class="info-grid">' +
+                '<div class="info-item"><div class="info-label">Place</div><div class="info-value">' + reservation.place_id + '</div></div>' +
+                '<div class="info-item"><div class="info-label">Durée</div><div class="info-value">' + (reservation.reservation_duration_minutes || 60) / 60 + 'h</div></div>' +
+                '<div class="info-item"><div class="info-label">Temps restant</div><div class="info-value">' + remainingText + '</div></div>' +
+                '<div class="info-item"><div class="info-label">Statut</div><div class="info-value">' + (reservation.etat === 'occupied' ? 'Occupée' : 'Réservée') + '</div></div>' +
+                '</div>';
+        }
+
+        async function updateProfile(e) {
+            e.preventDefault();
+            
+            var displayName = document.getElementById('display-name').value.trim();
+            var vehiclePlate = document.getElementById('vehicle-plate').value.trim();
+            
+            try {
+                await API.request('/users/me/profile', {
+                    method: 'PUT',
+                    body: {
+                        display_name: displayName,
+                        vehicle_plate: vehiclePlate
+                    }
+                });
+                
+                showNotification('Profil mis à jour avec succès', 'success');
+                
+                // Update stored user
+                var user = Auth.getUser();
+                if (displayName) user.name = displayName;
+                Auth.setUser(user);
+                
+                // Reload profile
+                await loadProfile();
+                
+            } catch (error) {
+                console.error('Erreur mise à jour profil:', error);
+                showNotification('Erreur lors de la mise à jour du profil', 'error');
+            }
+        }
+
+        function viewReservation() {
+            window.location.href = 'reservation.html';
+        }
+    </script>
+</body>
+</html>

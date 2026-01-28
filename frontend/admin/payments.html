@@ -201,222 +201,238 @@
         </div>
     </main>
 
-    <script src="../js/data.js"></script>
+    <!-- AeroPark API Services -->
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script src="../js/admin.js"></script>
-    <script src="../js/services/api.js"></script>
     <script>
-        // Vérifier l'authentification
-        if (!AdminAuth.isLoggedIn()) {
-            window.location.href = 'login.html';
-        }
+        var allPayments = [];
+        var allUsers = [];
 
-        let allPayments = [];
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            await loadAllData();
-            initSidebar();
-
-            const admin = AdminAuth.getCurrentAdmin();
-            if (admin) {
-                document.getElementById('admin-name').textContent = admin.username;
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
+                window.location.href = 'login.html';
+                return;
             }
+
+            Admin.initSidebar();
+
+            var admin = Auth.getUser();
+            if (admin) {
+                document.getElementById('admin-name').textContent = admin.username || admin.name || 'Admin';
+            }
+
+            loadStats().then(function() {
+                loadPaymentMethodsChart();
+                return loadPaymentsTable();
+            }).catch(function(error) {
+                console.error('Erreur lors du chargement:', error);
+                Admin.showNotification('Erreur lors du chargement des données', 'error');
+            });
         });
 
-        async function loadAllData() {
-            await loadStats();
-            loadPaymentMethodsChart();
-            loadPaymentsTable();
-        }
-
-        async function loadStats() {
-            try {
-                const response = await ApiService.getAllPayments();
+        function loadStats() {
+            return API.getAdminPayments().then(function(response) {
                 allPayments = response.payments || response || [];
                 
-                const successPayments = allPayments.filter(p => p.status === 'completed' || p.status === 'success');
-                const totalAmount = successPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                // Extract users from payments since there's no dedicated endpoint
+                var usersMap = {};
+                for (var i = 0; i < allPayments.length; i++) {
+                    var p = allPayments[i];
+                    var userId = p.user_id || p.userId;
+                    if (userId && !usersMap[userId]) {
+                        usersMap[userId] = {
+                            id: userId,
+                            email: p.user_email || 'utilisateur@email.com',
+                            name: p.user_name || p.user_email || 'Utilisateur'
+                        };
+                    }
+                }
+                allUsers = Object.values(usersMap);
                 
-                const today = new Date().toDateString();
-                const todayPayments = successPayments.filter(p => 
-                    new Date(p.created_at || p.date).toDateString() === today
-                );
-                const todayAmount = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                var successPayments = allPayments.filter(function(p) {
+                    return p.status === 'success' || p.status === 'completed';
+                });
+                var totalAmount = successPayments.reduce(function(sum, p) {
+                    return sum + (p.amount || 0);
+                }, 0);
+                
+                // Calcul des revenus d'aujourd'hui
+                var today = new Date().toISOString().split('T')[0];
+                var todayPayments = successPayments.filter(function(p) {
+                    var paymentDate = new Date(p.date || p.created_at || p.createdAt).toISOString().split('T')[0];
+                    return paymentDate === today;
+                });
+                var todayAmount = todayPayments.reduce(function(sum, p) {
+                    return sum + (p.amount || 0);
+                }, 0);
                 
                 document.getElementById('stat-total-amount').textContent = totalAmount.toLocaleString('fr-FR') + ' FC';
                 document.getElementById('stat-transactions').textContent = successPayments.length;
                 document.getElementById('stat-today').textContent = todayAmount.toLocaleString('fr-FR') + ' FC';
-            } catch (error) {
-                console.error('Erreur lors du chargement des statistiques:', error);
-                AdminUtils.showNotification('Erreur lors du chargement des données: ' + error.message, 'error');
-            }
+            }).catch(function(error) {
+                console.error('Erreur chargement stats:', error);
+            });
         }
 
         function loadPaymentMethodsChart() {
-            const payments = allPayments.filter(p => p.status === 'completed' || p.status === 'success');
+            var payments = (allPayments || []).filter(function(p) {
+                return p.status === 'success' || p.status === 'completed';
+            });
             
-            const byMethod = {
+            var byMethod = {
                 orange: { count: 0, amount: 0, name: 'Orange Money', color: '#ff6b35', icon: 'fab fa-orange' },
-                ORANGE_MONEY: { count: 0, amount: 0, name: 'Orange Money', color: '#ff6b35', icon: 'fab fa-orange' },
                 airtel: { count: 0, amount: 0, name: 'Airtel Money', color: '#e4002b', icon: 'fas fa-mobile-alt' },
-                AIRTEL_MONEY: { count: 0, amount: 0, name: 'Airtel Money', color: '#e4002b', icon: 'fas fa-mobile-alt' },
-                mpesa: { count: 0, amount: 0, name: 'M-Pesa', color: '#00a651', icon: 'fas fa-mobile-alt' },
-                MPESA: { count: 0, amount: 0, name: 'M-Pesa', color: '#00a651', icon: 'fas fa-mobile-alt' }
+                mpesa: { count: 0, amount: 0, name: 'M-Pesa', color: '#00a651', icon: 'fas fa-mobile-alt' }
             };
 
-            payments.forEach(p => {
-                if (byMethod[p.method]) {
-                    byMethod[p.method].count++;
-                    byMethod[p.method].amount += p.amount || 0;
+            payments.forEach(function(p) {
+                var method = (p.method || p.payment_method || '').toLowerCase();
+                if (byMethod[method]) {
+                    byMethod[method].count++;
+                    byMethod[method].amount += p.amount || 0;
                 }
             });
 
-            // Consolider les méthodes (orange + ORANGE_MONEY, etc.)
-            const consolidatedMethods = {
-                orange: { 
-                    count: (byMethod.orange?.count || 0) + (byMethod.ORANGE_MONEY?.count || 0), 
-                    amount: (byMethod.orange?.amount || 0) + (byMethod.ORANGE_MONEY?.amount || 0), 
-                    name: 'Orange Money', 
-                    color: '#ff6b35' 
-                },
-                airtel: { 
-                    count: (byMethod.airtel?.count || 0) + (byMethod.AIRTEL_MONEY?.count || 0), 
-                    amount: (byMethod.airtel?.amount || 0) + (byMethod.AIRTEL_MONEY?.amount || 0), 
-                    name: 'Airtel Money', 
-                    color: '#e4002b' 
-                },
-                mpesa: { 
-                    count: (byMethod.mpesa?.count || 0) + (byMethod.MPESA?.count || 0), 
-                    amount: (byMethod.mpesa?.amount || 0) + (byMethod.MPESA?.amount || 0), 
-                    name: 'M-Pesa', 
-                    color: '#00a651' 
-                }
-            };
-
-            const total = payments.length || 1;
+            var total = payments.length || 1;
+            var chartHtml = '';
+            var methods = Object.keys(byMethod);
             
-            document.getElementById('payment-methods-chart').innerHTML = Object.entries(consolidatedMethods).map(([key, data]) => {
-                const percent = ((data.count / total) * 100).toFixed(1);
-                return `
-                    <div style="text-align: center; min-width: 150px;">
-                        <div style="width: 100px; height: 100px; border-radius: 50%; background: conic-gradient(${data.color} 0% ${percent}%, #e0e0e0 ${percent}% 100%); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;">
-                            <div style="width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                                <span style="font-weight: bold; color: ${data.color};">${percent}%</span>
-                            </div>
-                        </div>
-                        <h4 style="margin: 0; color: ${data.color};">${data.name}</h4>
-                        <p style="margin: 0.25rem 0; color: var(--text-secondary);">${data.count} transactions</p>
-                        <p style="margin: 0; font-weight: 600;">${data.amount.toLocaleString('fr-FR')} FC</p>
-                    </div>
-                `;
-            }).join('');
+            for (var i = 0; i < methods.length; i++) {
+                var key = methods[i];
+                var data = byMethod[key];
+                var percent = ((data.count / total) * 100).toFixed(1);
+                chartHtml += '<div style="text-align: center; min-width: 150px;">' +
+                    '<div style="width: 100px; height: 100px; border-radius: 50%; background: conic-gradient(' + data.color + ' 0% ' + percent + '%, #e0e0e0 ' + percent + '% 100%); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;">' +
+                    '<div style="width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">' +
+                    '<span style="font-weight: bold; color: ' + data.color + ';">' + percent + '%</span>' +
+                    '</div></div>' +
+                    '<h4 style="margin: 0; color: ' + data.color + ';">' + data.name + '</h4>' +
+                    '<p style="margin: 0.25rem 0; color: var(--text-secondary);">' + data.count + ' transactions</p>' +
+                    '<p style="margin: 0; font-weight: 600;">' + data.amount.toLocaleString('fr-FR') + ' FC</p>' +
+                    '</div>';
+            }
+            
+            document.getElementById('payment-methods-chart').innerHTML = chartHtml;
         }
 
         function loadPaymentsTable() {
-            const payments = getFilteredPayments();
-            const tbody = document.getElementById('payments-table');
+            var payments = getFilteredPayments();
+            var tbody = document.getElementById('payments-table');
 
             document.getElementById('payments-count').textContent = payments.length + ' paiements';
 
             if (payments.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Aucun paiement trouvé</td></tr>';
-                return;
+                return Promise.resolve();
             }
 
-            const methodIcons = {
+            var sortedPayments = payments.sort(function(a, b) {
+                return new Date(b.date || b.created_at) - new Date(a.date || a.created_at);
+            });
+
+            var methodIcons = {
                 orange: '<span style="color: #ff6b35;"><i class="fas fa-circle"></i> Orange Money</span>',
-                ORANGE_MONEY: '<span style="color: #ff6b35;"><i class="fas fa-circle"></i> Orange Money</span>',
                 airtel: '<span style="color: #e4002b;"><i class="fas fa-circle"></i> Airtel Money</span>',
-                AIRTEL_MONEY: '<span style="color: #e4002b;"><i class="fas fa-circle"></i> Airtel Money</span>',
-                mpesa: '<span style="color: #00a651;"><i class="fas fa-circle"></i> M-Pesa</span>',
-                MPESA: '<span style="color: #00a651;"><i class="fas fa-circle"></i> M-Pesa</span>'
+                mpesa: '<span style="color: #00a651;"><i class="fas fa-circle"></i> M-Pesa</span>'
             };
 
-            const statusBadge = {
+            var statusBadge = {
                 success: '<span class="badge success">Réussi</span>',
                 completed: '<span class="badge success">Réussi</span>',
                 failed: '<span class="badge danger">Échoué</span>',
                 pending: '<span class="badge warning">En attente</span>'
             };
 
-            tbody.innerHTML = payments.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date)).map(payment => {
-                return `
-                    <tr>
-                        <td><code>${(payment.id || '').slice(-10)}</code></td>
-                        <td>${payment.user_email || payment.user_id || '-'}</td>
-                        <td>${methodIcons[payment.method] || payment.method || '-'}</td>
-                        <td>${payment.phone_number || payment.phone || '-'}</td>
-                        <td><strong>${(payment.amount || 0).toLocaleString('fr-FR')} FC</strong></td>
-                        <td>${payment.spot_id || payment.place_id || '-'}</td>
-                        <td>${AdminUtils.formatDate(payment.created_at || payment.date)}</td>
-                        <td>${statusBadge[payment.status] || payment.status}</td>
-                    </tr>
-                `;
-            }).join('');
+            var html = '';
+            for (var i = 0; i < sortedPayments.length; i++) {
+                var payment = sortedPayments[i];
+                var user = null;
+                for (var j = 0; j < allUsers.length; j++) {
+                    if (allUsers[j].id === payment.user_id || allUsers[j].id === payment.userId) {
+                        user = allUsers[j];
+                        break;
+                    }
+                }
+                var userName = user ? (user.name || user.display_name || user.email) : (payment.user_email || 'Utilisateur');
+                var method = (payment.method || payment.payment_method || '').toLowerCase();
+                var transactionId = (payment.id || payment.transaction_id || '').slice(-10);
+                
+                html += '<tr>' +
+                    '<td><code>' + transactionId + '</code></td>' +
+                    '<td>' + userName + '</td>' +
+                    '<td>' + (methodIcons[method] || method) + '</td>' +
+                    '<td>' + (payment.phone || payment.phone_number || '-') + '</td>' +
+                    '<td><strong>' + (payment.amount || 0).toLocaleString('fr-FR') + ' FC</strong></td>' +
+                    '<td>' + (payment.place_id || payment.spotId || '-') + '</td>' +
+                    '<td>' + Admin.formatDate(payment.date || payment.created_at || payment.createdAt) + '</td>' +
+                    '<td>' + (statusBadge[payment.status] || payment.status) + '</td>' +
+                    '</tr>';
+            }
+            
+            tbody.innerHTML = html;
+            return Promise.resolve();
         }
 
         function getFilteredPayments() {
-            let payments = [...allPayments];
+            var payments = allPayments || [];
             
-            const dateStart = document.getElementById('filter-date-start').value;
-            const dateEnd = document.getElementById('filter-date-end').value;
-            const method = document.getElementById('filter-method').value;
-            const status = document.getElementById('filter-status').value;
+            var dateStart = document.getElementById('filter-date-start').value;
+            var dateEnd = document.getElementById('filter-date-end').value;
+            var method = document.getElementById('filter-method').value;
+            var status = document.getElementById('filter-status').value;
 
             if (dateStart) {
-                payments = payments.filter(p => new Date(p.created_at || p.date) >= new Date(dateStart));
+                payments = payments.filter(function(p) {
+                    return new Date(p.date || p.created_at) >= new Date(dateStart);
+                });
             }
 
             if (dateEnd) {
-                const end = new Date(dateEnd);
+                var end = new Date(dateEnd);
                 end.setHours(23, 59, 59);
-                payments = payments.filter(p => new Date(p.created_at || p.date) <= end);
+                payments = payments.filter(function(p) {
+                    return new Date(p.date || p.created_at) <= end;
+                });
             }
 
             if (method !== 'all') {
-                const methodUpper = method.toUpperCase() + '_MONEY';
-                payments = payments.filter(p => p.method === method || p.method === methodUpper || p.method === method.toUpperCase());
+                payments = payments.filter(function(p) {
+                    return (p.method || p.payment_method || '').toLowerCase() === method;
+                });
             }
 
             if (status !== 'all') {
-                if (status === 'success') {
-                    payments = payments.filter(p => p.status === 'success' || p.status === 'completed');
-                } else {
-                    payments = payments.filter(p => p.status === status);
-                }
+                payments = payments.filter(function(p) {
+                    return p.status === status || (status === 'success' && p.status === 'completed');
+                });
             }
 
             return payments;
         }
 
         function filterPayments() {
+            loadPaymentMethodsChart();
             loadPaymentsTable();
         }
 
         function exportPayments() {
-            const payments = getFilteredPayments().map(p => ({
-                id: p.id,
-                method: p.method,
-                phone: p.phone_number || p.phone,
-                amount: p.amount,
-                spot_id: p.spot_id || p.place_id,
-                date: p.created_at || p.date,
-                status: p.status
-            }));
-            AdminUtils.exportToCSV(payments, 'paiements_aeropark.csv');
-            AdminUtils.showNotification('Export terminé');
-        }
-
-        function initSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-            const mobileToggle = document.getElementById('mobile-menu-toggle');
-
-            sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
-            mobileToggle.addEventListener('click', () => sidebar.classList.toggle('mobile-open'));
-            document.getElementById('admin-logout').addEventListener('click', () => {
-                AdminAuth.logout();
-                window.location.href = 'login.html';
-            });
+            var filtered = getFilteredPayments();
+            var payments = [];
+            for (var i = 0; i < filtered.length; i++) {
+                var p = filtered[i];
+                payments.push({
+                    id: p.id || p.transaction_id,
+                    method: p.method || p.payment_method,
+                    phone: p.phone || p.phone_number,
+                    amount: p.amount,
+                    spotId: p.place_id || p.spotId,
+                    date: p.date || p.created_at,
+                    status: p.status
+                });
+            }
+            Admin.exportToCSV(payments, 'paiements_aeropark.csv');
+            Admin.showNotification('Export terminé');
         }
     </script>
 </body>

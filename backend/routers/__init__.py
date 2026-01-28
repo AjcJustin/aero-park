@@ -4,6 +4,7 @@ API route handlers.
 """
 
 from routers.auth import router as auth_router
+from routers.auth_rest import router as auth_rest_router
 from routers.parking import router as parking_router
 from routers.admin import router as admin_router
 from routers.sensor import router as sensor_router
@@ -14,6 +15,7 @@ from routers.payment import router as payment_router
 
 __all__ = [
     "auth_router",
+    "auth_rest_router",
     "parking_router",
     "admin_router",
     "sensor_router",

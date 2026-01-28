@@ -63,36 +63,56 @@
         </div>
     </div>
 
-    <script src="../js/data.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script src="../js/admin.js"></script>
     <script>
-        // Vérifier si déjà connecté
-        if (AdminAuth.isLoggedIn()) {
-            window.location.href = 'dashboard.html';
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            // Already logged in as admin?
+            if (Auth.isLoggedIn() && Auth.isAdmin()) {
+                window.location.href = 'dashboard.html';
+            }
+        });
 
-        // Gestion du formulaire
-        document.getElementById('admin-login-form').addEventListener('submit', function(e) {
+        document.getElementById('admin-login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
+            var submitBtn = this.querySelector('button[type="submit"]');
+            var originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
+            submitBtn.disabled = true;
+            
+            var email = document.getElementById('username').value.trim();
+            var password = document.getElementById('password').value;
 
-            const result = AdminAuth.login(username, password);
+            try {
+                var result = await Auth.login(email, password);
 
-            if (result.success) {
-                showAlert('success', 'Connexion réussie ! Redirection...');
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 1000);
-            } else {
-                showAlert('error', result.message);
+                if (result.success) {
+                    var user = Auth.getUser();
+                    if (user && user.role === 'admin') {
+                        showAlert('success', 'Connexion réussie ! Redirection...');
+                        setTimeout(function() {
+                            window.location.href = 'dashboard.html';
+                        }, 1000);
+                    } else {
+                        showAlert('error', 'Accès refusé. Vous n\'êtes pas administrateur.');
+                        Auth.logout();
+                    }
+                } else {
+                    showAlert('error', result.message);
+                }
+            } catch (error) {
+                showAlert('error', error.message || 'Erreur de connexion');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
         });
 
         function showAlert(type, message) {
-            const alert = document.getElementById('alert-message');
-            alert.className = `alert ${type}`;
+            var alert = document.getElementById('alert-message');
+            alert.className = 'alert ' + type;
             alert.querySelector('span').textContent = message;
             alert.classList.remove('hidden');
         }

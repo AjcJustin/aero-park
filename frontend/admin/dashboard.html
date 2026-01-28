@@ -280,132 +280,150 @@
         </div>
     </main>
 
-    <script src="../js/data.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script src="../js/admin.js"></script>
-    <script src="../js/services/api.js"></script>
     <script>
-        // Vérifier l'authentification
-        if (!AdminAuth.isLoggedIn()) {
-            window.location.href = 'login.html';
-        }
-
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', function() {
-            initDashboard();
-            initSidebar();
+        var cachedParkingData = null;
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            await initDashboard();
+            Admin.initSidebar();
             updateCurrentDate();
         });
 
         async function initDashboard() {
             await loadStats();
+            await loadOccupationChart();
             await loadRecentReservations();
             await loadRecentPayments();
             await loadParkingOverview();
 
-            // Mettre à jour le nom admin
-            const admin = AdminAuth.getCurrentAdmin();
-            if (admin) {
-                document.getElementById('admin-name').textContent = admin.username;
+            var user = Auth.getUser();
+            if (user) {
+                document.getElementById('admin-name').textContent = user.name || 'Admin';
             }
         }
 
         function updateCurrentDate() {
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('current-date').textContent = new Date().toLocaleDateString('fr-FR', options);
         }
 
         async function loadStats() {
             try {
-                // Charger les stats depuis l'API
-                const statsResponse = await ApiService.getAdminStats();
-                const stats = statsResponse || {};
+                var response = await API.getParkingStatus();
+                cachedParkingData = response;
                 
-                // Charger les places de parking
-                const spotsResponse = await ApiService.getAllParkingPlaces();
-                const spots = spotsResponse.places || spotsResponse || [];
+                var places = response.places || [];
+                var total = places.length;
+                // Backend uses 'etat': free, reserved, occupied
+                var available = places.filter(function(p) { return (p.etat || p.status) === 'free'; }).length;
+                var reserved = places.filter(function(p) { return (p.etat || p.status) === 'reserved'; }).length;
+                var occupied = places.filter(function(p) { return (p.etat || p.status) === 'occupied'; }).length;
                 
-                const available = spots.filter(s => s.status === 'free' || s.status === 'available').length;
-                const reserved = spots.filter(s => s.status === 'reserved').length;
-                const occupied = spots.filter(s => s.status === 'occupied').length;
-                const total = spots.length;
-                const occupationRate = total > 0 ? Math.round(((reserved + occupied) / total) * 100) : 0;
-
                 document.getElementById('stat-total-places').textContent = total;
                 document.getElementById('stat-available').textContent = available;
                 document.getElementById('stat-reserved').textContent = reserved;
                 document.getElementById('stat-occupied').textContent = occupied;
-                document.getElementById('stat-users').textContent = stats.total_users || 0;
-                document.getElementById('stat-revenue').textContent = (stats.total_revenue || 0).toLocaleString('fr-FR') + ' FC';
                 
-                // Mettre à jour le graphe d'occupation
-                loadOccupationChart(available, reserved, occupied, occupationRate);
+                try {
+                    var adminStats = await API.getAdminStats();
+                    // Backend returns: taux_occupation, libres, occupees, reservees
+                    document.getElementById('stat-users').textContent = adminStats.users_count || '-';
+                    document.getElementById('stat-revenue').textContent = (adminStats.total_revenue || 0).toLocaleString('fr-FR') + ' FC';
+                } catch (e) {
+                    document.getElementById('stat-users').textContent = '-';
+                    document.getElementById('stat-revenue').textContent = '- FC';
+                }
+                
             } catch (error) {
-                console.error('Erreur lors du chargement des statistiques:', error);
-                AdminUtils.showNotification('Erreur lors du chargement des données', 'error');
+                console.error('Erreur chargement stats:', error);
             }
         }
 
-        function loadOccupationChart(available = 0, reserved = 0, occupied = 0, occupationRate = 0) {
-            const ring = document.getElementById('occupation-ring');
-            const circumference = 2 * Math.PI * 80;
-            const offset = circumference - (occupationRate / 100) * circumference;
-            
-            ring.style.strokeDasharray = circumference;
-            ring.style.strokeDashoffset = offset;
+        async function loadOccupationChart() {
+            try {
+                if (!cachedParkingData) {
+                    cachedParkingData = await API.getParkingStatus();
+                }
+                
+                var places = cachedParkingData.places || [];
+                var total = places.length;
+                // Backend uses 'etat': free, reserved, occupied
+                var available = places.filter(function(p) { return (p.etat || p.status) === 'free'; }).length;
+                var reserved = places.filter(function(p) { return (p.etat || p.status) === 'reserved'; }).length;
+                var occupied = places.filter(function(p) { return (p.etat || p.status) === 'occupied'; }).length;
+                var occupationRate = total > 0 ? Math.round(((reserved + occupied) / total) * 100) : 0;
+                
+                var ring = document.getElementById('occupation-ring');
+                var circumference = 2 * Math.PI * 80;
+                var offset = circumference - (occupationRate / 100) * circumference;
+                
+                ring.style.strokeDasharray = circumference;
+                ring.style.strokeDashoffset = offset;
 
-            document.getElementById('occupation-percent').textContent = occupationRate + '%';
-            document.getElementById('legend-available').textContent = available;
-            document.getElementById('legend-reserved').textContent = reserved;
-            document.getElementById('legend-occupied').textContent = occupied;
+                document.getElementById('occupation-percent').textContent = occupationRate + '%';
+                document.getElementById('legend-available').textContent = available;
+                document.getElementById('legend-reserved').textContent = reserved;
+                document.getElementById('legend-occupied').textContent = occupied;
+            } catch (error) {
+                console.error('Error loading chart:', error);
+            }
         }
 
         async function loadRecentReservations() {
-            const tbody = document.getElementById('recent-reservations');
+            var tbody = document.getElementById('recent-reservations');
             
             try {
-                const response = await ApiService.getAllReservations({ limit: 5 });
-                const reservations = response.reservations || response || [];
-                const recent = reservations.slice(0, 5);
+                var response = await API.getAdminReservations();
+                // API returns { reservations: [...], total: n }
+                var reservations = response.reservations || response || [];
+                var recent = Array.isArray(reservations) ? reservations.slice(-5).reverse() : [];
 
                 if (recent.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Aucune réservation</td></tr>';
                     return;
                 }
 
-                tbody.innerHTML = recent.map(res => {
-                    const date = new Date(res.created_at || res.start_time).toLocaleDateString('fr-FR');
-                    const statusClass = res.status === 'active' ? 'success' : 'secondary';
-                    const statusText = res.status === 'active' ? 'Active' : res.status === 'pending' ? 'En attente' : 'Terminée';
+                tbody.innerHTML = recent.map(function(res) {
+                    var date = res.created_at ? new Date(res.created_at).toLocaleDateString('fr-FR') : '-';
+                    var statusClass = res.status === 'active' ? 'success' : 'secondary';
+                    var statusText = res.status === 'active' ? 'Active' : 'Terminée';
                     
-                    return `
-                        <tr>
-                            <td><strong>${res.spot_id || res.place_id || '-'}</strong></td>
-                            <td>${res.user_email || res.user_id || 'Inconnu'}</td>
-                            <td>${date}</td>
-                            <td><span class="badge ${statusClass}">${statusText}</span></td>
-                        </tr>
-                    `;
+                    return '<tr>' +
+                        '<td><strong>' + (res.place_id || res.spotId || '-') + '</strong></td>' +
+                        '<td>' + (res.user_name || res.userName || 'Utilisateur') + '</td>' +
+                        '<td>' + date + '</td>' +
+                        '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
+                    '</tr>';
                 }).join('');
             } catch (error) {
-                console.error('Erreur lors du chargement des réservations:', error);
+                console.error('Error loading reservations:', error);
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Erreur de chargement</td></tr>';
             }
         }
 
         async function loadRecentPayments() {
-            const tbody = document.getElementById('recent-payments');
+            var tbody = document.getElementById('recent-payments');
 
             try {
-                const response = await ApiService.getAllPayments({ limit: 5 });
-                const payments = response.payments || response || [];
-                const recent = payments.slice(0, 5);
+                var response = await API.getAdminPayments();
+                // API returns { payments: [...], total: n, summary: {...} }
+                var payments = response.payments || response || [];
+                var recent = Array.isArray(payments) ? payments.slice(-5).reverse() : [];
 
                 if (recent.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Aucun paiement</td></tr>';
                     return;
                 }
 
-                    const methodNames = {
+                var methodNames = {
                     'ORANGE_MONEY': 'Orange Money',
                     'AIRTEL_MONEY': 'Airtel Money',
                     'MPESA': 'M-Pesa',
@@ -414,79 +432,55 @@
                     'mpesa': 'M-Pesa'
                 };
 
-                tbody.innerHTML = recent.map(pay => {
-                    const date = new Date(pay.created_at || pay.paidAt).toLocaleDateString('fr-FR');
-                    const statusClass = pay.status === 'completed' || pay.status === 'success' ? 'success' : 'danger';
-                    const statusText = pay.status === 'completed' || pay.status === 'success' ? 'Réussi' : 'Échoué';
+                tbody.innerHTML = recent.map(function(pay) {
+                    var date = pay.paid_at || pay.paidAt ? new Date(pay.paid_at || pay.paidAt).toLocaleDateString('fr-FR') : '-';
+                    var statusClass = pay.status === 'completed' || pay.status === 'success' ? 'success' : 'danger';
+                    var statusText = pay.status === 'completed' || pay.status === 'success' ? 'Réussi' : 'Échoué';
+                    var method = pay.provider || pay.paymentMethod || '';
                     
-                    return `
-                        <tr>
-                            <td>#${(pay.id || '').slice(-6)}</td>
-                            <td><strong>${pay.spot_id || pay.place_id || '-'}</strong></td>
-                            <td>${(pay.amount || 0).toLocaleString('fr-FR')} FC</td>
-                            <td>${methodNames[pay.method] || pay.method || '-'}</td>
-                            <td>${pay.phone_number || pay.phoneNumber || '-'}</td>
-                            <td>${date}</td>
-                            <td><span class="badge ${statusClass}">${statusText}</span></td>
-                        </tr>
-                    `;
+                    return '<tr>' +
+                        '<td>#' + (pay.id || '').toString().slice(-6) + '</td>' +
+                        '<td><strong>' + (pay.place_id || pay.spotId || '-') + '</strong></td>' +
+                        '<td>' + (pay.amount || 0).toLocaleString('fr-FR') + ' FC</td>' +
+                        '<td>' + (methodNames[method] || method) + '</td>' +
+                        '<td>' + (pay.phone_number || pay.phoneNumber || '-') + '</td>' +
+                        '<td>' + date + '</td>' +
+                        '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
+                    '</tr>';
                 }).join('');
             } catch (error) {
-                console.error('Erreur lors du chargement des paiements:', error);
+                console.error('Error loading payments:', error);
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Erreur de chargement</td></tr>';
             }
         }
 
         async function loadParkingOverview() {
-            const container = document.getElementById('parking-overview');
-
+            var container = document.getElementById('parking-overview');
+            
             try {
-                const response = await ApiService.getAllParkingPlaces();
-                const spots = response.places || response || [];
-
-                if (spots.length === 0) {
-                    container.innerHTML = '<p class="text-muted text-center">Aucune place de parking configurée</p>';
-                    return;
+                if (!cachedParkingData) {
+                    cachedParkingData = await API.getParkingStatus();
                 }
+                
+                var spots = cachedParkingData.places || [];
 
-                container.innerHTML = spots.map(spot => {
-                    // Mapper les statuts de l'API vers les classes CSS
-                    const statusClass = spot.status === 'free' ? 'available' : spot.status;
-                    return `
-                        <div class="parking-spot-admin ${statusClass}" title="Place ${spot.id || spot.place_id} - ${spot.status}">
-                            ${spot.id || spot.place_id}
-                        </div>
-                    `;
+                container.innerHTML = spots.map(function(spot) {
+                    // Backend uses 'etat': free, reserved, occupied
+                    var status = spot.etat || spot.status || 'free';
+                    var statusClass = status === 'free' ? 'available' : status;
+                    return '<div class="parking-spot-admin ' + statusClass + '" title="Place ' + spot.id + ' - ' + status + '">' + spot.id + '</div>';
                 }).join('');
             } catch (error) {
-                console.error('Erreur lors du chargement de l\'aperçu parking:', error);
-                container.innerHTML = '<p class="text-muted text-center">Erreur de chargement</p>';
+                console.error('Error loading overview:', error);
+                container.innerHTML = '<p class="text-muted">Erreur de chargement</p>';
             }
         }
 
-        function initSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-            const mobileToggle = document.getElementById('mobile-menu-toggle');
-
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-            });
-
-            mobileToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('mobile-open');
-            });
-
-            // Déconnexion
-            document.getElementById('admin-logout').addEventListener('click', () => {
-                AdminAuth.logout();
-                window.location.href = 'login.html';
-            });
-        }
-
-        // Rafraîchir les données toutes les 30 secondes
-        setInterval(async () => {
+        // Refresh data every 30 seconds
+        setInterval(async function() {
+            cachedParkingData = null;
             await loadStats();
+            await loadOccupationChart();
             await loadParkingOverview();
         }, 30000);
     </script>

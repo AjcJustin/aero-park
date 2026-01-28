@@ -15,6 +15,7 @@ from datetime import datetime
 # Import routers
 from routers import (
     auth_router,
+    auth_rest_router,
     parking_router,
     admin_router,
     sensor_router,
@@ -180,6 +181,7 @@ app.include_router(websocket_router)
 
 # Routes utilisateurs et parking
 app.include_router(auth_router)
+app.include_router(auth_rest_router)  # REST API auth (no Firebase SDK needed on frontend)
 app.include_router(parking_router)
 app.include_router(admin_router)
 

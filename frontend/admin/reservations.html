@@ -209,56 +209,71 @@
         </div>
     </div>
 
-    <script src="../js/data.js"></script>
+    <!-- AeroPark API Services -->
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script src="../js/admin.js"></script>
-    <script src="../js/services/api.js"></script>
     <script>
-        let currentReservationId = null;
-        let allReservations = [];
+        var currentReservationId = null;
+        var allReservations = [];
+        var allUsers = [];
 
-        // Vérifier l'authentification
-        if (!AdminAuth.isLoggedIn()) {
-            window.location.href = 'login.html';
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
+                window.location.href = 'login.html';
+                return;
+            }
 
-        document.addEventListener('DOMContentLoaded', async function() {
-            await loadAllData();
-            initSidebar();
+            loadStats();
+            loadReservationsTable();
+            Admin.initSidebar();
 
-            const admin = AdminAuth.getCurrentAdmin();
+            var admin = Auth.getUser();
             if (admin) {
-                document.getElementById('admin-name').textContent = admin.username;
+                document.getElementById('admin-name').textContent = admin.username || admin.name || 'Admin';
             }
         });
 
-        async function loadAllData() {
-            await loadStats();
-            loadReservationsTable();
-        }
-
-        async function loadStats() {
-            try {
-                const response = await ApiService.getAllReservations();
-                allReservations = response.reservations || response || [];
-                
-                const total = allReservations.length;
-                const active = allReservations.filter(r => r.status === 'active').length;
-                const completed = allReservations.filter(r => r.status === 'completed').length;
-                const cancelled = allReservations.filter(r => r.status === 'cancelled').length;
-                
-                document.getElementById('stat-total').textContent = total;
-                document.getElementById('stat-active').textContent = active;
-                document.getElementById('stat-completed').textContent = completed;
-                document.getElementById('stat-cancelled').textContent = cancelled;
-            } catch (error) {
-                console.error('Erreur lors du chargement des statistiques:', error);
-                AdminUtils.showNotification('Erreur lors du chargement des données: ' + error.message, 'error');
-            }
+        function loadStats() {
+            API.get('/admin/parking/reservations')
+                .then(function(response) {
+                    allReservations = response.reservations || response || [];
+                    
+                    // Extract users from reservations since there's no dedicated endpoint
+                    var usersMap = {};
+                    for (var i = 0; i < allReservations.length; i++) {
+                        var r = allReservations[i];
+                        var userId = r.user_id || r.userId;
+                        if (userId && !usersMap[userId]) {
+                            usersMap[userId] = {
+                                id: userId,
+                                email: r.user_email || 'utilisateur@email.com',
+                                name: r.user_name || r.user_email || 'Utilisateur'
+                            };
+                        }
+                    }
+                    allUsers = Object.values(usersMap);
+                    
+                    var total = allReservations.length;
+                    var active = allReservations.filter(function(r) { return r.status === 'active'; }).length;
+                    var completed = allReservations.filter(function(r) { return r.status === 'completed'; }).length;
+                    var cancelled = allReservations.filter(function(r) { return r.status === 'cancelled'; }).length;
+                    
+                    document.getElementById('stat-total').textContent = total;
+                    document.getElementById('stat-active').textContent = active;
+                    document.getElementById('stat-completed').textContent = completed;
+                    document.getElementById('stat-cancelled').textContent = cancelled;
+                    
+                    loadReservationsTable();
+                })
+                .catch(function(error) {
+                    console.error('Erreur chargement stats:', error);
+                });
         }
 
         function loadReservationsTable() {
-            const reservations = getFilteredReservations();
-            const tbody = document.getElementById('reservations-table');
+            var reservations = getFilteredReservations();
+            var tbody = document.getElementById('reservations-table');
 
             document.getElementById('reservations-count').textContent = reservations.length + ' réservations';
 
@@ -267,76 +282,96 @@
                 return;
             }
 
-            tbody.innerHTML = reservations.sort((a, b) => new Date(b.created_at || b.start_time) - new Date(a.created_at || a.start_time)).map(res => {
-                const userName = res.user_email || res.user_id || 'Utilisateur inconnu';
-                const spotId = res.spot_id || res.place_id || '-';
+            var sortedReservations = reservations.sort(function(a, b) {
+                return new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt);
+            });
+
+            var html = '';
+            for (var i = 0; i < sortedReservations.length; i++) {
+                var res = sortedReservations[i];
+                var user = null;
+                for (var j = 0; j < allUsers.length; j++) {
+                    if (allUsers[j].id === res.user_id || allUsers[j].id === res.userId) {
+                        user = allUsers[j];
+                        break;
+                    }
+                }
+                var userName = user ? (user.name || user.display_name || user.email) : (res.user_email || 'Utilisateur');
                 
-                const statusBadges = {
-                    active: '<span class="badge success">En cours</span>',
-                    pending: '<span class="badge warning">En attente</span>',
-                    completed: '<span class="badge secondary">Terminée</span>',
-                    cancelled: '<span class="badge danger">Annulée</span>'
-                };
-                
-                // Calculer la durée
-                let duration = res.duration || 1;
-                if (res.start_time && res.end_time) {
-                    const diffMs = new Date(res.end_time) - new Date(res.start_time);
-                    duration = Math.ceil(diffMs / (1000 * 60 * 60));
+                var statusBadge = '';
+                if (res.status === 'active') {
+                    statusBadge = '<span class="badge success">En cours</span>';
+                } else if (res.status === 'completed') {
+                    statusBadge = '<span class="badge secondary">Terminée</span>';
+                } else if (res.status === 'cancelled') {
+                    statusBadge = '<span class="badge danger">Annulée</span>';
+                } else {
+                    statusBadge = res.status;
                 }
                 
-                return `
-                    <tr>
-                        <td><code>#${(res.id || '').slice(-6)}</code></td>
-                        <td>${userName}</td>
-                        <td><strong>${spotId}</strong></td>
-                        <td>${res.vehicle_plate || '-'}</td>
-                        <td>${AdminUtils.formatDate(res.start_time || res.created_at)}</td>
-                        <td>${duration}h</td>
-                        <td><strong>${(res.amount || duration * 1000).toLocaleString('fr-FR')} FC</strong></td>
-                        <td>${statusBadges[res.status] || res.status}</td>
-                        <td>
-                            <button class="btn-icon view" onclick="viewReservation('${res.id}')" title="Voir">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            ${res.status === 'active' || res.status === 'pending' ? `
-                                <button class="btn-icon delete" onclick="cancelReservation('${res.id}')" title="Annuler">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            ` : ''}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                var spotId = res.place_id || res.spotId || '-';
+                var duration = res.duration || 1;
+                var amount = res.amount || (duration * 1000);
+                var resId = res.id || '';
+                
+                html += '<tr>';
+                html += '<td><code>#' + resId.slice(-6) + '</code></td>';
+                html += '<td>' + userName + '</td>';
+                html += '<td><strong>' + spotId + '</strong></td>';
+                html += '<td>' + (res.vehicle_plate || res.vehiclePlate || '-') + '</td>';
+                html += '<td>' + Admin.formatDate(res.start_time || res.startTime || res.created_at || res.createdAt) + '</td>';
+                html += '<td>' + duration + 'h</td>';
+                html += '<td><strong>' + amount.toLocaleString('fr-FR') + ' FC</strong></td>';
+                html += '<td>' + statusBadge + '</td>';
+                html += '<td>';
+                html += '<button class="btn-icon view" onclick="viewReservation(\'' + res.id + '\')" title="Voir">';
+                html += '<i class="fas fa-eye"></i>';
+                html += '</button>';
+                if (res.status === 'active') {
+                    html += '<button class="btn-icon delete" onclick="cancelReservation(\'' + res.id + '\')" title="Annuler">';
+                    html += '<i class="fas fa-times"></i>';
+                    html += '</button>';
+                }
+                html += '</td>';
+                html += '</tr>';
+            }
+            tbody.innerHTML = html;
         }
 
         function getFilteredReservations() {
-            let reservations = [...allReservations];
+            var reservations = allReservations || [];
             
-            const search = document.getElementById('search-reservation').value.toLowerCase();
-            const date = document.getElementById('filter-date').value;
-            const status = document.getElementById('filter-status').value;
+            var search = document.getElementById('search-reservation').value.toLowerCase();
+            var date = document.getElementById('filter-date').value;
+            var status = document.getElementById('filter-status').value;
 
             if (search) {
-                reservations = reservations.filter(r => {
-                    const spotId = (r.spot_id || r.place_id || '').toLowerCase();
-                    const userEmail = (r.user_email || '').toLowerCase();
-                    const vehiclePlate = (r.vehicle_plate || '').toLowerCase();
-                    return spotId.includes(search) || 
-                           userEmail.includes(search) ||
-                           vehiclePlate.includes(search);
+                reservations = reservations.filter(function(r) {
+                    var user = null;
+                    for (var j = 0; j < allUsers.length; j++) {
+                        if (allUsers[j].id === r.user_id || allUsers[j].id === r.userId) {
+                            user = allUsers[j];
+                            break;
+                        }
+                    }
+                    var userName = user ? (user.name || user.display_name || user.email || '').toLowerCase() : '';
+                    var spotId = (r.place_id || r.spotId || '').toLowerCase();
+                    var vehiclePlate = (r.vehicle_plate || r.vehiclePlate || '').toLowerCase();
+                    return spotId.indexOf(search) !== -1 || 
+                           userName.indexOf(search) !== -1 ||
+                           vehiclePlate.indexOf(search) !== -1;
                 });
             }
 
             if (date) {
-                reservations = reservations.filter(r => {
-                    const resDate = new Date(r.created_at || r.start_time).toISOString().split('T')[0];
+                reservations = reservations.filter(function(r) {
+                    var resDate = new Date(r.created_at || r.createdAt).toISOString().split('T')[0];
                     return resDate === date;
                 });
             }
 
             if (status !== 'all') {
-                reservations = reservations.filter(r => r.status === status);
+                reservations = reservations.filter(function(r) { return r.status === status; });
             }
 
             return reservations;
@@ -348,75 +383,96 @@
 
         function viewReservation(reservationId) {
             currentReservationId = reservationId;
-            const reservation = allReservations.find(r => r.id === reservationId);
-            if (!reservation) return;
+            var reservation = null;
+            for (var i = 0; i < allReservations.length; i++) {
+                if (allReservations[i].id === reservationId) {
+                    reservation = allReservations[i];
+                    break;
+                }
+            }
+            if (!reservation) {
+                Admin.showNotification('Réservation introuvable', 'error');
+                return;
+            }
+            
+            var user = null;
+            for (var j = 0; j < allUsers.length; j++) {
+                if (allUsers[j].id === reservation.user_id || allUsers[j].id === reservation.userId) {
+                    user = allUsers[j];
+                    break;
+                }
+            }
+            var userName = user ? (user.name || user.display_name || user.email) : (reservation.user_email || 'Utilisateur');
 
-            const spotId = reservation.spot_id || reservation.place_id || '-';
-            let duration = reservation.duration || 1;
-            if (reservation.start_time && reservation.end_time) {
-                const diffMs = new Date(reservation.end_time) - new Date(reservation.start_time);
-                duration = Math.ceil(diffMs / (1000 * 60 * 60));
+            var statusClass = 'success';
+            var statusText = 'En cours';
+            var statusIcon = 'fa-clock';
+            if (reservation.status === 'completed') {
+                statusClass = 'secondary';
+                statusText = 'Terminée';
+                statusIcon = 'fa-check-circle';
+            } else if (reservation.status === 'cancelled') {
+                statusClass = 'danger';
+                statusText = 'Annulée';
+                statusIcon = 'fa-times-circle';
+            }
+            
+            var spotId = reservation.place_id || reservation.spotId || '-';
+            var duration = reservation.duration || 1;
+            var amount = reservation.amount || (duration * 1000);
+
+            var detailsHtml = '';
+            detailsHtml += '<div style="text-align: center; margin-bottom: 1.5rem;">';
+            detailsHtml += '<div style="width: 80px; height: 80px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 2rem;">';
+            detailsHtml += '<i class="fas fa-parking"></i>';
+            detailsHtml += '</div>';
+            detailsHtml += '<h3 style="margin: 0;">Place ' + spotId + '</h3>';
+            detailsHtml += '<span class="badge ' + statusClass + '"><i class="fas ' + statusIcon + '"></i> ' + statusText + '</span>';
+            detailsHtml += '</div>';
+            
+            detailsHtml += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">';
+            detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
+            detailsHtml += '<p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">';
+            detailsHtml += '<i class="fas fa-user"></i> Utilisateur';
+            detailsHtml += '</p>';
+            detailsHtml += '<strong>' + userName + '</strong>';
+            detailsHtml += '</div>';
+            detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
+            detailsHtml += '<p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">';
+            detailsHtml += '<i class="fas fa-car"></i> Véhicule';
+            detailsHtml += '</p>';
+            detailsHtml += '<strong>' + (reservation.vehicle_plate || reservation.vehiclePlate || 'Non renseigné') + '</strong>';
+            detailsHtml += '</div>';
+            detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
+            detailsHtml += '<p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">';
+            detailsHtml += '<i class="fas fa-calendar"></i> Date début';
+            detailsHtml += '</p>';
+            detailsHtml += '<strong>' + Admin.formatDate(reservation.start_time || reservation.startTime || reservation.created_at || reservation.createdAt) + '</strong>';
+            detailsHtml += '</div>';
+            detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
+            detailsHtml += '<p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">';
+            detailsHtml += '<i class="fas fa-hourglass-half"></i> Durée';
+            detailsHtml += '</p>';
+            detailsHtml += '<strong>' + duration + ' heure(s)</strong>';
+            detailsHtml += '</div>';
+            detailsHtml += '</div>';
+
+            detailsHtml += '<div style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); padding: 1.5rem; border-radius: var(--radius-md); color: white; text-align: center; margin-bottom: 1.5rem;">';
+            detailsHtml += '<p style="margin: 0 0 0.5rem; opacity: 0.9;">Montant</p>';
+            detailsHtml += '<h2 style="margin: 0; font-size: 2rem;">' + amount.toLocaleString('fr-FR') + ' FC</h2>';
+            detailsHtml += '</div>';
+
+            if (reservation.access_code) {
+                detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
+                detailsHtml += '<p><strong>Code d\'accès:</strong> <code>' + reservation.access_code + '</code></p>';
+                detailsHtml += '</div>';
             }
 
-            const statusInfo = {
-                active: { class: 'success', text: 'En cours', icon: 'fa-clock' },
-                pending: { class: 'warning', text: 'En attente', icon: 'fa-hourglass-half' },
-                completed: { class: 'secondary', text: 'Terminée', icon: 'fa-check-circle' },
-                cancelled: { class: 'danger', text: 'Annulée', icon: 'fa-times-circle' }
-            };
-            const status = statusInfo[reservation.status] || statusInfo.active;
-
-            document.getElementById('reservation-details').innerHTML = `
-                <div style="text-align: center; margin-bottom: 1.5rem;">
-                    <div style="width: 80px; height: 80px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 2rem;">
-                        <i class="fas fa-parking"></i>
-                    </div>
-                    <h3 style="margin: 0;">Place ${spotId}</h3>
-                    <span class="badge ${status.class}"><i class="fas ${status.icon}"></i> ${status.text}</span>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">
-                            <i class="fas fa-user"></i> Utilisateur
-                        </p>
-                        <strong>${reservation.user_email || reservation.user_id || 'Inconnu'}</strong>
-                    </div>
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">
-                            <i class="fas fa-car"></i> Véhicule
-                        </p>
-                        <strong>${reservation.vehicle_plate || 'Non renseigné'}</strong>
-                    </div>
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">
-                            <i class="fas fa-calendar"></i> Date début
-                        </p>
-                        <strong>${AdminUtils.formatDate(reservation.start_time || reservation.created_at)}</strong>
-                    </div>
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">
-                            <i class="fas fa-hourglass-half"></i> Durée
-                        </p>
-                        <strong>${duration} heure(s)</strong>
-                    </div>
-                </div>
-
-                <div style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); padding: 1.5rem; border-radius: var(--radius-md); color: white; text-align: center; margin-bottom: 1.5rem;">
-                    <p style="margin: 0 0 0.5rem; opacity: 0.9;">Montant</p>
-                    <h2 style="margin: 0; font-size: 2rem;">${(reservation.amount || duration * 1000).toLocaleString('fr-FR')} FC</h2>
-                </div>
-
-                ${reservation.access_code ? `
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">
-                        <p><strong>Code d'accès:</strong> <code>${reservation.access_code}</code></p>
-                    </div>
-                ` : ''}
-            `;
+            document.getElementById('reservation-details').innerHTML = detailsHtml;
 
             // Afficher le bouton d'annulation si réservation active
             document.getElementById('btn-cancel-reservation').style.display = 
-                (reservation.status === 'active' || reservation.status === 'pending') ? 'inline-flex' : 'none';
+                reservation.status === 'active' ? 'inline-flex' : 'none';
 
             document.getElementById('reservation-modal').classList.add('active');
         }
@@ -426,20 +482,25 @@
             currentReservationId = null;
         }
 
-        async function cancelReservation(reservationId) {
-            const reservation = allReservations.find(r => r.id === reservationId);
-            if (!reservation) return;
-            
-            const spotId = reservation.spot_id || reservation.place_id;
-            if (confirm(`Voulez-vous annuler la réservation de la place ${spotId} ?`)) {
-                try {
-                    await ApiService.cancelReservation(reservationId);
-                    await loadAllData();
-                    AdminUtils.showNotification('Réservation annulée');
-                } catch (error) {
-                    console.error('Erreur lors de l\'annulation:', error);
-                    AdminUtils.showNotification('Erreur: ' + error.message, 'error');
+        function cancelReservation(reservationId) {
+            var reservation = null;
+            for (var i = 0; i < allReservations.length; i++) {
+                if (allReservations[i].id === reservationId) {
+                    reservation = allReservations[i];
+                    break;
                 }
+            }
+            var spotId = reservation ? (reservation.place_id || reservation.spotId) : reservationId;
+            if (confirm('Voulez-vous annuler la réservation de la place ' + spotId + ' ?')) {
+                API.post('/admin/reservations/' + reservationId + '/cancel', {})
+                    .then(function() {
+                        loadStats();
+                        Admin.showNotification('Réservation annulée');
+                    })
+                    .catch(function(error) {
+                        console.error('Erreur annulation:', error);
+                        Admin.showNotification('Erreur lors de l\'annulation', 'error');
+                    });
             }
         }
 
@@ -450,31 +511,38 @@
             }
         }
 
-        function exportReservations() {
-            const reservations = getFilteredReservations().map(r => ({
-                id: r.id,
-                spot_id: r.spot_id || r.place_id,
-                user_email: r.user_email || r.user_id,
-                vehicle_plate: r.vehicle_plate || '',
-                start_time: r.start_time || r.created_at,
-                amount: r.amount || 1000,
-                status: r.status
-            }));
-            AdminUtils.exportToCSV(reservations, 'reservations_aeropark.csv');
-            AdminUtils.showNotification('Export terminé');
+        function completeReservation(reservationId) {
+            var reservation = null;
+            for (var i = 0; i < allReservations.length; i++) {
+                if (allReservations[i].id === reservationId) {
+                    reservation = allReservations[i];
+                    break;
+                }
+            }
+            var spotId = reservation ? (reservation.place_id || reservation.spotId) : reservationId;
+            if (confirm('Marquer la réservation de la place ' + spotId + ' comme terminée ?')) {
+                // Pour l'instant, on utilise cancelReservation car l'API n'a pas de complete
+                Admin.showNotification('Fonctionnalité en cours de développement', 'error');
+            }
         }
 
-        function initSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-            const mobileToggle = document.getElementById('mobile-menu-toggle');
-
-            sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
-            mobileToggle.addEventListener('click', () => sidebar.classList.toggle('mobile-open'));
-            document.getElementById('admin-logout').addEventListener('click', () => {
-                AdminAuth.logout();
-                window.location.href = 'login.html';
-            });
+        function exportReservations() {
+            var filtered = getFilteredReservations();
+            var reservations = [];
+            for (var i = 0; i < filtered.length; i++) {
+                var r = filtered[i];
+                reservations.push({
+                    id: r.id,
+                    spotId: r.place_id || r.spotId,
+                    vehiclePlate: r.vehicle_plate || r.vehiclePlate || '',
+                    duration: r.duration || 1,
+                    amount: r.amount || ((r.duration || 1) * 1000),
+                    status: r.status,
+                    createdAt: r.created_at || r.createdAt
+                });
+            }
+            Admin.exportToCSV(reservations, 'reservations_aeropark.csv');
+            Admin.showNotification('Export terminé');
         }
     </script>
 </body>

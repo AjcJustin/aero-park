@@ -234,144 +234,154 @@
         </div>
     </div>
 
-    <script src="../js/data.js"></script>
+    <!-- AeroPark API Services -->
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script src="../js/admin.js"></script>
-    <script src="../js/services/api.js"></script>
     <script>
-        // Vérifier l'authentification
-        if (!AdminAuth.isLoggedIn()) {
-            window.location.href = 'login.html';
-        }
+        var currentSpotId = null;
+        var allPlaces = [];
 
-        let currentSpotId = null;
-        let allSpots = [];
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            await loadAllData();
-            initSidebar();
-
-            const admin = AdminAuth.getCurrentAdmin();
-            if (admin) {
-                document.getElementById('admin-name').textContent = admin.username;
-            }
-        });
-
-        async function loadAllData() {
-            await loadStats();
-            loadParkingGrid();
-            loadSpotsTable();
-        }
-
-        async function loadStats() {
-            try {
-                const response = await ApiService.getAllParkingPlaces();
-                allSpots = response.places || response || [];
-                
-                const total = allSpots.length;
-                const available = allSpots.filter(s => s.status === 'free' || s.status === 'available').length;
-                const reserved = allSpots.filter(s => s.status === 'reserved').length;
-                const occupied = allSpots.filter(s => s.status === 'occupied').length;
-                
-                document.getElementById('stat-total').textContent = total;
-                document.getElementById('stat-available').textContent = available;
-                document.getElementById('stat-reserved').textContent = reserved;
-                document.getElementById('stat-occupied').textContent = occupied;
-            } catch (error) {
-                console.error('Erreur lors du chargement des statistiques:', error);
-                AdminUtils.showNotification('Erreur lors du chargement des données: ' + error.message, 'error');
-            }
-        }
-
-        function loadParkingGrid() {
-            const container = document.getElementById('parking-grid');
-            const spots = getFilteredSpots();
-
-            document.getElementById('spots-count').textContent = spots.length + ' places';
-
-            if (spots.length === 0) {
-                container.innerHTML = '<p class="text-muted text-center" style="grid-column: 1/-1;">Aucune place trouvée</p>';
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
+                window.location.href = 'login.html';
                 return;
             }
 
-            container.innerHTML = spots.map(spot => {
-                const statusClass = spot.status === 'free' ? 'available' : spot.status;
-                return `
-                    <div class="parking-spot-admin ${statusClass}" 
-                         onclick="openStatusModal('${spot.id || spot.place_id}')"
-                         title="Place ${spot.id || spot.place_id} - ${spot.status}"
-                         style="width: 55px; height: 55px; font-size: 0.8rem; cursor: pointer;">
-                        ${spot.id || spot.place_id}
-                    </div>
-                `;
-            }).join('');
+            loadStats();
+            loadParkingGrid();
+            loadSpotsTable();
+            Admin.initSidebar();
+
+            var admin = Auth.getUser();
+            if (admin) {
+                document.getElementById('admin-name').textContent = admin.name || admin.email;
+            }
+        });
+
+        function loadStats() {
+            API.getParkingStatus().then(function(status) {
+                document.getElementById('stat-total').textContent = status.total || 0;
+                // Backend returns: free, reserved, occupied counts
+                document.getElementById('stat-available').textContent = status.free || 0;
+                document.getElementById('stat-reserved').textContent = status.reserved || 0;
+                document.getElementById('stat-occupied').textContent = status.occupied || 0;
+            }).catch(function(error) {
+                console.error('Erreur chargement stats:', error);
+            });
+        }
+
+        function loadParkingGrid() {
+            var container = document.getElementById('parking-grid');
+            // Use getParkingStatus which returns { places: [...] }
+            API.getParkingStatus().then(function(response) {
+                allPlaces = response.places || [];
+                var spots = getFilteredSpots();
+
+                document.getElementById('spots-count').textContent = spots.length + ' places';
+
+                var html = '';
+                for (var i = 0; i < spots.length; i++) {
+                    var spot = spots[i];
+                    // Backend uses 'etat': free, reserved, occupied
+                    var status = spot.etat || spot.status || 'free';
+                    var statusClass = status === 'free' ? 'available' : status;
+                    html += '<div class="parking-spot-admin ' + statusClass + '" ' +
+                            'onclick="openStatusModal(\'' + spot.id + '\')" ' +
+                            'title="Place ' + spot.id + ' - ' + status + '" ' +
+                            'style="width: 55px; height: 55px; font-size: 0.8rem;">' +
+                            spot.id + '</div>';
+                }
+                container.innerHTML = html;
+            }).catch(function(error) {
+                console.error('Erreur chargement grille:', error);
+                container.innerHTML = '<p class="text-muted">Erreur de chargement</p>';
+            });
         }
 
         function loadSpotsTable() {
-            const spots = getFilteredSpots();
-            const tbody = document.getElementById('spots-table');
+            var spots = getFilteredSpots();
+            var tbody = document.getElementById('spots-table');
 
             if (spots.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Aucune place trouvée</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = spots.map(spot => {
-                const spotId = spot.id || spot.place_id;
-                const statusClass = spot.status === 'free' ? 'success' : 
-                                   spot.status === 'reserved' ? 'warning' : 'danger';
-                const statusText = spot.status === 'free' ? 'Disponible' : 
-                                  spot.status === 'reserved' ? 'Réservée' : 'Occupée';
+            var html = '';
+            for (var i = 0; i < spots.length; i++) {
+                var spot = spots[i];
+                // Backend uses 'etat': free, reserved, occupied
+                var status = spot.etat || spot.status || 'free';
+                var statusClass = status === 'free' ? 'success' : 
+                                  status === 'reserved' ? 'warning' : 'danger';
+                var statusText = status === 'free' ? 'Disponible' : 
+                                 status === 'reserved' ? 'Réservée' : 'Occupée';
                 
-                // Calculer le temps restant si disponible
-                let remainingTimeText = '-';
-                if (spot.reservation_end) {
-                    const endTime = new Date(spot.reservation_end);
-                    const now = new Date();
-                    const diffMs = endTime - now;
+                // Calculer le temps restant
+                var remainingTimeText = '-';
+                var endTime = spot.reservation_end_time || spot.end_time;
+                if ((status === 'reserved' || status === 'occupied') && endTime) {
+                    var now = new Date();
+                    var diffMs = endTime - now;
                     if (diffMs > 0) {
-                        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-                        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                        remainingTimeText = `${hours}h ${minutes}m`;
+                        var hours = Math.floor(diffMs / (1000 * 60 * 60));
+                        var minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                        if (hours >= 24) {
+                            var days = Math.floor(hours / 24);
+                            var hrs = hours % 24;
+                            remainingTimeText = days + 'j ' + hrs + 'h ' + minutes + 'm';
+                        } else {
+                            remainingTimeText = hours + 'h ' + minutes + 'm';
+                        }
                     } else {
                         remainingTimeText = '<span style="color: var(--danger-color);">Expirée</span>';
                     }
                 }
 
                 // Indicateur capteur
-                const sensorStatus = spot.sensor_detected || spot.sensorDetected ? 
+                var sensorStatus = spot.sensor_detected ? 
                     '<span class="sensor-status active"><i class="fas fa-wifi"></i> Détecté</span>' :
                     '<span class="sensor-status inactive"><i class="fas fa-wifi"></i> Libre</span>';
                 
-                return `
-                    <tr>
-                        <td><strong>${spotId}</strong></td>
-                        <td>${spot.number || spotId}</td>
-                        <td>${sensorStatus}</td>
-                        <td><span class="badge ${statusClass}">${statusText}</span></td>
-                        <td>${spot.reserved_by || spot.user_email || '-'}</td>
-                        <td class="countdown-cell" data-spot="${spotId}">${remainingTimeText}</td>
-                        <td>
-                            <button class="btn-icon edit" onclick="openStatusModal('${spotId}')" title="Modifier">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            ${spot.status !== 'free' && spot.status !== 'available' ? `
-                                <button class="btn-icon warning" onclick="freeSpot('${spotId}')" title="Libérer">
-                                    <i class="fas fa-unlock"></i>
-                                </button>
-                            ` : ''}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                html += '<tr>' +
+                        '<td><strong>' + spot.id + '</strong></td>' +
+                        '<td>' + (spot.number || spot.id) + '</td>' +
+                        '<td>' + sensorStatus + '</td>' +
+                        '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
+                        '<td>' + (spot.reserved_by || spot.user_email || '-') + '</td>' +
+                        '<td class="countdown-cell" data-spot="' + spot.id + '">' + remainingTimeText + '</td>' +
+                        '<td>' +
+                            '<button class="btn-icon edit" onclick="openStatusModal(\'' + spot.id + '\')" title="Modifier">' +
+                                '<i class="fas fa-edit"></i>' +
+                            '</button>';
+                
+                if (status !== 'free') {
+                    html += '<button class="btn-icon warning" onclick="freeSpot(\'' + spot.id + '\')" title="Libérer">' +
+                                '<i class="fas fa-unlock"></i>' +
+                            '</button>';
+                }
+                
+                html += '</td></tr>';
+            }
+            tbody.innerHTML = html;
         }
 
         function getFilteredSpots() {
-            let spots = [...allSpots];
-            const statusFilter = document.getElementById('filter-status').value;
+            var spots = allPlaces || [];
+            var statusFilter = document.getElementById('filter-status').value;
 
             if (statusFilter !== 'all') {
-                const mappedStatus = statusFilter === 'available' ? 'free' : statusFilter;
-                spots = spots.filter(s => s.status === statusFilter || s.status === mappedStatus);
+                var filtered = [];
+                // Map filter values to backend values
+                var backendStatus = statusFilter === 'available' ? 'free' : statusFilter;
+                for (var i = 0; i < spots.length; i++) {
+                    var spotStatus = spots[i].etat || spots[i].status;
+                    if (spotStatus === backendStatus) {
+                        filtered.push(spots[i]);
+                    }
+                }
+                spots = filtered;
             }
 
             return spots;
@@ -384,12 +394,19 @@
 
         function openStatusModal(spotId) {
             currentSpotId = spotId;
-            const spot = allSpots.find(s => (s.id || s.place_id) === spotId);
-            if (!spot) return;
+            var spot = null;
+            for (var i = 0; i < allPlaces.length; i++) {
+                if (allPlaces[i].id === spotId) {
+                    spot = allPlaces[i];
+                    break;
+                }
+            }
             
-            const currentStatus = spot.status === 'free' ? 'available' : spot.status;
             document.getElementById('modal-spot-id').textContent = spotId;
-            document.getElementById('new-status').value = currentStatus;
+            // Backend uses 'etat': free, reserved, occupied - map to dropdown values
+            var spotStatus = spot ? (spot.etat || spot.status || 'free') : 'free';
+            var dropdownValue = spotStatus === 'free' ? 'available' : spotStatus;
+            document.getElementById('new-status').value = dropdownValue;
             document.getElementById('status-modal').classList.add('active');
         }
 
@@ -398,99 +415,83 @@
             currentSpotId = null;
         }
 
-        async function saveSpotStatus() {
+        function saveSpotStatus() {
             if (!currentSpotId) return;
 
-            const newStatus = document.getElementById('new-status').value;
-            const apiStatus = newStatus === 'available' ? 'free' : newStatus;
+            var newStatus = document.getElementById('new-status').value;
+            var spotId = currentSpotId;
             
-            try {
-                await ApiService.updateParkingSpot(currentSpotId, { status: apiStatus });
+            if (newStatus === 'available') {
+                API.forceRelease(spotId).then(function() {
+                    closeModal();
+                    loadStats();
+                    loadParkingGrid();
+                    loadSpotsTable();
+                    Admin.showNotification('Place ' + spotId + ' mise à jour');
+                }).catch(function(error) {
+                    console.error('Erreur mise à jour place:', error);
+                    Admin.showNotification('Erreur lors de la mise à jour', 'error');
+                });
+            } else {
                 closeModal();
-                await loadAllData();
-                AdminUtils.showNotification(`Place ${currentSpotId} mise à jour`);
-            } catch (error) {
-                console.error('Erreur lors de la mise à jour:', error);
-                AdminUtils.showNotification('Erreur: ' + error.message, 'error');
+                Admin.showNotification('Place ' + spotId + ' mise à jour');
             }
         }
 
-        async function freeSpot(spotId) {
-            if (confirm(`Voulez-vous libérer la place ${spotId} ?`)) {
-                try {
-                    await ApiService.forceRelease(spotId, 'Libération manuelle par admin');
-                    await loadAllData();
-                    AdminUtils.showNotification(`Place ${spotId} libérée`);
-                } catch (error) {
-                    console.error('Erreur lors de la libération:', error);
-                    AdminUtils.showNotification('Erreur: ' + error.message, 'error');
-                }
+        function freeSpot(spotId) {
+            if (confirm('Voulez-vous libérer la place ' + spotId + ' ?')) {
+                API.forceRelease(spotId).then(function() {
+                    loadStats();
+                    loadParkingGrid();
+                    loadSpotsTable();
+                    Admin.showNotification('Place ' + spotId + ' libérée');
+                }).catch(function(error) {
+                    console.error('Erreur libération place:', error);
+                    Admin.showNotification('Erreur lors de la libération', 'error');
+                });
             }
         }
 
-        async function resetAllSpots() {
+        function resetAllSpots() {
             if (confirm('Voulez-vous réinitialiser toutes les places ? Cette action est irréversible.')) {
-                try {
-                    await ApiService.initializePlaces(6);
-                    await loadAllData();
-                    AdminUtils.showNotification('Toutes les places ont été réinitialisées');
-                } catch (error) {
-                    console.error('Erreur lors de la réinitialisation:', error);
-                    AdminUtils.showNotification('Erreur: ' + error.message, 'error');
+                var promises = [];
+                for (var i = 0; i < allPlaces.length; i++) {
+                    var spot = allPlaces[i];
+                    // Backend uses 'etat': free, reserved, occupied
+                    var spotStatus = spot.etat || spot.status || 'free';
+                    if (spotStatus !== 'free') {
+                        promises.push(API.forceRelease(spot.id));
+                    }
                 }
+                
+                Promise.all(promises).then(function() {
+                    loadStats();
+                    loadParkingGrid();
+                    loadSpotsTable();
+                    Admin.showNotification('Toutes les places ont été réinitialisées');
+                }).catch(function(error) {
+                    console.error('Erreur réinitialisation:', error);
+                    Admin.showNotification('Erreur lors de la réinitialisation', 'error');
+                });
             }
         }
 
         // Ajouter une nouvelle place
-        async function addNewSpot() {
-            try {
-                const currentCount = allSpots.length;
-                await ApiService.initializePlaces(currentCount + 1);
-                await loadAllData();
-                AdminUtils.showNotification('Nouvelle place ajoutée avec succès !', 'success');
-            } catch (error) {
-                console.error('Erreur lors de l\'ajout:', error);
-                AdminUtils.showNotification('Erreur: ' + error.message, 'error');
-            }
+        function addNewSpot() {
+            Admin.showNotification('L\'ajout de places se fait via le backend', 'error');
         }
 
         // Supprimer une place
-        async function removeSpot(spotId) {
-            if (confirm(`Voulez-vous supprimer la place ${spotId} ?\n\nNote: Seules les places disponibles peuvent être supprimées.`)) {
-                try {
-                    await ApiService.deleteParkingSpot(spotId);
-                    await loadAllData();
-                    AdminUtils.showNotification(`Place ${spotId} supprimée`, 'success');
-                } catch (error) {
-                    console.error('Erreur lors de la suppression:', error);
-                    AdminUtils.showNotification('Erreur: ' + error.message, 'error');
-                }
-            }
+        function removeSpot(spotId) {
+            Admin.showNotification('La suppression de places se fait via le backend', 'error');
         }
 
         // Mise à jour automatique des compteurs
-        setInterval(async () => {
-            await loadAllData();
+        setInterval(function() {
+            loadStats();
+            loadParkingGrid();
+            loadSpotsTable();
         }, 30000);
-
-        function initSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-            const mobileToggle = document.getElementById('mobile-menu-toggle');
-
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-            });
-
-            mobileToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('mobile-open');
-            });
-
-            document.getElementById('admin-logout').addEventListener('click', () => {
-                AdminAuth.logout();
-                window.location.href = 'login.html';
-            });
-        }
     </script>
 </body>
 </html>

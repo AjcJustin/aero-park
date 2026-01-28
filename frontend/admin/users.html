@@ -190,109 +190,138 @@
         </div>
     </div>
 
-    <script src="../js/data.js"></script>
+    <!-- AeroPark API Services -->
+    <script src="../js/api.js"></script>
+    <script src="../js/auth.js"></script>
     <script src="../js/admin.js"></script>
-    <script src="../js/services/api.js"></script>
     <script>
-        // Vérifier l'authentification
-        if (!AdminAuth.isLoggedIn()) {
-            window.location.href = 'login.html';
-        }
+        var allUsers = [];
+        var allReservations = [];
 
-        let allUsers = [];
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            await loadAllData();
-            initSidebar();
-
-            const admin = AdminAuth.getCurrentAdmin();
-            if (admin) {
-                document.getElementById('admin-name').textContent = admin.username;
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
+                window.location.href = 'login.html';
+                return;
             }
+
+            loadStats().then(function() {
+                return loadUsersTable();
+            }).then(function() {
+                Admin.initSidebar();
+
+                var admin = Auth.getUser();
+                if (admin) {
+                    document.getElementById('admin-name').textContent = admin.username || admin.name || admin.email;
+                }
+            }).catch(function(error) {
+                console.error('Erreur lors du chargement:', error);
+                Admin.showNotification('Erreur lors du chargement des données', 'error');
+            });
         });
 
-        async function loadAllData() {
-            await loadStats();
-            loadUsersTable();
-        }
-
-        async function loadStats() {
-            try {
-                const response = await ApiService.getAllUsers();
-                allUsers = response.users || response || [];
+        function loadStats() {
+            // Backend doesn't have a dedicated users endpoint
+            // Extract users from reservations data
+            return API.getAdminReservations().then(function(response) {
+                allReservations = response.reservations || response || [];
                 
-                const total = allUsers.length;
-                const active = allUsers.filter(u => u.status === 'active' || !u.blocked).length;
-                const blocked = allUsers.filter(u => u.status === 'disabled' || u.blocked).length;
+                // Extract unique users from reservations
+                var usersMap = {};
+                for (var i = 0; i < allReservations.length; i++) {
+                    var r = allReservations[i];
+                    var userId = r.user_id || r.userId;
+                    if (userId && !usersMap[userId]) {
+                        usersMap[userId] = {
+                            id: userId,
+                            email: r.user_email || 'utilisateur@email.com',
+                            name: r.user_name || r.user_email || 'Utilisateur',
+                            created_at: r.created_at || r.createdAt,
+                            blocked: false
+                        };
+                    }
+                }
+                allUsers = Object.values(usersMap);
+                
+                var total = allUsers.length;
+                var active = allUsers.filter(function(u) { return !u.blocked && !u.disabled; }).length;
+                var blocked = allUsers.filter(function(u) { return u.blocked || u.disabled; }).length;
                 
                 document.getElementById('stat-total').textContent = total;
                 document.getElementById('stat-active').textContent = active;
                 document.getElementById('stat-blocked').textContent = blocked;
-            } catch (error) {
-                console.error('Erreur lors du chargement des statistiques:', error);
-                AdminUtils.showNotification('Erreur lors du chargement des données: ' + error.message, 'error');
-            }
+            }).catch(function(error) {
+                console.error('Erreur chargement stats:', error);
+            });
         }
 
         function loadUsersTable() {
-            const users = getFilteredUsers();
-            const tbody = document.getElementById('users-table');
+            var users = getFilteredUsers();
+            var tbody = document.getElementById('users-table');
 
             document.getElementById('users-count').textContent = users.length + ' utilisateurs';
 
             if (users.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Aucun utilisateur trouvé</td></tr>';
-                return;
+                return Promise.resolve();
             }
 
-            tbody.innerHTML = users.map(user => {
-                const isBlocked = user.status === 'disabled' || user.blocked;
-                const statusClass = isBlocked ? 'danger' : 'success';
-                const statusText = isBlocked ? 'Bloqué' : 'Actif';
+            var html = '';
+            for (var i = 0; i < users.length; i++) {
+                var user = users[i];
+                var userReservations = allReservations.filter(function(r) { return r.user_id === user.id || r.userId === user.id; });
+                var isBlocked = user.blocked || user.disabled;
+                var statusClass = isBlocked ? 'danger' : 'success';
+                var statusText = isBlocked ? 'Bloqué' : 'Actif';
+                var userName = user.name || user.display_name || user.email;
+                var userId = user.id || '';
                 
-                return `
-                    <tr>
-                        <td>#${(user.id || user.uid || '').slice(-6)}</td>
-                        <td><strong>${user.name || user.display_name || 'N/A'}</strong></td>
-                        <td>${user.email || '-'}</td>
-                        <td>${AdminUtils.formatDate(user.created_at || user.createdAt)}</td>
-                        <td>${user.reservation_count || 0}</td>
-                        <td><span class="badge ${statusClass}">${statusText}</span></td>
-                        <td>
-                            <button class="btn-icon view" onclick="viewUser('${user.id || user.uid}')" title="Voir">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            ${isBlocked ? `
-                                <button class="btn-icon edit" onclick="unblockUser('${user.id || user.uid}')" title="Débloquer">
-                                    <i class="fas fa-unlock"></i>
-                                </button>
-                            ` : `
-                                <button class="btn-icon delete" onclick="blockUser('${user.id || user.uid}')" title="Bloquer">
-                                    <i class="fas fa-ban"></i>
-                                </button>
-                            `}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                html += '<tr>';
+                html += '<td>#' + userId.slice(-6) + '</td>';
+                html += '<td><strong>' + userName + '</strong></td>';
+                html += '<td>' + user.email + '</td>';
+                html += '<td>' + Admin.formatDate(user.created_at || user.createdAt || new Date()) + '</td>';
+                html += '<td>' + userReservations.length + '</td>';
+                html += '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>';
+                html += '<td>';
+                html += '<button class="btn-icon view" onclick="viewUser(\'' + user.id + '\')" title="Voir">';
+                html += '<i class="fas fa-eye"></i>';
+                html += '</button>';
+                if (isBlocked) {
+                    html += '<button class="btn-icon edit" onclick="unblockUser(\'' + user.id + '\')" title="Débloquer">';
+                    html += '<i class="fas fa-unlock"></i>';
+                    html += '</button>';
+                } else {
+                    html += '<button class="btn-icon delete" onclick="blockUser(\'' + user.id + '\')" title="Bloquer">';
+                    html += '<i class="fas fa-ban"></i>';
+                    html += '</button>';
+                }
+                html += '<button class="btn-icon delete" onclick="deleteUser(\'' + user.id + '\')" title="Supprimer">';
+                html += '<i class="fas fa-trash"></i>';
+                html += '</button>';
+                html += '</td>';
+                html += '</tr>';
+            }
+            tbody.innerHTML = html;
+            return Promise.resolve();
         }
 
         function getFilteredUsers() {
-            let users = [...allUsers];
-            const search = document.getElementById('search-user').value.toLowerCase();
-            const status = document.getElementById('filter-status').value;
+            var users = allUsers || [];
+            var search = document.getElementById('search-user').value.toLowerCase();
+            var status = document.getElementById('filter-status').value;
 
             if (search) {
-                users = users.filter(u => 
-                    (u.name || u.display_name || '').toLowerCase().includes(search) || 
-                    (u.email || '').toLowerCase().includes(search)
-                );
+                users = users.filter(function(u) {
+                    var name = (u.name || u.display_name || '').toLowerCase();
+                    var email = (u.email || '').toLowerCase();
+                    return name.includes(search) || email.includes(search);
+                });
             }
 
             if (status === 'active') {
-                users = users.filter(u => u.status === 'active' || !u.blocked);
+                users = users.filter(function(u) { return !u.blocked && !u.disabled; });
             } else if (status === 'blocked') {
-                users = users.filter(u => u.status === 'disabled' || u.blocked);
+                users = users.filter(function(u) { return u.blocked || u.disabled; });
             }
 
             return users;
@@ -303,52 +332,68 @@
         }
 
         function viewUser(userId) {
-            const user = allUsers.find(u => (u.id || u.uid) === userId);
-            if (!user) return;
+            var user = allUsers.find(function(u) { return u.id === userId; });
+            if (!user) {
+                Admin.showNotification('Utilisateur introuvable', 'error');
+                return;
+            }
             
-            const isBlocked = user.status === 'disabled' || user.blocked;
-            const totalSpent = user.total_spent || 0;
+            var reservations = allReservations.filter(function(r) { return r.user_id === userId || r.userId === userId; });
+            var totalSpent = reservations.reduce(function(sum, r) { return sum + (r.amount || (r.duration || 1) * 1000); }, 0);
+            var userName = user.name || user.display_name || user.email;
+            var isBlocked = user.blocked || user.disabled;
 
-            document.getElementById('user-details').innerHTML = `
-                <div style="margin-bottom: 1.5rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                        <div style="width: 60px; height: 60px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div>
-                            <h4 style="margin: 0;">${user.name || user.display_name || 'N/A'}</h4>
-                            <p style="margin: 0; color: var(--text-secondary);">${user.email || '-'}</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Inscrit le</p>
-                        <strong>${AdminUtils.formatDate(user.created_at || user.createdAt)}</strong>
-                    </div>
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Statut</p>
-                        <span class="badge ${isBlocked ? 'danger' : 'success'}">${isBlocked ? 'Bloqué' : 'Actif'}</span>
-                    </div>
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Réservations</p>
-                        <strong>${user.reservation_count || 0}</strong>
-                    </div>
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Total dépensé</p>
-                        <strong>${totalSpent.toLocaleString('fr-FR')} FC</strong>
-                    </div>
-                </div>
-                
-                ${user.role ? `
-                    <div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Rôle</p>
-                        <span class="badge ${user.role === 'admin' ? 'warning' : 'info'}">${user.role === 'admin' ? '👑 Admin' : '👤 Utilisateur'}</span>
-                    </div>
-                ` : ''}
-            `;
+            var detailsHtml = '<div style="margin-bottom: 1.5rem;">';
+            detailsHtml += '<div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">';
+            detailsHtml += '<div style="width: 60px; height: 60px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">';
+            detailsHtml += '<i class="fas fa-user"></i>';
+            detailsHtml += '</div>';
+            detailsHtml += '<div>';
+            detailsHtml += '<h4 style="margin: 0;">' + userName + '</h4>';
+            detailsHtml += '<p style="margin: 0; color: var(--text-secondary);">' + user.email + '</p>';
+            detailsHtml += '</div>';
+            detailsHtml += '</div>';
+            detailsHtml += '</div>';
+            
+            detailsHtml += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">';
+            detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
+            detailsHtml += '<p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Inscrit le</p>';
+            detailsHtml += '<strong>' + Admin.formatDate(user.created_at || user.createdAt || new Date()) + '</strong>';
+            detailsHtml += '</div>';
+            detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
+            detailsHtml += '<p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Statut</p>';
+            detailsHtml += '<span class="badge ' + (isBlocked ? 'danger' : 'success') + '">' + (isBlocked ? 'Bloqué' : 'Actif') + '</span>';
+            detailsHtml += '</div>';
+            detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
+            detailsHtml += '<p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Réservations</p>';
+            detailsHtml += '<strong>' + reservations.length + '</strong>';
+            detailsHtml += '</div>';
+            detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
+            detailsHtml += '<p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">Total dépensé</p>';
+            detailsHtml += '<strong>' + totalSpent.toLocaleString('fr-FR') + ' FC</strong>';
+            detailsHtml += '</div>';
+            detailsHtml += '</div>';
 
+            if (reservations.length > 0) {
+                detailsHtml += '<h5 style="margin-bottom: 0.75rem;">Dernières réservations</h5>';
+                detailsHtml += '<table class="admin-table" style="font-size: 0.9rem;">';
+                detailsHtml += '<thead><tr><th>Place</th><th>Date</th><th>Statut</th></tr></thead>';
+                detailsHtml += '<tbody>';
+                var recentReservations = reservations.slice(-5).reverse();
+                for (var i = 0; i < recentReservations.length; i++) {
+                    var r = recentReservations[i];
+                    detailsHtml += '<tr>';
+                    detailsHtml += '<td>' + (r.place_id || r.spotId) + '</td>';
+                    detailsHtml += '<td>' + Admin.formatDate(r.created_at || r.createdAt) + '</td>';
+                    detailsHtml += '<td><span class="badge ' + (r.status === 'active' ? 'success' : 'secondary') + '">' + r.status + '</span></td>';
+                    detailsHtml += '</tr>';
+                }
+                detailsHtml += '</tbody></table>';
+            } else {
+                detailsHtml += '<p class="text-muted">Aucune réservation</p>';
+            }
+
+            document.getElementById('user-details').innerHTML = detailsHtml;
             document.getElementById('user-modal').classList.add('active');
         }
 
@@ -356,56 +401,68 @@
             document.getElementById('user-modal').classList.remove('active');
         }
 
-        async function blockUser(userId) {
-            const user = allUsers.find(u => (u.id || u.uid) === userId);
-            if (!user) return;
-            
-            if (confirm(`Voulez-vous bloquer l'utilisateur "${user.name || user.email}" ?`)) {
-                try {
-                    await ApiService.updateUser(userId, { status: 'disabled' });
-                    await loadAllData();
-                    AdminUtils.showNotification('Utilisateur bloqué');
-                } catch (error) {
-                    console.error('Erreur lors du blocage:', error);
-                    AdminUtils.showNotification('Erreur: ' + error.message, 'error');
-                }
+        function blockUser(userId) {
+            var user = allUsers.find(function(u) { return u.id === userId; });
+            var userName = user ? (user.name || user.display_name || user.email) : userId;
+            if (confirm('Voulez-vous bloquer l\'utilisateur "' + userName + '" ?')) {
+                API.blockUser(userId).then(function() {
+                    return loadStats();
+                }).then(function() {
+                    return loadUsersTable();
+                }).then(function() {
+                    Admin.showNotification('Utilisateur bloqué');
+                }).catch(function(error) {
+                    console.error('Erreur blocage:', error);
+                    Admin.showNotification('Erreur lors du blocage', 'error');
+                });
             }
         }
 
-        async function unblockUser(userId) {
-            try {
-                await ApiService.updateUser(userId, { status: 'active' });
-                await loadAllData();
-                AdminUtils.showNotification('Utilisateur débloqué');
-            } catch (error) {
-                console.error('Erreur lors du déblocage:', error);
-                AdminUtils.showNotification('Erreur: ' + error.message, 'error');
+        function unblockUser(userId) {
+            API.unblockUser(userId).then(function() {
+                return loadStats();
+            }).then(function() {
+                return loadUsersTable();
+            }).then(function() {
+                Admin.showNotification('Utilisateur débloqué');
+            }).catch(function(error) {
+                console.error('Erreur déblocage:', error);
+                Admin.showNotification('Erreur lors du déblocage', 'error');
+            });
+        }
+
+        function deleteUser(userId) {
+            var user = allUsers.find(function(u) { return u.id === userId; });
+            var userName = user ? (user.name || user.display_name || user.email) : userId;
+            if (confirm('Voulez-vous supprimer définitivement l\'utilisateur "' + userName + '" ?')) {
+                API.deleteUser(userId).then(function() {
+                    return loadStats();
+                }).then(function() {
+                    return loadUsersTable();
+                }).then(function() {
+                    Admin.showNotification('Utilisateur supprimé');
+                }).catch(function(error) {
+                    console.error('Erreur suppression:', error);
+                    Admin.showNotification('Erreur lors de la suppression', 'error');
+                });
             }
         }
 
         function exportUsers() {
-            const users = allUsers.map(u => ({
-                id: u.id || u.uid,
-                name: u.name || u.display_name,
-                email: u.email,
-                created_at: u.created_at || u.createdAt,
-                status: (u.status === 'disabled' || u.blocked) ? 'Bloqué' : 'Actif'
-            }));
-            AdminUtils.exportToCSV(users, 'utilisateurs_aeropark.csv');
-            AdminUtils.showNotification('Export terminé');
-        }
-
-        function initSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-            const mobileToggle = document.getElementById('mobile-menu-toggle');
-
-            sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
-            mobileToggle.addEventListener('click', () => sidebar.classList.toggle('mobile-open'));
-            document.getElementById('admin-logout').addEventListener('click', () => {
-                AdminAuth.logout();
-                window.location.href = 'login.html';
-            });
+            var users = [];
+            var allUsersList = allUsers || [];
+            for (var i = 0; i < allUsersList.length; i++) {
+                var u = allUsersList[i];
+                users.push({
+                    id: u.id,
+                    name: u.name || u.display_name || '',
+                    email: u.email,
+                    createdAt: u.created_at || u.createdAt,
+                    status: (u.blocked || u.disabled) ? 'Bloqué' : 'Actif'
+                });
+            }
+            Admin.exportToCSV(users, 'utilisateurs_aeropark.csv');
+            Admin.showNotification('Export terminé');
         }
     </script>
 </body>
