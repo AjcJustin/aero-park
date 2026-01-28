@@ -22,8 +22,8 @@
                 <a href="register.html" class="btn btn-primary"><i class="fas fa-user-plus"></i> Inscription</a>
             </li>
             <li id="user-menu" class="hidden">
-                <span class="user-name"></span>
-                <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                <a href="profile.html" class="btn btn-outline"><i class="fas fa-user"></i> Profil</a>
+                <a href="#" class="btn btn-danger" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
             </li>
         </ul>
         <button class="hamburger" aria-label="Menu">
@@ -75,9 +75,14 @@
                             placeholder="Votre mot de passe"
                             autocomplete="current-password"
                             required
+                            style="padding-right: 45px;"
                         >
+                        <button type="button" class="toggle-password" onclick="togglePassword('password')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 5px;">
+                            <i class="fas fa-eye" id="password-eye"></i>
+                        </button>
                     </div>
                     <span class="error-message" id="password-error"></span>
+                    <a href="#" id="forgot-password-link" class="forgot-password-link" style="display: none; font-size: 0.85rem; color: #2563eb; margin-top: 0.5rem;" onclick="showForgotPassword(event)">Mot de passe oublié ?</a>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-block" id="login-btn">
@@ -109,6 +114,29 @@
     <script src="../js/auth.js"></script>
     
     <script>
+        // Compteur de tentatives échouées
+        var loginAttempts = 0;
+        
+        // Toggle password visibility
+        function togglePassword(inputId) {
+            var input = document.getElementById(inputId);
+            var eyeIcon = document.getElementById(inputId + '-eye');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                eyeIcon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                eyeIcon.className = 'fas fa-eye';
+            }
+        }
+        
+        // Show forgot password link
+        function showForgotPassword(e) {
+            e.preventDefault();
+            showAlert('info', 'Contactez l\'administrateur pour réinitialiser votre mot de passe: admin@aeropark.cd');
+        }
+
         // Redirect if already logged in
         if (Auth.isLoggedIn()) {
             var user = Auth.getUser();
@@ -148,6 +176,7 @@
                 var result = await Auth.login(email, password);
                 
                 if (result.success) {
+                    loginAttempts = 0; // Réinitialiser le compteur
                     showAlert('success', 'Connexion réussie ! Redirection...');
                     
                     setTimeout(function() {
@@ -164,7 +193,14 @@
                         }
                     }, 1000);
                 } else {
+                    loginAttempts++;
                     showAlert('error', result.message);
+                    
+                    // Afficher le lien mot de passe oublié après 3 tentatives
+                    if (loginAttempts >= 3) {
+                        document.getElementById('forgot-password-link').style.display = 'block';
+                    }
+                    
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
                 }

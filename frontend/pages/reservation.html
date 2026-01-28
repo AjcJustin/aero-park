@@ -22,8 +22,8 @@
                 <a href="register.html" class="btn btn-primary"><i class="fas fa-user-plus"></i> Inscription</a>
             </li>
             <li id="user-menu" class="hidden">
-                <a href="profile.html" class="user-name" style="text-decoration: none;"></a>
-                <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                <a href="profile.html" class="btn btn-outline"><i class="fas fa-user"></i> Profil</a>
+                <a href="#" class="btn btn-danger" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
             </li>
         </ul>
         <div class="hamburger">
@@ -232,6 +232,50 @@
                 </div>
             </div>
 
+            <!-- Modal de confirmation d'annulation -->
+            <div class="payment-modal" id="cancel-modal">
+                <div class="payment-modal-content" style="max-width: 450px;">
+                    <div class="modal-icon" style="background: #fef3c7; color: #d97706;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3>Confirmer l'annulation</h3>
+                    <p style="margin-bottom: 0.5rem;">Voulez-vous vraiment annuler cette réservation ?</p>
+                    <div style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+                        <p style="margin: 0; color: #dc2626; font-weight: 600;">
+                            <i class="fas fa-info-circle"></i> Important
+                        </p>
+                        <p style="margin: 0.5rem 0 0; color: #7f1d1d; font-size: 0.9rem;">
+                            Le paiement effectué ne sera <strong>pas remboursé</strong>.
+                        </p>
+                    </div>
+                    <p id="cancel-spot-info" style="font-size: 0.9rem; color: #666;">Place: -</p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn btn-outline" onclick="closeCancelModal()" style="flex: 1;">
+                            <i class="fas fa-arrow-left"></i> Retour
+                        </button>
+                        <button class="btn btn-danger" id="confirm-cancel-btn" style="flex: 1;">
+                            <i class="fas fa-times"></i> Confirmer l'annulation
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Envoi Code Barrière -->
+            <div class="reservation-form-card" id="barrier-code-section" style="margin-top: 2rem; display: none;">
+                <h3 style="margin-bottom: 1rem;"><i class="fas fa-door-open"></i> Ouvrir la Barrière</h3>
+                <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">Entrez votre code d'accès pour ouvrir la barrière lorsque vous êtes devant le parking.</p>
+                <div class="form-group">
+                    <label for="barrier-code-input"><i class="fas fa-key"></i> Code d'accès</label>
+                    <div style="display: flex; gap: 1rem;">
+                        <input type="text" id="barrier-code-input" class="form-control" placeholder="Ex: 5MJ" maxlength="10" style="flex: 1; text-transform: uppercase; font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
+                        <button type="button" class="btn btn-primary" onclick="sendBarrierCode()" id="send-barrier-btn">
+                            <i class="fas fa-paper-plane"></i> Envoyer
+                        </button>
+                    </div>
+                </div>
+                <div id="barrier-response" style="margin-top: 1rem; display: none;"></div>
+            </div>
+
             <!-- Mes réservations -->
             <div class="user-reservations hidden" id="user-reservations">
                 <h3><i class="fas fa-list"></i> Mes Réservations</h3>
@@ -403,9 +447,11 @@
         async function loadUserReservations() {
             var container = document.getElementById('user-reservations');
             var list = document.getElementById('reservation-list');
+            var barrierSection = document.getElementById('barrier-code-section');
             
             if (!Auth.isLoggedIn()) {
                 container.classList.add('hidden');
+                if (barrierSection) barrierSection.style.display = 'none';
                 return;
             }
 
@@ -418,6 +464,7 @@
                 
                 if (!response.has_reservation || !reservation) {
                     container.classList.remove('hidden');
+                    if (barrierSection) barrierSection.style.display = 'none';
                     list.innerHTML = `
                         <div class="no-reservations">
                             <i class="fas fa-inbox" style="font-size: 3rem; color: var(--text-light); margin-bottom: 1rem;"></i>
@@ -428,20 +475,37 @@
                 }
 
                 container.classList.remove('hidden');
+                if (barrierSection) barrierSection.style.display = 'block';
                 
-                const statusLabel = reservation.status === 'occupied' ? 
+                // Déterminer le statut (etat ou status)
+                var spotStatus = reservation.etat || reservation.status || 'reserved';
+                const statusLabel = spotStatus === 'occupied' ? 
                     '<span class="status-badge occupied"><i class="fas fa-car"></i> Occupée</span>' : 
                     '<span class="status-badge reserved"><i class="fas fa-clock"></i> Réservée</span>';
                 
-                const remaining = calculateRemainingTime(reservation.expires_at);
+                // Calculer le temps restant - utiliser reservation_end_time ou expires_at
+                var expiresAt = reservation.reservation_end_time || reservation.expires_at || reservation.end_time;
+                var reservedAt = reservation.reservation_start_time || reservation.reserved_at || reservation.created_at;
+                
+                const remaining = calculateRemainingTime(expiresAt);
+                
+                // Formater la date de réservation correctement
+                var reservedDateStr = 'Date inconnue';
+                if (reservedAt) {
+                    try {
+                        reservedDateStr = formatDate(reservedAt);
+                    } catch(e) {
+                        reservedDateStr = new Date().toLocaleDateString('fr-FR');
+                    }
+                }
                 
                 list.innerHTML = `
                     <div class="reservation-item" data-spot-id="${reservation.place_id}">
                         <div class="info">
                             <span class="spot-name"><i class="fas fa-parking"></i> Place ${reservation.place_id}</span>
                             ${statusLabel}
-                            <span class="date"><i class="fas fa-calendar"></i> Réservée le ${formatDate(reservation.reserved_at)}</span>
-                            <div class="countdown-timer" data-spot="${reservation.place_id}" data-expires="${reservation.expires_at}">
+                            <span class="date"><i class="fas fa-calendar"></i> Réservée le ${reservedDateStr}</span>
+                            <div class="countdown-timer" data-spot="${reservation.place_id}" data-expires="${expiresAt || ''}">
                                 <i class="fas fa-hourglass-half"></i> 
                                 <span class="time-remaining">${formatRemainingTime(remaining)}</span>
                             </div>
@@ -526,37 +590,118 @@
             });
         }
 
-        // Cancel reservation
-        async function cancelReservation(spotId) {
+        // Variable pour stocker le spotId à annuler
+        var spotToCancel = null;
+
+        // Cancel reservation - ouvrir modal de confirmation
+        function cancelReservation(spotId) {
             var user = Auth.getUser();
             if (!user) return;
 
-            if (confirm('Voulez-vous vraiment annuler la réservation de la place ' + spotId + ' ?')) {
-                try {
-                    // API call to release place
-                    await API.releasePlace(spotId);
-                    
-                    showNotification(`Réservation de la place ${spotId} annulée.`, 'success');
-                    await updateParkingGrid();
-                    await loadUserReservations();
-                    
-                } catch (error) {
-                    console.error('Erreur annulation:', error);
-                    showNotification('Impossible d\'annuler cette réservation: ' + error.message, 'error');
-                }
+            spotToCancel = spotId;
+            document.getElementById('cancel-spot-info').textContent = 'Place: ' + spotId;
+            document.getElementById('cancel-modal').classList.add('active');
+            
+            // Attacher l'événement de confirmation
+            document.getElementById('confirm-cancel-btn').onclick = confirmCancelReservation;
+        }
+
+        // Fermer le modal d'annulation
+        function closeCancelModal() {
+            document.getElementById('cancel-modal').classList.remove('active');
+            spotToCancel = null;
+        }
+
+        // Confirmer l'annulation
+        async function confirmCancelReservation() {
+            if (!spotToCancel) return;
+            
+            var btn = document.getElementById('confirm-cancel-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Annulation...';
+            
+            try {
+                await API.releasePlace(spotToCancel);
+                
+                closeCancelModal();
+                showNotification('Réservation de la place ' + spotToCancel + ' annulée.', 'success');
+                await updateParkingGrid();
+                await loadUserReservations();
+                
+            } catch (error) {
+                console.error('Erreur annulation:', error);
+                showNotification('Impossible d\'annuler cette réservation: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-times"></i> Confirmer l\'annulation';
             }
         }
 
-        // Formater une date
+        // Envoyer le code à la barrière
+        async function sendBarrierCode() {
+            var code = document.getElementById('barrier-code-input').value.trim().toUpperCase();
+            var responseDiv = document.getElementById('barrier-response');
+            var btn = document.getElementById('send-barrier-btn');
+            
+            if (!code || code.length < 3) {
+                showNotification('Veuillez entrer un code valide.', 'error');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...';
+            responseDiv.style.display = 'block';
+            responseDiv.innerHTML = '<div style="padding: 1rem; background: #f0f9ff; border-radius: 8px; text-align: center;"><i class="fas fa-spinner fa-spin"></i> Vérification du code...</div>';
+            
+            try {
+                // Appeler l'API de validation du code
+                var result = await API.request('/api/v1/access/validate-code', {
+                    method: 'POST',
+                    body: { code: code }
+                });
+                
+                if (result.valid) {
+                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; text-align: center; color: #166534;"><i class="fas fa-check-circle"></i> <strong>Code valide !</strong><br>La barrière s\'ouvre...</div>';
+                    showNotification('Barrière ouverte avec succès !', 'success');
+                    
+                    // Vider le champ après succès
+                    document.getElementById('barrier-code-input').value = '';
+                } else {
+                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; text-align: center; color: #dc2626;"><i class="fas fa-times-circle"></i> <strong>Code invalide ou expiré.</strong></div>';
+                }
+            } catch (error) {
+                console.error('Erreur validation code:', error);
+                responseDiv.innerHTML = '<div style="padding: 1rem; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; text-align: center; color: #dc2626;"><i class="fas fa-times-circle"></i> ' + (error.message || 'Erreur de connexion') + '</div>';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Envoyer';
+            }
+        }
+
+        // Formater une date avec gestion des erreurs
         function formatDate(dateString) {
-            const options = { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            };
-            return new Date(dateString).toLocaleDateString('fr-FR', options);
+            if (!dateString) return 'Date non disponible';
+            
+            try {
+                const date = new Date(dateString);
+                
+                // Vérifier si la date est valide
+                if (isNaN(date.getTime())) {
+                    return 'Date non disponible';
+                }
+                
+                const options = { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'Africa/Lubumbashi' // GMT+2
+                };
+                return date.toLocaleDateString('fr-FR', options);
+            } catch (e) {
+                return 'Date non disponible';
+            }
         }
 
         // Mise à jour en temps réel (compteurs seulement)
@@ -621,7 +766,8 @@
         // Traiter le paiement
         async function processPayment() {
             const phoneNumber = document.getElementById('phone-number').value.trim();
-            const duration = parseInt(document.getElementById('duration').value) || 0;
+            const duration = parseFloat(document.getElementById('duration').value) || 0;
+            const durationMinutes = Math.round(duration * 60);
             
             // Validations
             if (!selectedSpot) {
@@ -629,13 +775,14 @@
                 return;
             }
 
-            if (duration < 1) {
-                showNotification('Veuillez entrer une durée valide (minimum 1 heure ou 0.01h pour test).', 'error');
+            // Durée minimale: 20 minutes (0.33h), maximale: 1 semaine (168h)
+            if (durationMinutes < 20) {
+                showNotification('La durée minimale est de 20 minutes (environ 0.33 heure).', 'error');
                 return;
             }
 
-            if (duration > 168) {
-                showNotification('La durée maximale est de 168 heures (1 semaine).', 'error');
+            if (durationMinutes > 168 * 60) {
+                showNotification('La durée maximale est de 1 semaine (168 heures).', 'error');
                 return;
             }
             
@@ -660,11 +807,10 @@
             };
             
             const vehiclePlate = document.getElementById('vehicle-plate').value.trim();
-            const amount = duration * RATE_PER_HOUR;
-            const durationMinutes = duration * 60; // Convertir heures en minutes
+            const amount = Math.ceil(duration * RATE_PER_HOUR);
             
             try {
-                // 1. Create reservation via API (15-480 minutes)
+                // 1. Create reservation via API
                 var reservationResponse = await API.createReservation(
                     selectedSpot,
                     durationMinutes

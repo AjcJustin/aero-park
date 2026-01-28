@@ -22,8 +22,8 @@
                 <a href="register.html" class="btn btn-primary active"><i class="fas fa-user-plus"></i> Inscription</a>
             </li>
             <li id="user-menu" class="hidden">
-                <span class="user-name"></span>
-                <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                <a href="profile.html" class="btn btn-outline"><i class="fas fa-user"></i> Profil</a>
+                <a href="#" class="btn btn-danger" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
             </li>
         </ul>
         <button class="hamburger" aria-label="Menu">
@@ -92,7 +92,11 @@
                             autocomplete="new-password"
                             required
                             minlength="6"
+                            style="padding-right: 45px;"
                         >
+                        <button type="button" class="toggle-password" onclick="togglePassword('password')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 5px;">
+                            <i class="fas fa-eye" id="password-eye"></i>
+                        </button>
                     </div>
                     <span class="error-message" id="password-error"></span>
                 </div>
@@ -108,7 +112,11 @@
                             placeholder="Répétez votre mot de passe"
                             autocomplete="new-password"
                             required
+                            style="padding-right: 45px;"
                         >
+                        <button type="button" class="toggle-password" onclick="togglePassword('confirm-password')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 5px;">
+                            <i class="fas fa-eye" id="confirm-password-eye"></i>
+                        </button>
                     </div>
                     <span class="error-message" id="confirm-password-error"></span>
                 </div>
@@ -142,6 +150,20 @@
     <script src="../js/auth.js"></script>
     
     <script>
+        // Toggle password visibility
+        function togglePassword(inputId) {
+            var input = document.getElementById(inputId);
+            var eyeIcon = document.getElementById(inputId + '-eye');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                eyeIcon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                eyeIcon.className = 'fas fa-eye';
+            }
+        }
+
         // Redirect if already logged in
         if (Auth.isLoggedIn()) {
             window.location.href = 'reservation.html';

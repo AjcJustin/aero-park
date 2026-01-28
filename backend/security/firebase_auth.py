@@ -45,8 +45,9 @@ async def verify_firebase_token(
     token = credentials.credentials
     
     try:
-        # Verify the Firebase ID token
-        decoded_token = auth.verify_id_token(token)
+        # Verify the Firebase ID token with clock skew tolerance
+        # clock_skew_seconds allows for slight time differences between servers
+        decoded_token = auth.verify_id_token(token, check_revoked=False, clock_skew_seconds=60)
         
         return TokenPayload(
             uid=decoded_token.get("uid"),
