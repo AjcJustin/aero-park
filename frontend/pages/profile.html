@@ -260,7 +260,7 @@
             <li><a href="reservation.html"><i class="fas fa-ticket-alt"></i> Réserver</a></li>
             <li id="user-menu">
                 <a href="profile.html" class="btn btn-outline active"><i class="fas fa-user"></i> Profil</a>
-                <a href="#" class="btn btn-danger" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
             </li>
         </ul>
         <button class="hamburger" id="hamburger">
@@ -394,15 +394,12 @@
     </main>
 
     <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-brand">
-                    <i class="fas fa-plane"></i>
-                    <span>AeroPark GOMA - Parking Automatisé</span>
-                </div>
-                <p>&copy; 2025 AeroPark GOMA. Tous droits réservés.</p>
-            </div>
+    <footer style="background: #1e293b; color: #94a3b8; padding: 1rem 0; text-align: center; font-size: 0.85rem;">
+        <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+            <i class="fas fa-plane" style="color: #2563eb;"></i>
+            <span>AeroPark GOMA</span>
+            <span style="opacity: 0.5;">|</span>
+            <span>&copy; 2026 Tous droits réservés</span>
         </div>
     </footer>
 
@@ -491,8 +488,20 @@
                     activeReservation = response.reservation;
                     displayActiveReservation(response.reservation);
                     document.getElementById('access-code-card').style.display = 'block';
+                    
+                    // Afficher le code d'accès de la réservation
+                    if (response.reservation.access_code) {
+                        document.getElementById('access-code-display').textContent = response.reservation.access_code;
+                        document.getElementById('barrier-code-input').value = response.reservation.access_code;
+                        var expiresAt = response.reservation.reservation_end_time || response.reservation.expires_at;
+                        if (expiresAt) {
+                            document.getElementById('code-expires').textContent = new Date(expiresAt).toLocaleString('fr-FR');
+                        }
+                    }
                 } else {
                     activeReservation = null;
+                    document.getElementById('access-code-card').style.display = 'none';
+                    localStorage.removeItem('aeropark_last_access_code');
                     document.getElementById('reservation-content').innerHTML = '<div class="no-reservation"><i class="fas fa-inbox"></i><p>Aucune réservation active</p><a href="reservation.html" class="btn btn-primary" style="margin-top: 1rem;"><i class="fas fa-plus"></i> Réserver une place</a></div>';
                 }
             } catch (error) {

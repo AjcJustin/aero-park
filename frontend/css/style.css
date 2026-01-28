@@ -832,6 +832,28 @@ textarea:focus-visible {
     padding-left: 2.75rem;
 }
 
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #94a3b8;
+    padding: 5px;
+    z-index: 2;
+}
+
+.toggle-password:hover {
+    color: #64748b;
+}
+
+.toggle-password:focus {
+    outline: none;
+    color: var(--primary-color);
+}
+
 .auth-form button[type="submit"] {
     width: 100%;
     padding: 1rem;

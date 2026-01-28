@@ -23,7 +23,7 @@
             </li>
             <li id="user-menu" class="hidden">
                 <a href="profile.html" class="btn btn-outline"><i class="fas fa-user"></i> Profil</a>
-                <a href="#" class="btn btn-danger" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
             </li>
         </ul>
         <button class="hamburger" aria-label="Menu">
@@ -77,7 +77,7 @@
                             required
                             style="padding-right: 45px;"
                         >
-                        <button type="button" class="toggle-password" onclick="togglePassword('password')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 5px;">
+                        <button type="button" class="toggle-password" onclick="togglePassword('password')">
                             <i class="fas fa-eye" id="password-eye"></i>
                         </button>
                     </div>
@@ -98,15 +98,12 @@
     </main>
 
     <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-brand">
-                    <i class="fas fa-plane"></i>
-                    <span>AeroPark GOMA - Parking Automatisé</span>
-                </div>
-                <p>&copy; 2025 AeroPark GOMA. Tous droits réservés.</p>
-            </div>
+    <footer style="background: #1e293b; color: #94a3b8; padding: 1rem 0; text-align: center; font-size: 0.85rem;">
+        <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+            <i class="fas fa-plane" style="color: #2563eb;"></i>
+            <span>AeroPark GOMA</span>
+            <span style="opacity: 0.5;">|</span>
+            <span>&copy; 2026 Tous droits réservés</span>
         </div>
     </footer>
 
