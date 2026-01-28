@@ -178,7 +178,8 @@ function updateStats(data) {
 
     animateNumber('total-places', total);
     animateNumber('available-places', available);
-    animateNumber('occupied-places', occupied + reserved);
+    animateNumber('occupied-places', occupied);
+    animateNumber('reserved-places', reserved);
     animateNumber('occupation-rate', rate, '%');
 
     updateStatusIndicator(rate);
@@ -256,7 +257,9 @@ function generateParkingPreview(data) {
         // Backend uses 'etat': free, reserved, occupied
         var status = spot.etat || spot.status || 'free';
         var statusClass = status === 'free' ? 'available' : status;
-        return '<div class="parking-spot-mini ' + statusClass + '" title="Place ' + spot.id + '">' + spot.id + '</div>';
+        // Use place_id from backend, fallback to id
+        var spotId = spot.place_id || spot.id || 'P' + (spots.indexOf(spot) + 1);
+        return '<div class="parking-spot-mini ' + statusClass + '" title="Place ' + spotId + '">' + spotId + '</div>';
     }).join('');
 }
 

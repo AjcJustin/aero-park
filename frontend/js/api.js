@@ -1,6 +1,6 @@
 /**
  * AeroPark GOMA - API Service
- * Simple fetch wrapper for all backend API calls
+ * Simple fetch wrapper for all backend API calls with auto token refresh
  */
 
 var API = {
@@ -11,7 +11,7 @@ var API = {
         return localStorage.getItem('aeropark_token');
     },
 
-    // Make API request
+    // Make API request with automatic token refresh
     request: async function(endpoint, options) {
         options = options || {};
         var url = this.BASE_URL + endpoint;
@@ -37,6 +37,48 @@ var API = {
         try {
             var response = await fetch(url, config);
             var data = await response.json().catch(function() { return {}; });
+
+            // If token expired, try to refresh and retry
+            if (response.status === 401 && data.detail && 
+                (data.detail.includes('expired') || data.detail.includes('Token') || data.detail.includes('token'))) {
+                
+                console.log('[API] Token expired, attempting refresh...');
+                
+                // Try to refresh token
+                if (typeof Auth !== 'undefined' && Auth.refreshTokenIfNeeded) {
+                    var refreshed = await Auth.refreshTokenIfNeeded();
+                    if (refreshed) {
+                        // Retry the request with new token
+                        var newToken = this.getToken();
+                        if (newToken) {
+                            headers['Authorization'] = 'Bearer ' + newToken;
+                            config.headers = headers;
+                            
+                            response = await fetch(url, config);
+                            data = await response.json().catch(function() { return {}; });
+                            
+                            if (response.ok) {
+                                return data;
+                            }
+                        }
+                    }
+                }
+                
+                // Refresh failed, redirect to login
+                console.log('[API] Token refresh failed, redirecting to login');
+                if (typeof Auth !== 'undefined') {
+                    Auth.clear();
+                }
+                var currentPath = window.location.pathname;
+                if (currentPath.indexOf('/admin/') !== -1) {
+                    window.location.href = 'login.html';
+                } else if (currentPath.indexOf('/pages/') !== -1) {
+                    window.location.href = 'login.html';
+                } else {
+                    window.location.href = 'pages/login.html';
+                }
+                throw { status: 401, message: 'Session expirée. Veuillez vous reconnecter.' };
+            }
 
             if (!response.ok) {
                 throw { 

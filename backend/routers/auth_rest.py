@@ -48,6 +48,8 @@ class AuthResponse(BaseModel):
     """Response model for authentication."""
     success: bool
     token: str
+    refresh_token: str = ""
+    expires_in: int = 3600
     user: dict
     message: str = ""
 
@@ -104,6 +106,8 @@ async def register(request: RegisterRequest):
             
             # Get the ID token and user info
             id_token = data.get("idToken")
+            refresh_token = data.get("refreshToken")
+            expires_in = int(data.get("expiresIn", 3600))
             user_id = data.get("localId")
             email = data.get("email")
             
@@ -117,6 +121,8 @@ async def register(request: RegisterRequest):
             return AuthResponse(
                 success=True,
                 token=id_token,
+                refresh_token=refresh_token,
+                expires_in=expires_in,
                 user={
                     "uid": user_id,
                     "email": email,
@@ -187,6 +193,8 @@ async def login(request: LoginRequest):
                     )
             
             id_token = data.get("idToken")
+            refresh_token = data.get("refreshToken")
+            expires_in = int(data.get("expiresIn", 3600))
             user_id = data.get("localId")
             email = data.get("email")
             display_name = data.get("displayName", "")
@@ -197,6 +205,8 @@ async def login(request: LoginRequest):
             return AuthResponse(
                 success=True,
                 token=id_token,
+                refresh_token=refresh_token,
+                expires_in=expires_in,
                 user={
                     "uid": user_id,
                     "email": email,

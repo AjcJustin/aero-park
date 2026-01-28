@@ -1,10 +1,12 @@
 /**
  * AeroPark GOMA - Auth Service
- * Simple token-based authentication
+ * Simple token-based authentication with auto-refresh
  */
 
 const Auth = {
     TOKEN_KEY: 'aeropark_token',
+    REFRESH_TOKEN_KEY: 'aeropark_refresh_token',
+    TOKEN_EXPIRES_KEY: 'aeropark_token_expires',
     USER_KEY: 'aeropark_user',
 
     // ========================================
@@ -15,8 +17,27 @@ const Auth = {
         return localStorage.getItem(this.TOKEN_KEY);
     },
 
-    setToken(token) {
+    setToken(token, expiresIn) {
         localStorage.setItem(this.TOKEN_KEY, token);
+        if (expiresIn) {
+            // Store expiration time (current time + expiresIn seconds - 5 min buffer)
+            var expiresAt = Date.now() + (expiresIn - 300) * 1000;
+            localStorage.setItem(this.TOKEN_EXPIRES_KEY, expiresAt.toString());
+        }
+    },
+
+    getRefreshToken() {
+        return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+    },
+
+    setRefreshToken(refreshToken) {
+        localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+    },
+
+    isTokenExpired() {
+        var expiresAt = localStorage.getItem(this.TOKEN_EXPIRES_KEY);
+        if (!expiresAt) return true;
+        return Date.now() >= parseInt(expiresAt, 10);
     },
 
     getUser() {
@@ -39,7 +60,54 @@ const Auth = {
 
     clear() {
         localStorage.removeItem(this.TOKEN_KEY);
+        localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+        localStorage.removeItem(this.TOKEN_EXPIRES_KEY);
         localStorage.removeItem(this.USER_KEY);
+    },
+
+    // ========================================
+    // TOKEN REFRESH
+    // ========================================
+
+    async refreshTokenIfNeeded() {
+        // Check if token needs refresh
+        if (!this.isTokenExpired()) {
+            return true; // Token still valid
+        }
+
+        var refreshToken = this.getRefreshToken();
+        if (!refreshToken) {
+            console.log('[Auth] No refresh token, user needs to login again');
+            return false;
+        }
+
+        try {
+            console.log('[Auth] Token expired, refreshing...');
+            var response = await fetch(API.BASE_URL + '/auth/refresh?refresh_token=' + encodeURIComponent(refreshToken), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            var data = await response.json();
+
+            if (!response.ok || !data.success) {
+                console.log('[Auth] Refresh failed, user needs to login again');
+                this.clear();
+                return false;
+            }
+
+            // Store new tokens
+            this.setToken(data.token, parseInt(data.expires_in || 3600));
+            if (data.refresh_token) {
+                this.setRefreshToken(data.refresh_token);
+            }
+            
+            console.log('[Auth] Token refreshed successfully');
+            return true;
+        } catch (error) {
+            console.error('[Auth] Token refresh error:', error);
+            return false;
+        }
     },
 
     // ========================================
@@ -60,8 +128,11 @@ const Auth = {
                 return { success: false, message: data.detail || 'Erreur inscription' };
             }
 
-            // Store token and user
-            this.setToken(data.token);
+            // Store token, refresh token and user
+            this.setToken(data.token, data.expires_in || 3600);
+            if (data.refresh_token) {
+                this.setRefreshToken(data.refresh_token);
+            }
             this.setUser(data.user);
 
             return { success: true, user: data.user };
@@ -84,8 +155,11 @@ const Auth = {
                 return { success: false, message: data.detail || 'Email ou mot de passe incorrect' };
             }
 
-            // Store token and user
-            this.setToken(data.token);
+            // Store token, refresh token and user
+            this.setToken(data.token, data.expires_in || 3600);
+            if (data.refresh_token) {
+                this.setRefreshToken(data.refresh_token);
+            }
             this.setUser(data.user);
 
             return { success: true, user: data.user };

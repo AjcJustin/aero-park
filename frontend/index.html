@@ -35,7 +35,7 @@
                 <a href="pages/register.html" class="btn btn-primary" role="menuitem"><i class="fas fa-user-plus" aria-hidden="true"></i> Inscription</a>
             </li>
             <li id="user-menu" class="hidden" role="none">
-                <span class="user-name" aria-label="Utilisateur connecté"></span>
+                <a href="pages/profile.html" class="user-name" role="menuitem" style="text-decoration: none;"></a>
                 <a href="#" class="btn btn-outline" id="logout-btn" role="menuitem"><i class="fas fa-sign-out-alt" aria-hidden="true"></i> Déconnexion</a>
             </li>
         </ul>
@@ -97,6 +97,17 @@
                         <div class="stat-info">
                             <span class="stat-number" id="occupied-places" aria-live="polite">0</span>
                             <span class="stat-label">Places Occupées</span>
+                        </div>
+                    </article>
+
+                    <!-- Places Réservées -->
+                    <article class="stat-card" role="listitem">
+                        <div class="stat-icon rate" style="background: var(--reserved-color);" aria-hidden="true">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="reserved-places" aria-live="polite">0</span>
+                            <span class="stat-label">Places Réservées</span>
                         </div>
                     </article>
 

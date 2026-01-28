@@ -22,7 +22,7 @@
                 <a href="register.html" class="btn btn-primary"><i class="fas fa-user-plus"></i> Inscription</a>
             </li>
             <li id="user-menu" class="hidden">
-                <span class="user-name"></span>
+                <a href="profile.html" class="user-name" style="text-decoration: none;"></a>
                 <a href="#" class="btn btn-outline" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
             </li>
         </ul>
@@ -42,7 +42,7 @@
             </div>
 
             <!-- Stats rapides -->
-            <div class="stats-grid" style="max-width: 600px; margin: 0 auto 2rem;">
+            <div class="stats-grid" style="max-width: 800px; margin: 0 auto 2rem;">
                 <div class="stat-card">
                     <div class="stat-icon available">
                         <i class="fas fa-check-circle"></i>
@@ -59,6 +59,15 @@
                     <div class="stat-info">
                         <span class="stat-number" id="occupied-count">0</span>
                         <span class="stat-label">Places Occupées</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: var(--reserved-color);">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-number" id="reserved-count">0</span>
+                        <span class="stat-label">Places Réservées</span>
                     </div>
                 </div>
             </div>
@@ -293,7 +302,8 @@
         function updateQuickStats(stats) {
             if (stats) {
                 document.getElementById('available-count').textContent = stats.available || 0;
-                document.getElementById('occupied-count').textContent = (stats.occupied || 0) + (stats.reserved || 0);
+                document.getElementById('occupied-count').textContent = stats.occupied || 0;
+                document.getElementById('reserved-count').textContent = stats.reserved || 0;
             }
         }
 
