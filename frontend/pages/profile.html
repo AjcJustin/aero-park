@@ -246,13 +246,97 @@
             letter-spacing: 0.5rem;
             font-weight: bold;
         }
+
+        /* Modal d'annulation */
+        .cancel-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cancel-modal.active {
+            display: flex;
+        }
+
+        .cancel-modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlide 0.3s ease;
+        }
+
+        @keyframes modalSlide {
+            from { transform: translateY(-30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .cancel-modal-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #fef3c7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+            color: #d97706;
+        }
+
+        .cancel-modal h3 {
+            margin: 0 0 1rem;
+            font-size: 1.3rem;
+            color: #1e293b;
+        }
+
+        .cancel-modal-warning {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0 1.5rem;
+        }
+
+        .cancel-modal-warning p:first-child {
+            margin: 0;
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .cancel-modal-warning p:last-child {
+            margin: 0.5rem 0 0;
+            color: #7f1d1d;
+            font-size: 0.9rem;
+        }
+
+        .cancel-modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .cancel-modal-buttons .btn {
+            min-width: 120px;
+            padding: 0.75rem 1.5rem;
+        }
     </style>
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar">
         <a href="../index.html" class="nav-brand">
-            <i class="fas fa-plane"></i>
+            <img src="../logo/Logo_de_service_de_stationnement_aéroportuaire-removebg-preview.png" alt="AeroPark" style="height: 50px; width: auto;">
             <span>AeroPark GOMA</span>
         </a>
         <ul class="nav-links">
@@ -393,6 +477,29 @@
         </div>
     </main>
 
+    <!-- Modal d'annulation -->
+    <div class="cancel-modal" id="cancel-modal">
+        <div class="cancel-modal-content">
+            <div class="cancel-modal-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3>Confirmer l'annulation</h3>
+            <p>Voulez-vous vraiment annuler cette réservation ?</p>
+            <div class="cancel-modal-warning">
+                <p><i class="fas fa-info-circle"></i> Important</p>
+                <p>Le paiement effectué ne sera <strong>pas remboursé</strong>.</p>
+            </div>
+            <div class="cancel-modal-buttons">
+                <button class="btn btn-outline" onclick="closeCancelModal()">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button class="btn btn-danger" id="confirm-cancel-btn">
+                    <i class="fas fa-check"></i> Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer style="background: #1e293b; color: #94a3b8; padding: 1rem 0; text-align: center; font-size: 0.85rem;">
         <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -458,7 +565,21 @@
                     
                     var reservationCount = profile.reservation_count || 0;
                     var totalHours = profile.total_parking_hours || 0;
-                    var totalSpent = Math.round(totalHours * 1000);
+                    var totalSpent = profile.total_spent || Math.round(totalHours * 1000);
+                    
+                    // Sauvegarder les stats localement pour persistance
+                    var savedStats = JSON.parse(localStorage.getItem('aeropark_user_stats') || '{}');
+                    if (reservationCount > 0 || totalHours > 0) {
+                        savedStats.reservationCount = reservationCount;
+                        savedStats.totalHours = totalHours;
+                        savedStats.totalSpent = totalSpent;
+                        localStorage.setItem('aeropark_user_stats', JSON.stringify(savedStats));
+                    } else if (savedStats.reservationCount) {
+                        // Utiliser les stats sauvegardées si l'API retourne 0
+                        reservationCount = savedStats.reservationCount;
+                        totalHours = savedStats.totalHours;
+                        totalSpent = savedStats.totalSpent;
+                    }
                     
                     document.getElementById('stat-reservations').textContent = reservationCount;
                     document.getElementById('stat-hours').textContent = totalHours.toFixed(1) + 'h';
@@ -469,7 +590,14 @@
                         document.getElementById('edit-vehicle').value = profile.profile.vehicle_plate;
                     }
                 } catch (apiError) {
-                    console.log('Profil API non disponible');
+                    console.log('Profil API non disponible, utilisation des stats locales');
+                    // Charger les stats depuis localStorage
+                    var savedStats = JSON.parse(localStorage.getItem('aeropark_user_stats') || '{}');
+                    if (savedStats.reservationCount) {
+                        document.getElementById('stat-reservations').textContent = savedStats.reservationCount;
+                        document.getElementById('stat-hours').textContent = (savedStats.totalHours || 0).toFixed(1) + 'h';
+                        document.getElementById('stat-total-spent').textContent = (savedStats.totalSpent || 0).toLocaleString('fr-FR') + ' FC';
+                    }
                 }
 
                 await loadActiveReservation();
@@ -537,7 +665,8 @@
             var remaining = calculateRemainingTime(expiresAt);
             
             if (remaining && remaining.expired) {
-                loadActiveReservation();
+                // La réservation a expiré - libérer automatiquement la place
+                handleExpiredReservation();
                 return;
             }
             
@@ -596,10 +725,20 @@
             }
         }
 
+        var pendingCancelPlaceId = null;
+
         function showCancelConfirmation(placeId) {
-            if (confirm('Voulez-vous vraiment annuler cette réservation ?\n\n⚠️ Important: Le paiement ne sera PAS remboursé.')) {
-                cancelReservation(placeId);
-            }
+            pendingCancelPlaceId = placeId;
+            document.getElementById('cancel-modal').classList.add('active');
+            document.getElementById('confirm-cancel-btn').onclick = function() {
+                closeCancelModal();
+                cancelReservation(pendingCancelPlaceId);
+            };
+        }
+
+        function closeCancelModal() {
+            document.getElementById('cancel-modal').classList.remove('active');
+            pendingCancelPlaceId = null;
         }
 
         async function cancelReservation(placeId) {
@@ -613,6 +752,39 @@
             } catch (error) {
                 showNotification('Erreur: ' + error.message, 'error');
             }
+        }
+
+        // Gestion de l'expiration automatique de la réservation
+        var expiredHandled = false;
+        
+        function handleExpiredReservation() {
+            // Éviter les appels multiples
+            if (expiredHandled) return;
+            expiredHandled = true;
+            
+            // Arrêter le countdown
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            
+            showNotification('Votre réservation a expiré.', 'warning');
+            
+            // Nettoyer le stockage local
+            localStorage.removeItem('aeropark_last_access_code');
+            localStorage.removeItem('aeropark_last_place');
+            
+            // Masquer la section code d'accès
+            document.getElementById('access-code-card').style.display = 'none';
+            
+            // Réinitialiser l'affichage de la réservation
+            activeReservation = null;
+            document.getElementById('reservation-content').innerHTML = '<div class="no-reservation"><i class="fas fa-clock" style="color: #f59e0b; font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i><p style="color: #d97706; font-weight: 500;">Votre réservation a expiré</p><a href="reservation.html" class="btn btn-primary" style="margin-top: 1rem;"><i class="fas fa-plus"></i> Nouvelle réservation</a></div>';
+            
+            // Réinitialiser après 2 secondes pour permettre de nouvelles réservations
+            setTimeout(function() {
+                expiredHandled = false;
+            }, 2000);
         }
 
         async function updateProfile(e) {

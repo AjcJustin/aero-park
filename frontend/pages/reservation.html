@@ -10,10 +10,10 @@
 <body class="reservation-page">
     <!-- Navigation -->
     <nav class="navbar">
-        <div class="nav-brand">
-            <i class="fas fa-plane"></i>
+        <a href="../index.html" class="nav-brand">
+            <img src="../logo/Logo_de_service_de_stationnement_aéroportuaire-removebg-preview.png" alt="AeroPark" style="height: 50px; width: auto;">
             <span>AeroPark GOMA</span>
-        </div>
+        </a>
         <ul class="nav-links">
             <li><a href="../index.html"><i class="fas fa-home"></i> Accueil</a></li>
             <li><a href="reservation.html" class="active"><i class="fas fa-ticket-alt"></i> Réserver</a></li>
@@ -842,6 +842,9 @@
                     localStorage.setItem('aeropark_last_place', selectedSpot);
                 }
                 
+                // Mettre à jour les statistiques utilisateur locales
+                updateUserStats(duration, amount);
+                
                 // Paiement réussi - show access code
                 showPaymentModal('success', paymentResponse.access_code);
                 
@@ -899,6 +902,19 @@
                 btn.classList.remove('hidden');
                 btn.className = 'btn btn-danger';
                 btn.innerHTML = '<i class="fas fa-redo"></i> Réessayer';
+            }
+        }
+
+        // Mettre à jour les statistiques utilisateur locales après une réservation
+        function updateUserStats(hours, amount) {
+            try {
+                var stats = JSON.parse(localStorage.getItem('aeropark_user_stats') || '{}');
+                stats.reservationCount = (stats.reservationCount || 0) + 1;
+                stats.totalHours = (stats.totalHours || 0) + parseFloat(hours);
+                stats.totalSpent = (stats.totalSpent || 0) + parseInt(amount);
+                localStorage.setItem('aeropark_user_stats', JSON.stringify(stats));
+            } catch (e) {
+                console.error('Erreur mise à jour stats:', e);
             }
         }
 

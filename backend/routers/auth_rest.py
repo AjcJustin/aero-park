@@ -199,8 +199,22 @@ async def login(request: LoginRequest):
             email = data.get("email")
             display_name = data.get("displayName", "")
             
-            # Check if user is admin (you can customize this logic)
-            is_admin = email in ["admin@aeropark.com", "admin@aeropark.cd"]
+            # Check if user is admin (custom claims or email list)
+            is_admin = False
+            admin_emails = ["admin@aeropark.com", "admin@aeropark.cd", "abrahamfaith325@gmail.com"]
+            
+            # Check email list first
+            if email in admin_emails:
+                is_admin = True
+            else:
+                # Check custom claims from Firebase
+                try:
+                    from firebase_admin import auth as fb_auth
+                    user_record = fb_auth.get_user(user_id)
+                    if user_record.custom_claims and user_record.custom_claims.get("role") == "admin":
+                        is_admin = True
+                except Exception as e:
+                    logger.warning(f"Could not check custom claims: {e}")
             
             return AuthResponse(
                 success=True,

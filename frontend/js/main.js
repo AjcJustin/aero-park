@@ -259,8 +259,41 @@ function generateParkingPreview(data) {
         var statusClass = status === 'free' ? 'available' : status;
         // Use place_id from backend, fallback to id
         var spotId = spot.place_id || spot.id || 'P' + (spots.indexOf(spot) + 1);
-        return '<div class="parking-spot-mini ' + statusClass + '" title="Place ' + spotId + '">' + spotId + '</div>';
+        
+        // Labels en français
+        var statusLabel = status === 'free' ? 'Disponible' : (status === 'reserved' ? 'Réservée' : 'Occupée');
+        var statusColor = status === 'free' ? '#10b981' : (status === 'reserved' ? '#f59e0b' : '#ef4444');
+        var bgColor = status === 'free' ? '#f0fdf4' : (status === 'reserved' ? '#fefce8' : '#fef2f2');
+        var borderColor = status === 'free' ? '#10b981' : (status === 'reserved' ? '#f59e0b' : '#ef4444');
+        
+        return '<div class="parking-card-preview" style="' +
+            'background: ' + bgColor + ';' +
+            'border: 3px solid ' + borderColor + ';' +
+            'border-radius: 12px;' +
+            'padding: 1.5rem 1rem;' +
+            'text-align: center;' +
+            'transition: transform 0.2s, box-shadow 0.2s;' +
+            '">' +
+            '<div style="font-size: 1.5rem; font-weight: bold; color: #1e293b; margin-bottom: 0.75rem;">' + spotId + '</div>' +
+            '<span style="' +
+                'display: inline-flex;' +
+                'align-items: center;' +
+                'gap: 0.35rem;' +
+                'background: ' + statusColor + ';' +
+                'color: white;' +
+                'padding: 0.35rem 0.75rem;' +
+                'border-radius: 20px;' +
+                'font-size: 0.8rem;' +
+                'font-weight: 500;' +
+            '">' +
+            '<span style="width: 8px; height: 8px; background: white; border-radius: 50%; opacity: 0.8;"></span>' +
+            statusLabel +
+            '</span>' +
+        '</div>';
     }).join('');
+    
+    // Appliquer un style de grille au container - 6 colonnes fixes
+    container.style.cssText = 'display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; padding: 1.5rem; background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 900px; margin: 0 auto;';
 }
 
 // ========================================
