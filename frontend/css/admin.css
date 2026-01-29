@@ -133,9 +133,23 @@
     font-size: 0.9rem;
 }
 
+.admin-login-form .input-icon {
+    position: relative;
+}
+
+.admin-login-form .input-icon > i:first-child {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    z-index: 1;
+}
+
+.admin-login-form .input-icon input,
 .admin-login-form .form-input {
     width: 100%;
-    padding: 1rem 1.25rem;
+    padding: 1rem 1.25rem 1rem 2.75rem;
     border: 2px solid #e2e8f0;
     border-radius: 12px;
     font-size: 1rem;
@@ -143,11 +157,50 @@
     background: #f8fafc;
 }
 
+.admin-login-form .input-icon input:focus,
 .admin-login-form .form-input:focus {
     outline: none;
     border-color: #3b82f6;
     background: white;
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Password field with toggle */
+.admin-login-form .password-field {
+    position: relative;
+}
+
+.admin-login-form .password-field input {
+    padding-right: 50px !important;
+}
+
+.admin-login-form .toggle-password {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s ease;
+    z-index: 2;
+}
+
+.admin-login-form .toggle-password:hover {
+    color: #3b82f6;
+}
+
+.admin-login-form .toggle-password:focus {
+    outline: none;
+}
+
+.admin-login-form .toggle-password i {
+    font-size: 1.1rem;
 }
 
 .btn-admin-login {

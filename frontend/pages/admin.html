@@ -329,7 +329,7 @@
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="sidebar">
         <div class="sidebar-header">
-            <img src="../logo/Logo_de_service_de_stationnement_aéroportuaire-removebg-preview.png" alt="AeroPark">
+            <img src="../logo/aeropark-logo.png" alt="AeroPark" style="height: 40px; width: auto;">
             <h2 class="sidebar-text">AeroPark Admin</h2>
         </div>
         
@@ -581,12 +581,12 @@
     <script>
         // Check admin authentication
         if (!Auth.isLoggedIn()) {
-            window.location.href = 'admin-login.html';
+            window.location.href = '../admin/login.html';
         } else {
             // Vérifier si l'utilisateur est admin
             var user = Auth.getUser();
             if (!user || (!user.email.includes('admin') && user.role !== 'admin')) {
-                window.location.href = 'admin-login.html';
+                window.location.href = '../admin/login.html';
             }
         }
 
