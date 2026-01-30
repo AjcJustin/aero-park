@@ -1,6 +1,6 @@
 """
-AeroPark Smart System - REST Authentication Router
-Handles user authentication via Firebase REST API (no client SDK needed).
+AeroPark System - REST Authentication Router
+Handles user authentication via Firebase REST API (pas besoin de SDk pour le client)
 """
 
 from fastapi import APIRouter, HTTPException, status
