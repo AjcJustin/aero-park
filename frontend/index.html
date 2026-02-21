@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <meta name="description" content="AeroPark GOMA - Système de parking automatisé à l'aéroport de Goma. Réservez votre place en ligne 24/7.">
+    <meta name="description"
+        content="AeroPark GOMA - Système de parking automatisé à l'aéroport de Goma. Réservez votre place en ligne 24/7.">
     <meta name="keywords" content="parking, aéroport, Goma, RDC, réservation, automatisé">
     <meta name="theme-color" content="#2563eb">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,6 +19,7 @@
     <!-- Preload critical resources -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 </head>
+
 <body>
     <!-- Skip to main content for accessibility -->
     <a href="#main-content" class="skip-link">Aller au contenu principal</a>
@@ -25,18 +28,24 @@
     <nav class="navbar" role="navigation" aria-label="Navigation principale">
         <a href="index.html" class="nav-brand" aria-label="AeroPark GOMA - Accueil">
             <img src="logo/aeropark-logo.png" alt="AeroPark" style="height: 50px; width: auto;">
-            <span>AeroPark GOMA</span>
+            <span id="nav-brand-text">AeroPark GOMA</span>
         </a>
         <ul class="nav-links" id="nav-links" role="menubar">
-            <li role="none"><a href="index.html" class="active" role="menuitem"><i class="fas fa-home" aria-hidden="true"></i> Accueil</a></li>
-            <li role="none"><a href="#" onclick="handleReserveClick(event)" role="menuitem"><i class="fas fa-ticket-alt" aria-hidden="true"></i> Réserver</a></li>
+            <li role="none"><a href="index.html" class="active" role="menuitem"><i class="fas fa-home"
+                        aria-hidden="true"></i> Accueil</a></li>
+            <li role="none"><a href="#" onclick="handleReserveClick(event)" role="menuitem"><i class="fas fa-ticket-alt"
+                        aria-hidden="true"></i> Réserver</a></li>
             <li id="auth-links" role="none">
-                <a href="pages/login.html" class="btn btn-outline" role="menuitem"><i class="fas fa-sign-in-alt" aria-hidden="true"></i> Connexion</a>
-                <a href="pages/register.html" class="btn btn-primary" role="menuitem"><i class="fas fa-user-plus" aria-hidden="true"></i> Inscription</a>
+                <a href="pages/login.html" class="btn btn-outline" role="menuitem"><i class="fas fa-sign-in-alt"
+                        aria-hidden="true"></i> Connexion</a>
+                <a href="pages/register.html" class="btn btn-primary" role="menuitem"><i class="fas fa-user-plus"
+                        aria-hidden="true"></i> Inscription</a>
             </li>
             <li id="user-menu" class="hidden" role="none">
-                <a href="pages/profile.html" class="btn btn-outline" role="menuitem"><i class="fas fa-user" aria-hidden="true"></i> Profil</a>
-                <a href="#" class="btn btn-outline" id="logout-btn" role="menuitem"><i class="fas fa-sign-out-alt" aria-hidden="true"></i> Déconnexion</a>
+                <a href="pages/profile.html" class="btn btn-outline" role="menuitem"><i class="fas fa-user"
+                        aria-hidden="true"></i> Profil</a>
+                <a href="#" class="btn btn-outline" id="logout-btn" role="menuitem"><i class="fas fa-sign-out-alt"
+                        aria-hidden="true"></i> Déconnexion</a>
             </li>
         </ul>
         <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false" aria-controls="nav-links">
@@ -49,9 +58,10 @@
     <!-- Hero Section -->
     <header class="hero" role="banner">
         <div class="hero-content">
-            <h1>Bienvenue sur <span class="highlight">AeroPark GOMA</span></h1>
-            <p>Système de parking automatisé aéroportuaire</p>
-            <a href="#" class="btn btn-large btn-primary" id="reserve-btn" onclick="handleReserveClick(event)" role="button">
+            <h1>Bienvenue sur <span class="highlight" id="hero-brand-text">AeroPark GOMA</span></h1>
+            <p id="hero-slogan">Système de parking automatisé aéroportuaire</p>
+            <a href="#" class="btn btn-large btn-primary" id="reserve-btn" onclick="handleReserveClick(event)"
+                role="button">
                 <i class="fas fa-car" aria-hidden="true"></i> Réserver une place
             </a>
         </div>
@@ -179,32 +189,40 @@
                 <h2 class="section-title" id="features-title">Nos Services</h2>
                 <div class="features-grid">
                     <article class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">
+                        <div class="feature-icon time" aria-hidden="true">
                             <i class="fas fa-clock"></i>
                         </div>
-                        <h3>Réservation 24/7</h3>
+                        <h3>Réservation 24h/24</h3>
                         <p>Réservez votre place à tout moment, depuis n'importe où.</p>
                     </article>
+
                     <article class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <h3>Sécurité Maximale</h3>
-                        <p>Surveillance vidéo et contrôle d'accès sécurisé.</p>
-                    </article>
-                    <article class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">
+                        <div class="feature-icon mobile" aria-hidden="true">
                             <i class="fas fa-mobile-alt"></i>
                         </div>
                         <h3>Accès Mobile</h3>
                         <p>Interface responsive adaptée à tous les appareils.</p>
                     </article>
                     <article class="feature-card">
-                        <div class="feature-icon" aria-hidden="true">
+                        <div class="feature-icon realtime" aria-hidden="true">
                             <i class="fas fa-bolt"></i>
                         </div>
                         <h3>Temps Réel</h3>
                         <p>Informations actualisées en permanence.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon payment" aria-hidden="true">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <h3>Paiement Mobile</h3>
+                        <p>Compatible Orange Money, Airtel Money et M-Pesa.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon support" aria-hidden="true">
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <h3>Support Client</h3>
+                        <p>Assistance disponible pour vous aider.</p>
                     </article>
                 </div>
             </div>
@@ -212,31 +230,34 @@
     </main>
 
     <!-- Footer -->
-    <footer style="background: #1e293b; color: #94a3b8; padding: 1rem 0; text-align: center; font-size: 0.85rem;" role="contentinfo">
-        <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+    <footer style="background: #1e293b; color: #94a3b8; padding: 1rem 0; text-align: center; font-size: 0.85rem;"
+        role="contentinfo">
+        <div class="container"
+            style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
             <i class="fas fa-plane" style="color: #2563eb;" aria-hidden="true"></i>
-            <span>AeroPark GOMA</span>
+            <span id="footer-brand-text">AeroPark GOMA</span>
             <span style="opacity: 0.5;">|</span>
             <span>&copy; 2026 Tous droits réservés</span>
         </div>
     </footer>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/api.js?v=3"></script>
+    <script src="js/auth.js?v=2"></script>
+    <script src="js/main.js?v=8"></script>
     <script>
         function handleReserveClick(event) {
             event.preventDefault();
-            
+
             if (Auth.isLoggedIn()) {
                 window.location.href = 'pages/reservation.html';
             } else {
                 showNotification('Veuillez vous connecter pour réserver une place.', 'warning');
-                setTimeout(function() {
+                setTimeout(function () {
                     window.location.href = 'pages/login.html';
                 }, 1500);
             }
         }
     </script>
 </body>
+
 </html>

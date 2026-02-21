@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body class="reservation-page">
     <!-- Navigation -->
     <nav class="navbar">
@@ -100,7 +102,7 @@
             <!-- Formulaire de réservation -->
             <div class="reservation-form-container hidden" id="reservation-form-container">
                 <h3><i class="fas fa-ticket-alt"></i> Confirmer la réservation</h3>
-                
+
                 <div class="selected-spot-info">
                     <p>Place sélectionnée :</p>
                     <span class="spot-number" id="selected-spot-display">-</span>
@@ -110,12 +112,7 @@
                     <label for="vehicle-plate">Plaque d'immatriculation (optionnel)</label>
                     <div class="input-icon">
                         <i class="fas fa-car"></i>
-                        <input 
-                            type="text" 
-                            id="vehicle-plate" 
-                            placeholder="Ex: AB-123-CD"
-                            maxlength="12"
-                        >
+                        <input type="text" id="vehicle-plate" placeholder="Ex: AB-123-CD" maxlength="12">
                     </div>
                 </div>
 
@@ -123,16 +120,9 @@
                     <label for="duration">Durée de stationnement (en heures)</label>
                     <div class="input-icon">
                         <i class="fas fa-clock"></i>
-                        <input 
-                            type="number" 
-                            id="duration" 
-                            min="1" 
-                            max="168"
-                            value="1"
-                            placeholder="Nombre d'heures"
+                        <input type="number" id="duration" min="1" max="168" value="1" placeholder="Nombre d'heures"
                             oninput="updatePaymentAmount()"
-                            style="width: 100%; padding: 0.875rem 1rem 0.875rem 2.75rem; border: 2px solid var(--border-color); border-radius: var(--radius-md); font-size: 1rem; background: var(--bg-color);"
-                        >
+                            style="width: 100%; padding: 0.875rem 1rem 0.875rem 2.75rem; border: 2px solid var(--border-color); border-radius: var(--radius-md); font-size: 1rem; background: var(--bg-color);">
                     </div>
                     <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
                         <i class="fas fa-info-circle"></i> Minimum 1 heure, maximum 168 heures (1 semaine)
@@ -142,19 +132,20 @@
                 <!-- Section Paiement -->
                 <div class="payment-section">
                     <h4><i class="fas fa-credit-card"></i> Paiement</h4>
-                    
+
                     <div class="pricing-info">
-                        <div class="rate">1 000 FC <span>/ heure</span></div>
+                        <div class="rate" id="rate-display">1 000 FC <span>/ heure</span></div>
                     </div>
 
                     <div class="total-amount">
                         <div class="label">Montant à payer</div>
-                        <div class="amount"><span id="payment-amount">1 000</span> <small>FC</small></div>
+                        <div class="amount"><span id="payment-amount">1 000</span> <small
+                                id="currency-display">FC</small></div>
                     </div>
 
                     <div class="payment-methods">
                         <label>Choisir le mode de paiement :</label>
-                        
+
                         <div class="payment-option" onclick="selectPaymentMethod('orange')">
                             <input type="radio" name="payment-method" id="pm-orange" value="orange">
                             <span class="radio-custom"></span>
@@ -179,12 +170,7 @@
 
                     <div class="phone-input-group">
                         <label for="phone-number"><i class="fas fa-phone"></i> Numéro de téléphone</label>
-                        <input 
-                            type="tel" 
-                            id="phone-number" 
-                            placeholder="Ex: 0991234567"
-                            maxlength="10"
-                        >
+                        <input type="tel" id="phone-number" placeholder="Ex: 0991234567" maxlength="10">
                         <p class="hint">Entrez le numéro associé à votre compte Mobile Money</p>
                     </div>
 
@@ -199,7 +185,7 @@
                         </div>
                         <div class="summary-row">
                             <span>Tarif</span>
-                            <span>1 000 FC/h</span>
+                            <span id="summary-rate">1 000 FC/h</span>
                         </div>
                         <div class="summary-row">
                             <span>Total</span>
@@ -240,7 +226,8 @@
                     </div>
                     <h3>Confirmer l'annulation</h3>
                     <p style="margin-bottom: 0.5rem;">Voulez-vous vraiment annuler cette réservation ?</p>
-                    <div style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+                    <div
+                        style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
                         <p style="margin: 0; color: #dc2626; font-weight: 600;">
                             <i class="fas fa-info-circle"></i> Important
                         </p>
@@ -263,11 +250,14 @@
             <!-- Section Envoi Code Barrière -->
             <div class="reservation-form-card" id="barrier-code-section" style="margin-top: 2rem; display: none;">
                 <h3 style="margin-bottom: 1rem;"><i class="fas fa-door-open"></i> Ouvrir la Barrière</h3>
-                <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">Entrez votre code d'accès pour ouvrir la barrière lorsque vous êtes devant le parking.</p>
+                <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">Entrez votre code d'accès pour ouvrir la
+                    barrière lorsque vous êtes devant le parking.</p>
                 <div class="form-group">
                     <label for="barrier-code-input"><i class="fas fa-key"></i> Code d'accès</label>
                     <div style="display: flex; gap: 1rem;">
-                        <input type="text" id="barrier-code-input" class="form-control" placeholder="Ex: 5MJ" maxlength="10" style="flex: 1; text-transform: uppercase; font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
+                        <input type="text" id="barrier-code-input" class="form-control" placeholder="Ex: 5MJ"
+                            maxlength="10"
+                            style="flex: 1; text-transform: uppercase; font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
                         <button type="button" class="btn btn-primary" onclick="sendBarrierCode()" id="send-barrier-btn">
                             <i class="fas fa-paper-plane"></i> Envoyer
                         </button>
@@ -288,7 +278,8 @@
 
     <!-- Footer -->
     <footer style="background: #1e293b; color: #94a3b8; padding: 1rem 0; text-align: center; font-size: 0.85rem;">
-        <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="container"
+            style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
             <i class="fas fa-plane" style="color: #2563eb;"></i>
             <span>AeroPark GOMA</span>
             <span style="opacity: 0.5;">|</span>
@@ -296,25 +287,32 @@
         </div>
     </footer>
 
-    <script src="../js/api.js"></script>
-    <script src="../js/auth.js"></script>
-    <script src="../js/main.js"></script>
+    <script>
+        // Safe fallback function if API.js not loaded yet
+        function formatPlaceId(placeId) {
+            if (!placeId) return placeId;
+            return String(placeId).replace(/^a(\d+)$/i, 'P$1');
+        }
+    </script>
+    <script src="../js/api.js?v=3"></script>
+    <script src="../js/auth.js?v=2"></script>
+    <script src="../js/main.js?v=8"></script>
     <script>
         // Check if logged in
         if (!Auth.isLoggedIn()) {
             sessionStorage.setItem('redirectAfterLogin', 'reservation.html');
             window.location.href = 'login.html';
         }
-        
-        document.addEventListener('DOMContentLoaded', async function() {
+
+        document.addEventListener('DOMContentLoaded', async function () {
             Auth.updateNavigation();
             await initReservationPage();
             initNavigation();
-            
+
             // Logout button
             var logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
-                logoutBtn.addEventListener('click', function(e) {
+                logoutBtn.addEventListener('click', function (e) {
                     e.preventDefault();
                     Auth.logout();
                 });
@@ -327,21 +325,104 @@
         var RATE_PER_HOUR = 1000;
         var parkingData = { places: [], stats: {} };
 
+        async function loadReservationSettings() {
+            try {
+                console.log('Loading reservation settings...');
+                const settings = await API.getPublicSettings();
+                console.log('Settings:', settings);
+
+                if (settings) {
+                    // Update Rate
+                    if (settings.hourly_rate) {
+                        const currency = settings.currency || 'FC';
+
+                        // SIMPLIFIED: Always use hourly_rate (what admins update)
+                        RATE_PER_HOUR = parseFloat(settings.hourly_rate);
+                        console.log('Rate loaded:', RATE_PER_HOUR, currency);
+
+                        // Update UI display
+                        const rateDisplay = document.querySelector('.pricing-info .rate');
+                        if (rateDisplay) {
+                            // Format with appropriate decimals
+                            var formattedRate = (currency === 'USD') ?
+                                RATE_PER_HOUR.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) :
+                                Math.ceil(RATE_PER_HOUR).toLocaleString('fr-FR');
+
+                            rateDisplay.innerHTML = formattedRate + ' ' + currency + ' <span>/ heure</span>';
+                        }
+                        // Update global currency for payment calculation
+                        window.CURRENCY = currency;
+
+                        // Start payment update
+                        updatePaymentAmount();
+                    }
+
+                    // Filter Payment Methods
+                    if (settings.payment_providers && Array.isArray(settings.payment_providers)) {
+                        const providers = settings.payment_providers;
+
+                        // Map of provider codes to DOM IDs
+                        const providerMap = {
+                            'ORANGE_MONEY': 'pm-orange',
+                            'AIRTEL_MONEY': 'pm-airtel',
+                            'MPESA': 'pm-mpesa'
+                        };
+
+                        // Hide all first
+                        Object.values(providerMap).forEach(id => {
+                            const input = document.getElementById(id);
+                            if (input) {
+                                const container = input.closest('.payment-option');
+                                if (container) container.style.display = 'none';
+                            }
+                        });
+
+                        // Show enabled ones
+                        providers.forEach(p => {
+                            const id = providerMap[p];
+                            if (id) {
+                                const input = document.getElementById(id);
+                                if (input) {
+                                    const container = input.closest('.payment-option');
+                                    if (container) container.style.display = 'flex';
+                                }
+                            }
+                        });
+
+                        // If selected method is hidden, deselect
+                        if (selectedPaymentMethod) {
+                            const currentId = providerMap[selectedPaymentMethod === 'orange' ? 'ORANGE_MONEY' :
+                                selectedPaymentMethod === 'airtel' ? 'AIRTEL_MONEY' :
+                                    selectedPaymentMethod === 'mpesa' ? 'MPESA' : ''];
+
+                            const currentInput = document.getElementById(currentId);
+                            if (currentInput && currentInput.closest('.payment-option').style.display === 'none') {
+                                clearSelection();
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading reservation settings:', error);
+            }
+        }
+
         async function initReservationPage() {
+            await loadReservationSettings();
             await updateParkingGrid();
             await loadUserReservations();
             updatePaymentAmount();
             document.getElementById('cancel-selection').addEventListener('click', clearSelection);
-            
+
             // Pré-remplir la plaque d'immatriculation depuis le profil
             prefillVehiclePlate();
-            
+
             // Calcul automatique du prix quand la durée change
             var durationInput = document.getElementById('duration');
             durationInput.addEventListener('input', updatePaymentAmount);
             durationInput.addEventListener('change', updatePaymentAmount);
         }
-        
+
         // Pré-remplir automatiquement la plaque d'immatriculation
         function prefillVehiclePlate() {
             var savedPlate = localStorage.getItem('aeropark_vehicle_plate');
@@ -364,24 +445,24 @@
         async function updateParkingGrid() {
             var container = document.getElementById('parking-grid');
             container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>';
-            
+
             try {
                 var response = await API.getParkingStatus();
                 parkingData = response;
-                
+
                 var spots = response.places || [];
                 var user = Auth.getUser();
-                
+
                 container.innerHTML = '';
-                
-                spots.forEach(function(spot) {
+
+                spots.forEach(function (spot) {
                     var spotElement = document.createElement('div');
                     // Backend uses 'etat' field: free, reserved, occupied
                     var spotStatus = spot.etat || spot.status || 'free';
                     var statusClass = spotStatus === 'free' ? 'available' : spotStatus;
                     spotElement.className = 'parking-spot ' + statusClass;
                     spotElement.dataset.id = spot.id;
-                    
+
                     var icon = 'fa-car';
                     if (spotStatus === 'free') {
                         icon = 'fa-plus';
@@ -392,21 +473,34 @@
                         }
                     }
 
-                    var spotId = spot.place_id || spot.id;
-                    spotElement.innerHTML = '<i class="fas ' + icon + '"></i><span>' + spotId + '</span>';
+                    var rawId = spot.place_id || spot.id;
+                    var displayId = formatPlaceId(rawId);
+                    spotElement.innerHTML = '<i class="fas ' + icon + '"></i><span>' + displayId + '</span>';
 
                     if (spotStatus === 'free') {
-                        spotElement.addEventListener('click', function() { selectSpot(spotId); });
+                        spotElement.addEventListener('click', function () { selectSpot(rawId); });
                     }
 
                     container.appendChild(spotElement);
                 });
 
-                var available = spots.filter(function(s) { return (s.etat || s.status) === 'free'; }).length;
-                var reserved = spots.filter(function(s) { return (s.etat || s.status) === 'reserved'; }).length;
-                var occupied = spots.filter(function(s) { return (s.etat || s.status) === 'occupied'; }).length;
+                if (spots.length === 0) {
+                    container.innerHTML = `
+                        <div class="error" style="grid-column: 1/-1; text-align: center; padding: 2rem;">
+                            <i class="fas fa-info-circle" style="font-size: 2rem; color: #64748b; margin-bottom: 1rem;"></i>
+                            <p>Aucune place disponible ou erreur de connexion.</p>
+                            <button class="btn btn-outline" onclick="updateParkingGrid()">
+                                <i class="fas fa-sync-alt"></i> Réessayer
+                            </button>
+                        </div>
+                    `;
+                }
+
+                var available = spots.filter(function (s) { return (s.etat || s.status) === 'free'; }).length;
+                var reserved = spots.filter(function (s) { return (s.etat || s.status) === 'reserved'; }).length;
+                var occupied = spots.filter(function (s) { return (s.etat || s.status) === 'occupied'; }).length;
                 updateQuickStats({ available: available, reserved: reserved, occupied: occupied });
-                
+
             } catch (error) {
                 console.error('Error loading parking:', error);
                 container.innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i> Erreur de chargement</div>';
@@ -416,7 +510,7 @@
 
         // Select spot
         function selectSpot(spotId) {
-            document.querySelectorAll('.parking-spot.selected').forEach(function(el) {
+            document.querySelectorAll('.parking-spot.selected').forEach(function (el) {
                 el.classList.remove('selected');
             });
 
@@ -426,27 +520,27 @@
             }
 
             selectedSpot = spotId;
-            document.getElementById('selected-spot-display').textContent = spotId;
-            document.getElementById('summary-spot').textContent = spotId;
+            document.getElementById('selected-spot-display').textContent = formatPlaceId(spotId);
+            document.getElementById('summary-spot').textContent = formatPlaceId(spotId);
             document.getElementById('reservation-form-container').classList.remove('hidden');
             updatePaymentAmount();
-            
+
             // Scroll vers le formulaire
-            document.getElementById('reservation-form-container').scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center' 
+            document.getElementById('reservation-form-container').scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
             });
         }
 
         // Clear selection
         function clearSelection() {
-            document.querySelectorAll('.parking-spot.selected').forEach(function(el) {
+            document.querySelectorAll('.parking-spot.selected').forEach(function (el) {
                 el.classList.remove('selected');
             });
             selectedSpot = null;
             selectedPaymentMethod = null;
             document.getElementById('reservation-form-container').classList.add('hidden');
-            document.querySelectorAll('.payment-option').forEach(function(opt) {
+            document.querySelectorAll('.payment-option').forEach(function (opt) {
                 opt.classList.remove('selected');
             });
             document.getElementById('phone-number').value = '';
@@ -457,7 +551,7 @@
             var container = document.getElementById('user-reservations');
             var list = document.getElementById('reservation-list');
             var barrierSection = document.getElementById('barrier-code-section');
-            
+
             if (!Auth.isLoggedIn()) {
                 container.classList.add('hidden');
                 if (barrierSection) barrierSection.style.display = 'none';
@@ -465,12 +559,12 @@
             }
 
             var user = Auth.getUser();
-            
+
             try {
                 // Get active reservation from API
                 var response = await API.getMyReservation();
                 var reservation = response.reservation;
-                
+
                 if (!response.has_reservation || !reservation) {
                     container.classList.remove('hidden');
                     if (barrierSection) barrierSection.style.display = 'none';
@@ -485,36 +579,36 @@
 
                 container.classList.remove('hidden');
                 if (barrierSection) barrierSection.style.display = 'block';
-                
+
                 // Déterminer le statut (etat ou status)
                 var spotStatus = reservation.etat || reservation.status || 'reserved';
-                const statusLabel = spotStatus === 'occupied' ? 
-                    '<span class="status-badge occupied"><i class="fas fa-car"></i> Occupée</span>' : 
+                const statusLabel = spotStatus === 'occupied' ?
+                    '<span class="status-badge occupied"><i class="fas fa-car"></i> Occupée</span>' :
                     '<span class="status-badge reserved"><i class="fas fa-clock"></i> Réservée</span>';
-                
+
                 // Calculer le temps restant - utiliser reservation_end_time ou expires_at
                 var expiresAt = reservation.reservation_end_time || reservation.expires_at || reservation.end_time;
                 var reservedAt = reservation.reservation_start_time || reservation.reserved_at || reservation.created_at;
-                
+
                 const remaining = calculateRemainingTime(expiresAt);
-                
+
                 // Formater la date de réservation correctement
                 var reservedDateStr = 'Date inconnue';
                 if (reservedAt) {
                     try {
                         reservedDateStr = formatDate(reservedAt);
-                    } catch(e) {
+                    } catch (e) {
                         reservedDateStr = new Date().toLocaleDateString('fr-FR');
                     }
                 }
-                
+
                 list.innerHTML = `
-                    <div class="reservation-item" data-spot-id="${reservation.place_id}">
+                    <div class="reservation-item" data-spot-id="${formatPlaceId(reservation.place_id)}">
                         <div class="info">
-                            <span class="spot-name"><i class="fas fa-parking"></i> Place ${reservation.place_id}</span>
+                            <span class="spot-name"><i class="fas fa-parking"></i> Place ${formatPlaceId(reservation.place_id)}</span>
                             ${statusLabel}
                             <span class="date"><i class="fas fa-calendar"></i> Réservée le ${reservedDateStr}</span>
-                            <div class="countdown-timer" data-spot="${reservation.place_id}" data-expires="${expiresAt || ''}">
+                            <div class="countdown-timer" data-spot="${formatPlaceId(reservation.place_id)}" data-expires="${expiresAt || ''}">
                                 <i class="fas fa-hourglass-half"></i> 
                                 <span class="time-remaining">${formatRemainingTime(remaining)}</span>
                             </div>
@@ -524,7 +618,7 @@
                         </button>
                     </div>
                 `;
-                
+
             } catch (error) {
                 console.error('Erreur chargement réservations:', error);
                 container.classList.remove('hidden');
@@ -536,21 +630,21 @@
                 `;
             }
         }
-        
+
         // Calculer le temps restant depuis expires_at
         function calculateRemainingTime(expiresAt) {
             if (!expiresAt) return { expired: true };
-            
+
             const now = new Date();
             const expires = new Date(expiresAt);
             const diff = expires - now;
-            
+
             if (diff <= 0) return { expired: true };
-            
+
             const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-            
+
             return { hours, minutes, seconds, expired: false };
         }
 
@@ -559,37 +653,37 @@
             if (!remaining || remaining.expired) {
                 return '<span class="expired">Expirée</span>';
             }
-            
+
             const { hours, minutes, seconds } = remaining;
-            
+
             if (hours > 24) {
                 const days = Math.floor(hours / 24);
                 const remainingHours = hours % 24;
                 return `${days}j ${remainingHours}h ${minutes}m`;
             }
-            
+
             return `${hours}h ${minutes}m ${seconds}s`;
         }
 
         // Mettre à jour les compteurs en temps réel
         function updateCountdowns() {
             const countdownElements = document.querySelectorAll('.countdown-timer');
-            
+
             countdownElements.forEach(el => {
                 const expiresAt = el.dataset.expires;
                 const remaining = calculateRemainingTime(expiresAt);
                 const timeSpan = el.querySelector('.time-remaining');
-                
+
                 if (timeSpan) {
                     timeSpan.innerHTML = formatRemainingTime(remaining);
-                    
+
                     // Ajouter une classe d'urgence si moins de 30 minutes
                     if (remaining && !remaining.expired && remaining.hours === 0 && remaining.minutes < 30) {
                         el.classList.add('urgent');
                     } else {
                         el.classList.remove('urgent');
                     }
-                    
+
                     // Si expiré, recharger les données
                     if (remaining && remaining.expired) {
                         updateParkingGrid();
@@ -608,9 +702,9 @@
             if (!user) return;
 
             spotToCancel = spotId;
-            document.getElementById('cancel-spot-info').textContent = 'Place: ' + spotId;
+            document.getElementById('cancel-spot-info').textContent = 'Place: ' + formatPlaceId(spotId);
             document.getElementById('cancel-modal').classList.add('active');
-            
+
             // Attacher l'événement de confirmation
             document.getElementById('confirm-cancel-btn').onclick = confirmCancelReservation;
         }
@@ -624,19 +718,19 @@
         // Confirmer l'annulation
         async function confirmCancelReservation() {
             if (!spotToCancel) return;
-            
+
             var btn = document.getElementById('confirm-cancel-btn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Annulation...';
-            
+
             try {
                 await API.releasePlace(spotToCancel);
-                
+
                 closeCancelModal();
-                showNotification('Réservation de la place ' + spotToCancel + ' annulée.', 'success');
+                showNotification('Réservation de la place ' + formatPlaceId(spotToCancel) + ' annulée.', 'success');
                 await updateParkingGrid();
                 await loadUserReservations();
-                
+
             } catch (error) {
                 console.error('Erreur annulation:', error);
                 showNotification('Impossible d\'annuler cette réservation: ' + error.message, 'error');
@@ -651,32 +745,32 @@
             var code = document.getElementById('barrier-code-input').value.trim().toUpperCase();
             var responseDiv = document.getElementById('barrier-response');
             var btn = document.getElementById('send-barrier-btn');
-            
+
             if (!code || code.length < 3) {
                 showNotification('Veuillez entrer un code valide.', 'error');
                 return;
             }
-            
+
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...';
             responseDiv.style.display = 'block';
             responseDiv.innerHTML = '<div style="padding: 1rem; background: #f0f9ff; border-radius: 8px; text-align: center;"><i class="fas fa-spinner fa-spin"></i> Vérification du code...</div>';
-            
+
             try {
-                // Appeler l'API de validation du code
-                var result = await API.request('/api/v1/access/validate-code', {
+                // Appeler l'API de validation du code avec no_open=true
+                var result = await API.request('/api/v1/access/validate-code?no_open=true', {
                     method: 'POST',
                     body: { code: code }
                 });
-                
-                if (result.valid) {
-                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; text-align: center; color: #166534;"><i class="fas fa-check-circle"></i> <strong>Code valide !</strong><br>La barrière s\'ouvre...</div>';
-                    showNotification('Barrière ouverte avec succès !', 'success');
-                    
+
+                if (result.access_granted) {
+                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; text-align: center; color: #166534;"><i class="fas fa-check-circle"></i> <strong>Code validé !</strong><br>Avancez votre véhicule vers la barrière pour l\'ouverture.</div>';
+                    showNotification('Code validé avec succès !', 'success');
+
                     // Vider le champ après succès
                     document.getElementById('barrier-code-input').value = '';
                 } else {
-                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; text-align: center; color: #dc2626;"><i class="fas fa-times-circle"></i> <strong>Code invalide ou expiré.</strong></div>';
+                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; text-align: center; color: #dc2626;"><i class="fas fa-times-circle"></i> <strong>' + (result.message || 'Code invalide ou expiré.') + '</strong></div>';
                 }
             } catch (error) {
                 console.error('Erreur validation code:', error);
@@ -690,18 +784,18 @@
         // Formater une date avec gestion des erreurs
         function formatDate(dateString) {
             if (!dateString) return 'Date non disponible';
-            
+
             try {
                 const date = new Date(dateString);
-                
+
                 // Vérifier si la date est valide
                 if (isNaN(date.getTime())) {
                     return 'Date non disponible';
                 }
-                
-                const options = { 
-                    day: '2-digit', 
-                    month: '2-digit', 
+
+                const options = {
+                    day: '2-digit',
+                    month: '2-digit',
                     year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit',
@@ -717,7 +811,7 @@
         setInterval(() => {
             updateCountdowns();
         }, 1000);
-        
+
         // Rafraîchir la grille toutes les 30 secondes
         setInterval(async () => {
             await updateParkingGrid();
@@ -730,18 +824,39 @@
         // Mettre à jour le montant à payer
         function updatePaymentAmount() {
             let duration = parseFloat(document.getElementById('duration').value) || 0;
-            
+
             // Validation des limites (accepter décimales comme 0.01h)
             if (duration < 0.01) duration = 0.01;
             if (duration > 168) duration = 168;
-            
-            // Calcul: 1000 FC/h, arrondi au franc supérieur
-            const amount = Math.ceil(duration * RATE_PER_HOUR);
+
+            // Calcul: Montant total
+            const currency = window.CURRENCY || 'FC';
+            let amount = duration * RATE_PER_HOUR;
+
+            // Arrondir au supérieur SEULEMENT pour FC (grandes valeurs)
+            // Garder les décimales pour USD (ex: 0.5 USD)
+            if (currency === 'FC') {
+                amount = Math.ceil(amount);
+            } else {
+                // Pour USD, arrondir à 2 décimales
+                amount = Math.round(amount * 100) / 100;
+            }
+
             const formattedAmount = amount.toLocaleString('fr-FR');
-            
+
             document.getElementById('payment-amount').textContent = formattedAmount;
-            document.getElementById('summary-total').textContent = formattedAmount + ' FC';
-            
+
+            const currencyDisplay = document.getElementById('currency-display');
+            if (currencyDisplay) currencyDisplay.textContent = currency;
+
+            document.getElementById('summary-total').textContent = formattedAmount + ' ' + currency;
+
+            // Mettre à jour le tarif dans le résumé
+            const rateElement = document.getElementById('summary-rate');
+            if (rateElement) {
+                rateElement.textContent = RATE_PER_HOUR.toLocaleString('fr-FR') + ' ' + currency + '/h';
+            }
+
             // Mettre à jour la durée dans le résumé
             let durationText = duration + ' heure' + (duration > 1 ? 's' : '');
             if (duration >= 24) {
@@ -753,19 +868,19 @@
                     durationText = days + 'j ' + remainingHours.toFixed(1) + 'h (' + duration + 'h total)';
                 }
             }
-            
+
             document.getElementById('summary-duration').textContent = durationText;
         }
 
         // Sélectionner un mode de paiement
         function selectPaymentMethod(method) {
             selectedPaymentMethod = method;
-            
+
             // Retirer la sélection précédente
             document.querySelectorAll('.payment-option').forEach(opt => {
                 opt.classList.remove('selected');
             });
-            
+
             // Ajouter la sélection
             const selectedOption = document.querySelector(`#pm-${method}`).closest('.payment-option');
             selectedOption.classList.add('selected');
@@ -777,7 +892,7 @@
             const phoneNumber = document.getElementById('phone-number').value.trim();
             const duration = parseFloat(document.getElementById('duration').value) || 0;
             const durationMinutes = Math.round(duration * 60);
-            
+
             // Validations
             if (!selectedSpot) {
                 showNotification('Veuillez sélectionner une place.', 'error');
@@ -794,12 +909,12 @@
                 showNotification('La durée maximale est de 1 semaine (168 heures).', 'error');
                 return;
             }
-            
+
             if (!selectedPaymentMethod) {
                 showNotification('Veuillez choisir un mode de paiement.', 'error');
                 return;
             }
-            
+
             if (!phoneNumber || phoneNumber.length < 10) {
                 showNotification('Veuillez entrer un numéro de téléphone valide.', 'error');
                 return;
@@ -814,20 +929,32 @@
                 'airtel': 'AIRTEL_MONEY',
                 'mpesa': 'MPESA'
             };
-            
+
             const vehiclePlate = document.getElementById('vehicle-plate').value.trim();
-            const amount = Math.ceil(duration * RATE_PER_HOUR);
-            
+
+            // Calculate amount with correct rounding based on currency
+            let amount = duration * RATE_PER_HOUR;
+            const currency = window.CURRENCY || 'FC';
+
+            if (currency === 'FC' || currency === 'CDF') {
+                amount = Math.ceil(amount);
+            } else {
+                // For USD, round to 2 decimals
+                amount = Math.round(amount * 100) / 100;
+            }
+
             try {
                 // 1. Create reservation via API
                 var reservationResponse = await API.createReservation(
                     selectedSpot,
-                    durationMinutes
+                    durationMinutes,
+                    vehiclePlate
                 );
-                
-                // Get reservation ID for payment
-                var reservationId = reservationResponse.reservation_id || selectedSpot;
-                
+
+                // Get reservation ID for payment - model now returns it
+                console.log('Reservation response:', reservationResponse);
+                var reservationId = reservationResponse.reservation_id || reservationResponse.id || selectedSpot;
+
                 // 2. Process Mobile Money payment via API
                 var paymentResponse = await API.processMobilePayment(
                     paymentProviderMap[selectedPaymentMethod],
@@ -835,23 +962,24 @@
                     amount,
                     reservationId
                 );
-                
+
                 // Store access code for offline access
-                if (paymentResponse.access_code) {
-                    localStorage.setItem('aeropark_last_access_code', paymentResponse.access_code);
+                const finalAccessCode = paymentResponse.access_code || reservationResponse.access_code;
+                if (finalAccessCode) {
+                    localStorage.setItem('aeropark_last_access_code', finalAccessCode);
                     localStorage.setItem('aeropark_last_place', selectedSpot);
                 }
-                
+
                 // Mettre à jour les statistiques utilisateur locales
                 updateUserStats(duration, amount);
-                
+
                 // Paiement réussi - show access code
-                showPaymentModal('success', paymentResponse.access_code);
-                
+                showPaymentModal('success', finalAccessCode);
+
             } catch (error) {
                 console.error('Erreur paiement/réservation:', error);
                 showPaymentModal('error');
-                
+
                 // Afficher le message d'erreur spécifique
                 const errorMessage = error.data?.detail || error.message || 'Une erreur est survenue';
                 document.getElementById('modal-message').textContent = errorMessage;
@@ -865,9 +993,9 @@
             var title = document.getElementById('modal-title');
             var message = document.getElementById('modal-message');
             var btn = document.getElementById('modal-btn');
-            
+
             modal.classList.add('active');
-            
+
             if (status === 'processing') {
                 icon.className = 'modal-icon processing';
                 icon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -878,7 +1006,7 @@
                 icon.className = 'modal-icon success';
                 icon.innerHTML = '<i class="fas fa-check-circle"></i>';
                 title.textContent = 'Paiement réussi !';
-                
+
                 // Show access code prominently
                 if (accessCode) {
                     message.innerHTML = '<p>Votre place a été réservée avec succès.</p>' +
@@ -890,7 +1018,7 @@
                 } else {
                     message.textContent = 'Votre place a été réservée avec succès.';
                 }
-                
+
                 btn.classList.remove('hidden');
                 btn.className = 'btn btn-success';
                 btn.innerHTML = '<i class="fas fa-check"></i> Parfait !';
@@ -911,7 +1039,7 @@
                 var stats = JSON.parse(localStorage.getItem('aeropark_user_stats') || '{}');
                 stats.reservationCount = (stats.reservationCount || 0) + 1;
                 stats.totalHours = (stats.totalHours || 0) + parseFloat(hours);
-                stats.totalSpent = (stats.totalSpent || 0) + parseInt(amount);
+                stats.totalSpent = (stats.totalSpent || 0) + parseFloat(amount);
                 localStorage.setItem('aeropark_user_stats', JSON.stringify(stats));
             } catch (e) {
                 console.error('Erreur mise à jour stats:', e);
@@ -922,9 +1050,9 @@
         async function closePaymentModal() {
             const modal = document.getElementById('payment-modal');
             const icon = document.getElementById('modal-icon');
-            
+
             modal.classList.remove('active');
-            
+
             // Si paiement réussi, réinitialiser la page
             if (icon.classList.contains('success')) {
                 clearSelection();
@@ -939,4 +1067,5 @@
         }
     </script>
 </body>
+
 </html>

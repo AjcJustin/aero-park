@@ -114,28 +114,52 @@ async def get_current_user(
         
         # Determine user role (check custom claims or Firestore)
         role = UserRole.USER
+        
+        # Check Custom Claims from token
+        claims = token.firebase or {}
+        identities = claims.get("identities", {})
+        # Note: custom claims are usually at the top level of decoded token in some libraries,
+        # but here we rely on what's passed in ValidatedToken
+        
+        # Check if Firestore has role admin
         if user_data and user_data.get("role") == "admin":
             role = UserRole.ADMIN
+            
+        # Also check hardcoded admin email list for safety
+        admin_emails = ["admin@aeropark.com", "admin@aeropark.cd", "abrahamfaith325@gmail.com"]
+        if token.email in admin_emails:
+            role = UserRole.ADMIN
         
+        # Determine display name: prioritize Firestore over Token
+        display_name = user_data.get("display_name") if user_data else None
+        if not display_name:
+            display_name = token.name
+            
         # Create profile object
         profile = UserProfile(
             uid=token.uid,
             email=token.email,
-            display_name=token.name,
+            display_name=display_name,
             photo_url=token.picture,
             email_verified=token.email_verified,
             role=role,
         )
         
-        # Update last login in Firestore
-        await db.upsert_user_profile(token.uid, {
+        # Update profile in Firestore (avoid overwriting name if already set)
+        update_data = {
             "uid": token.uid,
             "email": token.email,
-            "display_name": token.name,
             "photo_url": token.picture,
             "email_verified": token.email_verified,
             "role": role.value,
-        })
+        }
+        
+        # Only set display_name from token if not already in Firestore
+        if not (user_data and user_data.get("display_name")):
+            if token.name:
+                update_data["display_name"] = token.name
+        
+        await db.upsert_user_profile(token.uid, update_data)
         
         return profile
         

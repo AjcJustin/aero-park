@@ -168,7 +168,7 @@ class TestParkingPlaceDetails:
         Expected: Status 200 OK
         """
         with patch("routers.parking.get_db", return_value=mock_db):
-            response = client.get("/parking/place/a1")
+            response = client.get("/parking/place/P1")
             
             assert response.status_code == 200
     
@@ -178,7 +178,7 @@ class TestParkingPlaceDetails:
         Expected: place_id and etat in response
         """
         with patch("routers.parking.get_db", return_value=mock_db):
-            response = client.get("/parking/place/a1")
+            response = client.get("/parking/place/P1")
             
             data = response.json()
             
@@ -210,7 +210,7 @@ class TestParkingReservation:
         Test: Reservation requires user authentication
         Expected: Status 401 or 403 without auth
         """
-        payload = {"place_id": "a1"}
+        payload = {"place_id": "P1"}
         
         response = client.post("/parking/reserve", json=payload)
         
@@ -229,14 +229,14 @@ class TestParkingReservation:
         """
         mock_db.reserve_place = AsyncMock(return_value={
             "success": True,
-            "place_id": "a1",
+            "place_id": "P1",
             "reservation_id": "res-123",
             "expires_at": "2026-01-20T13:00:00Z"
         })
         
         with patch("routers.parking.get_db", return_value=mock_db):
             with patch("routers.parking.get_current_user", return_value=mock_user):
-                payload = {"place_id": "a1"}
+                payload = {"place_id": "P1"}
                 
                 response = client.post("/parking/reserve", json=payload)
                 
@@ -257,14 +257,14 @@ class TestParkingReservation:
         """
         mock_db.reserve_place = AsyncMock(return_value={
             "success": True,
-            "place_id": "a1",
+            "place_id": "P1",
             "reservation_id": "res-123",
             "expires_at": "2026-01-20T13:00:00Z"
         })
         
         with patch("routers.parking.get_db", return_value=mock_db):
             with patch("security.firebase_auth.get_current_user", return_value=mock_user):
-                payload = {"place_id": "a1"}
+                payload = {"place_id": "P1"}
                 
                 response = client.post("/parking/reserve", json=payload)
                 
@@ -281,7 +281,7 @@ class TestParkingRelease:
         Test: Release requires authentication
         Expected: Status 401 or 403 without auth
         """
-        response = client.post("/parking/release/a1")
+        response = client.post("/parking/release/P1")
         
         assert response.status_code in [401, 403, 422]
     
@@ -324,7 +324,7 @@ class TestParkingBusinessLogic:
         
         with patch("routers.parking.get_db", return_value=mock_full_parking_db):
             with patch("security.firebase_auth.get_current_user", return_value=mock_user):
-                payload = {"place_id": "a1"}
+                payload = {"place_id": "P1"}
                 
                 response = client_full_parking.post("/parking/reserve", json=payload)
                 
@@ -347,7 +347,7 @@ class TestParkingBusinessLogic:
         
         with patch("routers.parking.get_db", return_value=mock_db):
             with patch("security.firebase_auth.get_current_user", return_value=mock_user):
-                payload = {"place_id": "a4"}  # Already reserved in mock
+                payload = {"place_id": "P4"}  # Already reserved in mock
                 
                 response = client.post("/parking/reserve", json=payload)
                 
@@ -366,14 +366,14 @@ class TestParkingBusinessLogic:
         """
         mock_db.release_place = AsyncMock(return_value=True)
         mock_db.get_place_by_id = AsyncMock(return_value={
-            "place_id": "a4",
+            "place_id": "P4",
             "etat": "reserved",
             "reserved_by": mock_user.uid
         })
         
         with patch("routers.parking.get_db", return_value=mock_db):
             with patch("security.firebase_auth.get_current_user", return_value=mock_user):
-                response = client.post("/parking/release/a4")
+                response = client.post("/parking/release/P4")
                 
                 # Should succeed or require auth
                 if response.status_code == 200:

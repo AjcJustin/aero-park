@@ -14,7 +14,13 @@ from models.access import (
 )
 from services.access_code_service import get_access_code_service
 from services.barrier_service import get_barrier_service
+from services.websocket_service import get_websocket_manager
 from security.api_key import verify_sensor_api_key
+from security.firebase_auth import get_optional_user
+from fastapi import Header
+from typing import Optional
+from config import get_settings
+import secrets
 
 logger = logging.getLogger(__name__)
 
@@ -29,44 +35,78 @@ router = APIRouter(
     "/validate-code",
     response_model=ValidateCodeResponse,
     summary="Valider un code d'accès",
-    description="Valide un code d'accès 3 caractères pour l'ouverture de la barrière."
+    description="Valide un code d'accès pour l'ouverture de la barrière."
 )
 async def validate_access_code(
     request: ValidateCodeRequest,
-    sensor_auth: dict = Depends(verify_sensor_api_key)
+    no_open: bool = False,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    user: Optional[any] = Depends(get_optional_user)
 ):
     """
     Valide un code d'accès pour l'entrée au parking.
-    
-    Utilisé par l'ESP32 quand:
-    1. Le parking est plein
-    2. Un véhicule est détecté à la barrière
-    3. L'utilisateur saisit son code de réservation
-    
-    Conditions de validation:
-    - Code existe et est actif
-    - Code n'a pas expiré
-    - Véhicule détecté (sensor_presence = true)
+    Supporte l'authentification par Clé API (ESP32) ou JWT (Frontend).
     """
+    # Vérification de l'authentification (Clé API OU User JWT)
+    is_authenticated = False
+    if x_api_key:
+        settings = get_settings()
+        if secrets.compare_digest(x_api_key, settings.sensor_api_key):
+            is_authenticated = True
+    
+    if not is_authenticated and user:
+        is_authenticated = True
+        
+    if not is_authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Clé API manquante ou authentification requise."
+        )
+
     try:
         code_service = get_access_code_service()
         barrier_service = get_barrier_service()
+        ws_manager = get_websocket_manager()
         
+        # Déterminer la présence du véhicule
+        # 1. Si via App (no_open=True), on utilise toujours l'état du capteur en cache
+        # 2. Si via ESP32, on utilise ce qu'il envoie, ou le cache s'il n'envoie rien (None)
+        
+        cached_presence = barrier_service.get_sensor_state("entry")
+        actual_sensor_presence = request.sensor_presence
+        
+        if no_open:
+            actual_sensor_presence = cached_presence
+            logger.info(f"Validation via App: État capteur (cache) = {actual_sensor_presence}")
+        elif actual_sensor_presence is None:
+            actual_sensor_presence = cached_presence
+            logger.info(f"Validation via ESP32 (champ manquant): État capteur (cache) = {actual_sensor_presence}")
+        else:
+            logger.info(f"Validation via ESP32: Présence capteur reçue = {actual_sensor_presence}")
+
         result = await code_service.validate_code(
             code=request.code,
-            sensor_presence=request.sensor_presence
+            sensor_presence=actual_sensor_presence,
+            mark_used=not no_open # Ne marquons comme utilisé que si la barrière va s'ouvrir
         )
         
         if result["access_granted"]:
-            # Ouvrir la barrière
-            await barrier_service.open_barrier(
-                barrier_id=request.barrier_id,
-                reason="valid_code",
-                access_code=request.code,
-                place_id=result.get("place_id")
-            )
-            
-            logger.info(f"Code {request.code} validé - barrière ouverte")
+            if no_open:
+                # Notifier l'ESP32 que le code est validé
+                await ws_manager.notify_code_validated(
+                    code=request.code,
+                    place_id=result.get("place_id")
+                )
+                logger.info(f"Code {request.code} validé via app - Notification ESP32 envoyée")
+            else:
+                # Ouvrir la barrière immédiatement (appelé par ESP32 directement)
+                await barrier_service.open_barrier(
+                    barrier_id=request.barrier_id,
+                    reason="valid_code",
+                    access_code=request.code,
+                    place_id=result.get("place_id")
+                )
+                logger.info(f"Code {request.code} validé - barrière ouverte")
         else:
             logger.warning(f"Code {request.code} rejeté: {result['message']}")
         
@@ -94,20 +134,29 @@ async def validate_access_code(
 async def check_entry_access(
     sensor_presence: bool = True,
     access_code: str = None,
-    sensor_auth: dict = Depends(verify_sensor_api_key)
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    user: Optional[any] = Depends(get_optional_user)
 ):
     """
     Vérifie si l'accès à l'entrée est autorisé.
-    
-    Logique:
-    1. Si places libres → access_granted = true
-    2. Si parking plein + code valide → access_granted = true
-    3. Sinon → access_granted = false avec message
-    
-    Utilisé par ESP32 pour la logique de barrière automatique.
+    Supporte Clé API ou JWT.
     """
+    # Vérification auth
+    is_auth = False
+    if x_api_key:
+        settings = get_settings()
+        if secrets.compare_digest(x_api_key, settings.sensor_api_key):
+            is_auth = True
+    if not is_auth and user:
+        is_auth = True
+    if not is_auth:
+        raise HTTPException(status_code=401, detail="Non autorisé")
+
     try:
         barrier_service = get_barrier_service()
+        
+        # Synchroniser l'état du capteur
+        barrier_service.update_sensor_state("entry", sensor_presence)
         
         result = await barrier_service.check_entry_access(
             sensor_presence=sensor_presence,
@@ -147,14 +196,30 @@ async def check_entry_access(
 )
 async def process_exit(
     sensor_presence: bool = True,
-    sensor_auth: dict = Depends(verify_sensor_api_key)
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    user: Optional[any] = Depends(get_optional_user)
 ):
     """
     Traite une demande de sortie.
-    La barrière de sortie s'ouvre toujours si un véhicule est détecté.
+    Supporte Clé API ou JWT.
     """
+    # Vérification auth
+    is_auth = False
+    if x_api_key:
+        settings = get_settings()
+        if secrets.compare_digest(x_api_key, settings.sensor_api_key):
+            is_auth = True
+    if not is_auth and user:
+        is_auth = True
+    if not is_auth:
+        raise HTTPException(status_code=401, detail="Non autorisé")
+
     try:
         barrier_service = get_barrier_service()
+        
+        # Synchroniser l'état du capteur
+        barrier_service.update_sensor_state("exit", sensor_presence)
+        
         result = await barrier_service.process_exit(sensor_presence)
         
         return {

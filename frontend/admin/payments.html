@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body class="admin-page">
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="sidebar">
@@ -98,7 +100,7 @@
                         <i class="fas fa-money-bill-wave"></i>
                     </div>
                     <div class="stat-card-info">
-                        <h3 id="stat-total-amount">0 FC</h3>
+                        <h3 id="stat-total-amount">0 $</h3>
                         <p>Total revenus</p>
                     </div>
                 </div>
@@ -116,23 +118,11 @@
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <div class="stat-card-info">
-                        <h3 id="stat-today">0 FC</h3>
+                        <h3 id="stat-today">0 $</h3>
                         <p>Revenus aujourd'hui</p>
                     </div>
                 </div>
             </section>
-
-            <!-- Payments by Method Chart -->
-            <div class="dashboard-card full-width" style="margin-bottom: 1.5rem;">
-                <div class="card-header">
-                    <h3><i class="fas fa-chart-pie"></i> Répartition par méthode</h3>
-                </div>
-                <div class="card-body">
-                    <div id="payment-methods-chart" style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 1rem; padding: 1rem;">
-                        <!-- Généré par JavaScript -->
-                    </div>
-                </div>
-            </div>
 
             <!-- Filters -->
             <div class="filters-bar">
@@ -182,7 +172,7 @@
                                     <th>ID Transaction</th>
                                     <th>Utilisateur</th>
                                     <th>Méthode</th>
-                                    <th>Téléphone</th>
+                                    <th>Contact</th>
                                     <th>Montant</th>
                                     <th>Place</th>
                                     <th>Date</th>
@@ -207,9 +197,14 @@
     <script src="../js/admin.js"></script>
     <script>
         var allPayments = [];
-        var allUsers = [];
+        var allUsersMap = {};
+        var appCurrency = 'USD'; // Default fallback
+        var exchangeRate = 2500; // Market rate (default)
+        var parkingRatio = 1000; // Parking parity rate (default 1000 FC / 1 USD)
+        var baseCurrency = 'USD'; // All amounts in DB are stored in USD
+        var refreshInterval = null;
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
                 window.location.href = 'login.html';
                 return;
@@ -222,168 +217,283 @@
                 document.getElementById('admin-name').textContent = admin.username || admin.name || 'Admin';
             }
 
-            loadStats().then(function() {
-                loadPaymentMethodsChart();
-                return loadPaymentsTable();
-            }).catch(function(error) {
-                console.error('Erreur lors du chargement:', error);
-                Admin.showNotification('Erreur lors du chargement des données', 'error');
+            // Chargement initial
+            // Fetch currency from settings first
+            fetchCurrency().then(function () {
+                loadData();
             });
+
+            // Auto-refresh désactivé pour économiser les quotas Firebase
+            // refreshInterval = setInterval(loadData, 30000);
         });
 
-        function loadStats() {
-            return API.getAdminPayments().then(function(response) {
-                allPayments = response.payments || response || [];
-                
-                // Extract users from payments since there's no dedicated endpoint
-                var usersMap = {};
-                for (var i = 0; i < allPayments.length; i++) {
-                    var p = allPayments[i];
-                    var userId = p.user_id || p.userId;
-                    if (userId && !usersMap[userId]) {
-                        usersMap[userId] = {
-                            id: userId,
-                            email: p.user_email || 'utilisateur@email.com',
-                            name: p.user_name || p.user_email || 'Utilisateur'
-                        };
+        function fetchCurrency() {
+            return API.getPublicSettings()
+                .then(function (settings) {
+                    appCurrency = settings.currency || 'USD';
+                    exchangeRate = settings.exchange_rate || 2500;
+
+                    // Calculate Parking Parity Ratio
+                    var rateUSD = parseFloat(settings.hourly_rate_usd) || 2;
+                    var rateFC = parseFloat(settings.hourly_rate_fc) || 1000;
+
+                    if (settings.exchange_rate) {
+                        parkingRatio = parseFloat(settings.exchange_rate);
+                    } else if (rateUSD > 0 && rateFC > 0) {
+                        // Fallback to internal PARKING rate ratio if no exchange rate set
+                        parkingRatio = rateFC / rateUSD;
+                    } else {
+                        parkingRatio = 1000;
                     }
+
+                    console.log('Currency:', appCurrency, '| Market Rate:', exchangeRate, '| Parking Ratio:', parkingRatio);
+                })
+                .catch(function (error) {
+                    console.error('Failed to load currency, using defaults:', error);
+                    appCurrency = 'USD';
+                    exchangeRate = 2500;
+                    parkingRatio = 1000;
+                });
+        }
+
+        // Convert amount based on payment's original currency
+        // Only convert if payment was in USD and we're displaying in FC
+        function convertAmount(amount, paymentCurrency) {
+            if (!amount) return 0;
+
+            // If payment currency is specified, use it
+            if (paymentCurrency) {
+                // Payment is already in display currency - no conversion needed
+                if (paymentCurrency === appCurrency) {
+                    return amount;
                 }
-                allUsers = Object.values(usersMap);
-                
-                var successPayments = allPayments.filter(function(p) {
-                    return p.status === 'success' || p.status === 'completed';
-                });
-                var totalAmount = successPayments.reduce(function(sum, p) {
-                    return sum + (p.amount || 0);
-                }, 0);
-                
-                // Calcul des revenus d'aujourd'hui
-                var today = new Date().toISOString().split('T')[0];
-                var todayPayments = successPayments.filter(function(p) {
-                    var paymentDate = new Date(p.date || p.created_at || p.createdAt).toISOString().split('T')[0];
-                    return paymentDate === today;
-                });
-                var todayAmount = todayPayments.reduce(function(sum, p) {
-                    return sum + (p.amount || 0);
-                }, 0);
-                
-                document.getElementById('stat-total-amount').textContent = totalAmount.toLocaleString('fr-FR') + ' FC';
-                document.getElementById('stat-transactions').textContent = successPayments.length;
-                document.getElementById('stat-today').textContent = todayAmount.toLocaleString('fr-FR') + ' FC';
-            }).catch(function(error) {
-                console.error('Erreur chargement stats:', error);
+                // Payment is USD, display is FC - use Parking Ratio logic
+                if (paymentCurrency === 'USD' && appCurrency === 'FC') {
+                    // If amount is small (likely parking fee), use Parking Ratio to match tariff
+                    // Ex: 1 USD -> 1000 FC (not 2500)
+                    return Math.round(amount * parkingRatio);
+                }
+                // Payment is FC, display is USD - reverse convert
+                if (paymentCurrency === 'FC' && appCurrency === 'USD') {
+                    return Math.round(amount / parkingRatio * 100) / 100;
+                }
+            }
+
+            // Fallback: Infer currency from amount size
+            // Small amounts (<100) are likely USD, large amounts (>=100) are likely FC
+            var inferredCurrency = amount < 100 ? 'USD' : 'FC';
+
+            if (inferredCurrency === appCurrency) {
+                return amount; // No conversion
+            }
+
+            if (inferredCurrency === 'USD' && appCurrency === 'FC') {
+                // Use Parking Ratio for inferred USD parking fees
+                return Math.round(amount * parkingRatio);
+            }
+
+            if (inferredCurrency === 'FC' && appCurrency === 'USD') {
+                return Math.round(amount / parkingRatio * 100) / 100;
+            }
+
+            return amount;
+        }
+
+        // Format amount with currency symbol
+        function formatCurrency(amount, paymentCurrency) {
+            var converted = convertAmount(amount, paymentCurrency);
+            return converted.toLocaleString('fr-FR') + ' ' + appCurrency;
+        }
+
+        function loadData() {
+            // 1. Charger les utilisateurs pour avoir les vrais noms
+            // 2. Charger les paiements
+            return API.getAdminUsers().then(function (usersResponse) {
+                var users = usersResponse.users || usersResponse || [];
+                // Créer une map pour accès rapide
+                allUsersMap = {};
+                for (var i = 0; i < users.length; i++) {
+                    allUsersMap[users[i].id] = users[i];
+                }
+                return loadStats();
+            }).then(function () {
+                return loadPaymentsTable();
+            }).catch(function (error) {
+                console.error('Erreur lors du chargement:', error);
+                // Ne pas spammer les notifications en cas d'erreur de refresh
+                if (!refreshInterval) {
+                    Admin.showNotification('Erreur lors du chargement des données', 'error');
+                }
             });
         }
 
-        function loadPaymentMethodsChart() {
-            var payments = (allPayments || []).filter(function(p) {
-                return p.status === 'success' || p.status === 'completed';
-            });
-            
-            var byMethod = {
-                orange: { count: 0, amount: 0, name: 'Orange Money', color: '#ff6b35', icon: 'fab fa-orange' },
-                airtel: { count: 0, amount: 0, name: 'Airtel Money', color: '#e4002b', icon: 'fas fa-mobile-alt' },
-                mpesa: { count: 0, amount: 0, name: 'M-Pesa', color: '#00a651', icon: 'fas fa-mobile-alt' }
-            };
+        function loadStats() {
+            return API.getAdminPayments().then(function (response) {
+                allPayments = response.payments || response || [];
 
-            payments.forEach(function(p) {
-                var method = (p.method || p.payment_method || '').toLowerCase();
-                if (byMethod[method]) {
-                    byMethod[method].count++;
-                    byMethod[method].amount += p.amount || 0;
-                }
-            });
+                var successPayments = allPayments.filter(function (p) {
+                    return p.status === 'success' || p.status === 'completed';
+                });
 
-            var total = payments.length || 1;
-            var chartHtml = '';
-            var methods = Object.keys(byMethod);
-            
-            for (var i = 0; i < methods.length; i++) {
-                var key = methods[i];
-                var data = byMethod[key];
-                var percent = ((data.count / total) * 100).toFixed(1);
-                chartHtml += '<div style="text-align: center; min-width: 150px;">' +
-                    '<div style="width: 100px; height: 100px; border-radius: 50%; background: conic-gradient(' + data.color + ' 0% ' + percent + '%, #e0e0e0 ' + percent + '% 100%); margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;">' +
-                    '<div style="width: 70px; height: 70px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">' +
-                    '<span style="font-weight: bold; color: ' + data.color + ';">' + percent + '%</span>' +
-                    '</div></div>' +
-                    '<h4 style="margin: 0; color: ' + data.color + ';">' + data.name + '</h4>' +
-                    '<p style="margin: 0.25rem 0; color: var(--text-secondary);">' + data.count + ' transactions</p>' +
-                    '<p style="margin: 0; font-weight: 600;">' + data.amount.toLocaleString('fr-FR') + ' FC</p>' +
-                    '</div>';
-            }
-            
-            document.getElementById('payment-methods-chart').innerHTML = chartHtml;
+                // Calculer le total EN CONVERTISSANT chaque paiement vers la devise système
+                var totalAmount = successPayments.reduce(function (sum, p) {
+                    var amount = parseFloat(p.amount) || 0;
+                    var currency = p.currency || 'USD';
+                    // Convert INDIVIDUAL payments (not aggregates) - this is where heuristic should apply
+                    var converted = convertAmount(amount, currency);
+                    return sum + converted;
+                }, 0);
+
+                // Calcul des revenus d'aujourd'hui (en heure LOCALE)
+                var today = new Date().toDateString();
+                var todayPayments = successPayments.filter(function (p) {
+                    var pDate = new Date(p.date || p.created_at || p.createdAt);
+                    return pDate.toDateString() === today;
+                });
+
+                var todayAmount = todayPayments.reduce(function (sum, p) {
+                    var amount = parseFloat(p.amount) || 0;
+                    var currency = p.currency || 'USD';
+                    // Convert INDIVIDUAL payments (not aggregates)
+                    var converted = convertAmount(amount, currency);
+                    return sum + converted;
+                }, 0);
+
+                // Format the ALREADY CONVERTED totals (no further conversion)
+                var currencySymbol = (appCurrency === 'FC' || appCurrency === 'CDF') ? ' FC' : ' $';
+                var decimals = (appCurrency === 'USD') ? 2 : 0;
+
+                document.getElementById('stat-total-amount').textContent =
+                    totalAmount.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + currencySymbol;
+                document.getElementById('stat-transactions').textContent = successPayments.length;
+                document.getElementById('stat-today').textContent =
+                    todayAmount.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + currencySymbol;
+            }).catch(function (error) {
+                console.error('Erreur chargement stats:', error);
+            });
         }
 
         function loadPaymentsTable() {
             var payments = getFilteredPayments();
             var tbody = document.getElementById('payments-table');
 
-            document.getElementById('payments-count').textContent = payments.length + ' paiements';
+            // Limiter strictement à 50 affichages comme demandé
+            var displayLimit = 50;
+            var displayCount = Math.min(payments.length, displayLimit);
+
+            document.getElementById('payments-count').textContent = displayLimit + ' paiements';
 
             if (payments.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Aucun paiement trouvé</td></tr>';
                 return Promise.resolve();
             }
 
-            var sortedPayments = payments.sort(function(a, b) {
+            // Trier par date décroissante
+            var sortedPayments = payments.sort(function (a, b) {
                 return new Date(b.date || b.created_at) - new Date(a.date || a.created_at);
             });
+
+            // Appliquer la limite APRÈS le tri pour garder les plus récents
+            sortedPayments = sortedPayments.slice(0, displayLimit);
 
             var methodIcons = {
                 orange: '<span style="color: #ff6b35;"><i class="fas fa-circle"></i> Orange Money</span>',
                 airtel: '<span style="color: #e4002b;"><i class="fas fa-circle"></i> Airtel Money</span>',
-                mpesa: '<span style="color: #00a651;"><i class="fas fa-circle"></i> M-Pesa</span>'
+                mpesa: '<span style="color: #00a651;"><i class="fas fa-circle"></i> M-Pesa</span>',
+                mobile: '<span style="color: #666;"><i class="fas fa-mobile-alt"></i> Mobile</span>'
             };
 
             var statusBadge = {
                 success: '<span class="badge success">Réussi</span>',
                 completed: '<span class="badge success">Réussi</span>',
                 failed: '<span class="badge danger">Échoué</span>',
-                pending: '<span class="badge warning">En attente</span>'
+                pending: '<span class="badge warning">En attente</span>',
+                refunded: '<span class="badge warning">Remboursé</span>'
             };
 
             var html = '';
             for (var i = 0; i < sortedPayments.length; i++) {
                 var payment = sortedPayments[i];
-                var user = null;
-                for (var j = 0; j < allUsers.length; j++) {
-                    if (allUsers[j].id === payment.user_id || allUsers[j].id === payment.userId) {
-                        user = allUsers[j];
-                        break;
+                var userId = payment.user_id || payment.userId;
+
+                // Essayer de trouver le vrai nom de l'utilisateur
+                var userObj = allUsersMap[userId];
+                var userName = 'Utilisateur';
+
+                if (userObj) {
+                    // Prioritize Name. Email is in Contact column.
+                    var name = userObj.display_name || userObj.name || userObj.username;
+                    var email = userObj.email;
+
+                    if (name) {
+                        userName = `<strong>${name}</strong>`;
+                    } else if (email) {
+                        userName = `<strong>${email}</strong>`;
+                    } else {
+                        userName = 'Utilisateur';
+                    }
+                } else if (payment.user_email) {
+                    userName = payment.user_email;
+                } else if (payment.user_name) {
+                    userName = payment.user_name;
+                }
+
+                var method = (payment.method || payment.payment_method || 'mobile').toLowerCase();
+                if (method.indexOf('orange') !== -1) method = 'orange';
+                else if (method.indexOf('airtel') !== -1) method = 'airtel';
+                else if (method.indexOf('vodacom') !== -1 || method.indexOf('mpesa') !== -1) method = 'mpesa';
+
+                var displayId = i + 1;
+                var amount = payment.amount || 0;
+                // Si l'historique a des gros montants, on suppose que c'est déjà en bonne devise, ici on force l'affichage USD
+
+                var status = payment.status || 'pending';
+                var statusHtml = statusBadge[status] || '<span class="badge default">' + status + '</span>';
+
+                var userPhone = payment.phone || payment.phone_number;
+                if (!userPhone && userObj) {
+                    userPhone = userObj.phone || userObj.phone_number;
+                }
+
+                // Fallback email si pas de téléphone ou si téléphone dummy (099000...)
+                var contactDisplay = userPhone;
+                var isDummy = contactDisplay && (contactDisplay.indexOf('09900000') !== -1 || contactDisplay === '0000000000');
+
+                if (!contactDisplay || contactDisplay === '-' || isDummy) {
+                    var email = userObj ? userObj.email : (payment.user_email || '');
+                    if (email) {
+                        contactDisplay = `<span title="${userPhone || ''}">${email}</span>`;
+                    } else {
+                        contactDisplay = userPhone || '-';
                     }
                 }
-                var userName = user ? (user.name || user.display_name || user.email) : (payment.user_email || 'Utilisateur');
-                var method = (payment.method || payment.payment_method || '').toLowerCase();
-                var transactionId = (payment.id || payment.transaction_id || '').slice(-10);
-                
+
                 html += '<tr>' +
-                    '<td><code>' + transactionId + '</code></td>' +
-                    '<td>' + userName + '</td>' +
+                    '<td><code>' + displayId + '</code></td>' +
+                    '<td><strong>' + userName + '</strong></td>' +
                     '<td>' + (methodIcons[method] || method) + '</td>' +
-                    '<td>' + (payment.phone || payment.phone_number || '-') + '</td>' +
-                    '<td><strong>' + (payment.amount || 0).toLocaleString('fr-FR') + ' FC</strong></td>' +
-                    '<td>' + (payment.place_id || payment.spotId || '-') + '</td>' +
+                    '<td>' + contactDisplay + '</td>' +
+                    '<td><strong>' + formatCurrency(amount, payment.currency) + '</strong></td>' +
+                    '<td>' + (API.formatPlaceId(payment.place_id || payment.spotId) || '-') + '</td>' +
                     '<td>' + Admin.formatDate(payment.date || payment.created_at || payment.createdAt) + '</td>' +
-                    '<td>' + (statusBadge[payment.status] || payment.status) + '</td>' +
+                    '<td>' + statusHtml + '</td>' +
                     '</tr>';
             }
-            
+
             tbody.innerHTML = html;
             return Promise.resolve();
         }
 
         function getFilteredPayments() {
             var payments = allPayments || [];
-            
+
             var dateStart = document.getElementById('filter-date-start').value;
             var dateEnd = document.getElementById('filter-date-end').value;
             var method = document.getElementById('filter-method').value;
             var status = document.getElementById('filter-status').value;
 
             if (dateStart) {
-                payments = payments.filter(function(p) {
+                payments = payments.filter(function (p) {
                     return new Date(p.date || p.created_at) >= new Date(dateStart);
                 });
             }
@@ -391,19 +501,20 @@
             if (dateEnd) {
                 var end = new Date(dateEnd);
                 end.setHours(23, 59, 59);
-                payments = payments.filter(function(p) {
+                payments = payments.filter(function (p) {
                     return new Date(p.date || p.created_at) <= end;
                 });
             }
 
             if (method !== 'all') {
-                payments = payments.filter(function(p) {
-                    return (p.method || p.payment_method || '').toLowerCase() === method;
+                payments = payments.filter(function (p) {
+                    var pm = (p.method || p.payment_method || '').toLowerCase();
+                    return pm.includes(method);
                 });
             }
 
             if (status !== 'all') {
-                payments = payments.filter(function(p) {
+                payments = payments.filter(function (p) {
                     return p.status === status || (status === 'success' && p.status === 'completed');
                 });
             }
@@ -412,7 +523,6 @@
         }
 
         function filterPayments() {
-            loadPaymentMethodsChart();
             loadPaymentsTable();
         }
 
@@ -423,10 +533,11 @@
                 var p = filtered[i];
                 payments.push({
                     id: p.id || p.transaction_id,
+                    user: p.user_email || p.user_name,
                     method: p.method || p.payment_method,
                     phone: p.phone || p.phone_number,
                     amount: p.amount,
-                    spotId: p.place_id || p.spotId,
+                    spotId: API.formatPlaceId(p.place_id || p.spotId),
                     date: p.date || p.created_at,
                     status: p.status
                 });
@@ -436,4 +547,5 @@
         }
     </script>
 </body>
+
 </html>

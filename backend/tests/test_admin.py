@@ -35,7 +35,7 @@ class TestAdminAuthentication:
         Test: Admin force release requires authentication
         Expected: Status 401/403 without auth
         """
-        response = client.post("/admin/parking/force-release/a1")
+        response = client.post("/admin/parking/force-release/P1")
         
         assert response.status_code in [401, 403]
     
@@ -197,7 +197,7 @@ class TestAdminMethodValidation:
         Test: Admin force release uses POST method
         Expected: GET returns 405
         """
-        response = client.get("/admin/parking/force-release/a1")
+        response = client.get("/admin/parking/force-release/P1")
         
         assert response.status_code == 405
     
@@ -209,3 +209,4 @@ class TestAdminMethodValidation:
         response = client.get("/admin/parking/initialize")
         
         assert response.status_code == 405
+

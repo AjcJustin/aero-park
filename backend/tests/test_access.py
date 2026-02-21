@@ -146,7 +146,7 @@ class TestAccessExit:
         Test: Exit endpoint requires API key
         Expected: Status 401/403 without key
         """
-        payload = {"place_id": "a1"}
+        payload = {"place_id": "P1"}
         
         response = client.post("/api/v1/access/exit", json=payload)
         
@@ -161,7 +161,7 @@ class TestAccessExit:
         Test: Exit with valid API key accepted
         Expected: Not 401/403
         """
-        payload = {"place_id": "a1"}
+        payload = {"place_id": "P1"}
         
         response = client.post(
             "/api/v1/access/exit",

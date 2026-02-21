@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body class="admin-page">
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="sidebar">
@@ -105,11 +107,13 @@
                             </div>
                             <div class="form-group">
                                 <label for="parking-slogan">Slogan</label>
-                                <input type="text" id="parking-slogan" class="form-control" placeholder="Parking Automatisé">
+                                <input type="text" id="parking-slogan" class="form-control"
+                                    placeholder="Parking Automatisé">
                             </div>
                             <div class="form-group">
                                 <label for="parking-address">Adresse</label>
-                                <textarea id="parking-address" class="form-control" rows="2" placeholder="Aéroport de Goma, RDC"></textarea>
+                                <textarea id="parking-address" class="form-control" rows="2"
+                                    placeholder="Aéroport de Goma, RDC"></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Enregistrer
@@ -127,11 +131,13 @@
                         <form id="pricing-settings-form">
                             <div class="form-group">
                                 <label for="hourly-rate">Tarif horaire (FC)</label>
-                                <input type="number" id="hourly-rate" class="form-control" min="100" step="100" placeholder="1000">
+                                <input type="number" id="hourly-rate" class="form-control" min="100" step="100"
+                                    placeholder="1000">
                             </div>
                             <div class="form-group">
                                 <label for="max-duration">Durée maximale (heures)</label>
-                                <input type="number" id="max-duration" class="form-control" min="1" max="720" placeholder="168">
+                                <input type="number" id="max-duration" class="form-control" min="1" max="720"
+                                    placeholder="168">
                             </div>
                             <div class="form-group">
                                 <label for="currency">Devise</label>
@@ -140,6 +146,7 @@
                                     <option value="USD">Dollar US ($)</option>
                                 </select>
                             </div>
+
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Enregistrer
                             </button>
@@ -200,11 +207,13 @@
                         <form id="contact-settings-form">
                             <div class="form-group">
                                 <label for="contact-phone">Téléphone</label>
-                                <input type="tel" id="contact-phone" class="form-control" placeholder="+243 XXX XXX XXX">
+                                <input type="tel" id="contact-phone" class="form-control"
+                                    placeholder="+243 XXX XXX XXX">
                             </div>
                             <div class="form-group">
                                 <label for="contact-email">Email</label>
-                                <input type="email" id="contact-email" class="form-control" placeholder="contact@aeropark.cd">
+                                <input type="email" id="contact-email" class="form-control"
+                                    placeholder="contact@aeropark.cd">
                             </div>
                             <div class="form-group">
                                 <label for="whatsapp">WhatsApp</label>
@@ -247,6 +256,41 @@
                     </div>
                 </div>
 
+
+                <!-- Création d'un nouvel administrateur -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-user-plus"></i> Créer un Administrateur</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="create-admin-form">
+                            <div class="form-group">
+                                <label for="new-admin-name">Nom complet</label>
+                                <input type="text" id="new-admin-name" class="form-control"
+                                    placeholder="Nom de l'administrateur" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-admin-email">Email</label>
+                                <input type="email" id="new-admin-email" class="form-control"
+                                    placeholder="email@exemple.com" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-admin-password">Mot de passe</label>
+                                <input type="password" id="new-admin-password" class="form-control"
+                                    placeholder="Minimum 6 caractères" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-admin-confirm">Confirmer le mot de passe</label>
+                                <input type="password" id="new-admin-confirm" class="form-control"
+                                    placeholder="Confirmer le mot de passe" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus-circle"></i> Créer l'administrateur
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
                 <!-- Données système -->
                 <div class="dashboard-card">
                     <div class="card-header">
@@ -278,13 +322,17 @@
     </main>
 
     <!-- AeroPark API Services -->
-    <script src="../js/api.js"></script>
-    <script src="../js/auth.js"></script>
-    <script src="../js/admin.js"></script>
+    <script src="../js/api.js?v=4"></script>
+    <script src="../js/auth.js?v=4"></script>
+    <script src="../js/admin.js?v=4"></script>
     <script>
-        var currentSettings = {};
+        // Variables pour stocker les taux
+        let storedRates = {
+            'FC': 1500,
+            'USD': 1
+        };
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function () {
             // Check authentication
             if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
                 window.location.href = 'login.html';
@@ -295,220 +343,376 @@
             Admin.initSidebar();
 
             // Load data
-            loadSettings();
+            await loadSettings();
             loadDataStats();
             initForms();
 
+            // Add currency change listener to update validation dynamically
+            const currencySelect = document.getElementById('currency');
+            const rateInput = document.getElementById('hourly-rate');
+            const rateLabel = document.querySelector('label[for="hourly-rate"]');
+
+            if (currencySelect && rateInput) {
+                currencySelect.addEventListener('change', function () {
+                    const selectedCurrency = this.value;
+                    const currentRate = parseFloat(rateInput.value) || 0;
+
+                    // Save current rate before switching
+                    const previousCurrency = this.dataset.previous || 'FC';
+                    storedRates[previousCurrency] = currentRate;
+
+                    // Load rate for new currency
+                    const newRate = storedRates[selectedCurrency] || (selectedCurrency === 'USD' ? 0.5 : 1000);
+                    rateInput.value = newRate;
+
+                    // Update validation and UI
+                    if (rateLabel) rateLabel.textContent = `Tarif horaire (${selectedCurrency})`;
+                    rateInput.placeholder = selectedCurrency === 'USD' ? '0.5' : '1000';
+                    rateInput.min = selectedCurrency === 'USD' ? '0.1' : '100';
+                    rateInput.max = selectedCurrency === 'USD' ? '1000' : '10000';
+                    rateInput.step = selectedCurrency === 'USD' ? '0.1' : '100';
+
+                    // Update previous currency tracker
+                    this.dataset.previous = selectedCurrency;
+                });
+            }
+
             // Set admin info
-            var user = Auth.getUser();
-            if (user) {
+            const user = Auth.getUser();
+            if (user && document.getElementById('admin-name')) {
                 document.getElementById('admin-name').textContent = user.name || user.username || 'Admin';
-                document.getElementById('admin-username').value = user.name || user.username || '';
             }
         });
 
-        function loadSettings() {
-            // Settings are stored in localStorage since there's no backend endpoint
-            var storedSettings = localStorage.getItem('aeropark_admin_settings');
-            if (storedSettings) {
-                try {
-                    currentSettings = JSON.parse(storedSettings);
-                } catch (e) {
-                    currentSettings = {};
+        async function loadSettings() {
+            try {
+                console.log('Loading admin settings...');
+                const settings = await API.getAdminSettings();
+                console.log('Admin settings received:', settings);
+
+                if (settings) {
+                    // General Info
+                    if (document.getElementById('parking-name')) document.getElementById('parking-name').value = settings.parking_name || 'AeroPark GOMA';
+                    if (document.getElementById('parking-slogan')) document.getElementById('parking-slogan').value = settings.slogan || 'Parking Automatisé';
+                    if (document.getElementById('parking-address')) document.getElementById('parking-address').value = settings.address || 'Aéroport de Goma, RDC';
+
+                    // Pricing
+                    const currentCurrency = settings.currency || 'FC';
+                    const hourlyRate = settings.hourly_rate !== undefined ? settings.hourly_rate : 1500;
+
+                    if (document.getElementById('currency')) {
+                        document.getElementById('currency').value = currentCurrency;
+                        document.getElementById('currency').dataset.previous = currentCurrency;
+                    }
+
+                    // Load stored rates or use intelligent defaults
+                    storedRates['FC'] = settings.hourly_rate_fc !== undefined ? settings.hourly_rate_fc : (currentCurrency === 'FC' ? hourlyRate : 1500);
+                    storedRates['USD'] = settings.hourly_rate_usd !== undefined ? settings.hourly_rate_usd : (currentCurrency === 'USD' ? hourlyRate : 1);
+
+                    // Set current rate input
+                    if (document.getElementById('hourly-rate')) {
+                        const currentRate = storedRates[currentCurrency];
+                        const rateInput = document.getElementById('hourly-rate');
+                        rateInput.value = currentRate;
+
+                        // Update label and input props based on currency
+                        const rateLabel = document.querySelector('label[for="hourly-rate"]');
+                        if (rateLabel) rateLabel.textContent = `Tarif horaire (${currentCurrency})`;
+
+                        rateInput.placeholder = currentCurrency === 'USD' ? '1' : '1000';
+                        rateInput.min = currentCurrency === 'USD' ? '0.1' : '100';
+                        rateInput.step = currentCurrency === 'USD' ? '0.1' : '100';
+                    }
+
+                    if (document.getElementById('max-duration')) document.getElementById('max-duration').value = settings.max_duration || 24;
+
+
+
+                    // Payment Methods
+                    const providers = settings.payment_providers || ['ORANGE_MONEY', 'AIRTEL_MONEY', 'MPESA'];
+                    if (document.getElementById('orange-enabled')) document.getElementById('orange-enabled').checked = providers.includes('ORANGE_MONEY');
+                    if (document.getElementById('airtel-enabled')) document.getElementById('airtel-enabled').checked = providers.includes('AIRTEL_MONEY');
+                    if (document.getElementById('mpesa-enabled')) document.getElementById('mpesa-enabled').checked = providers.includes('MPESA');
+
+                    // Contact
+                    if (document.getElementById('contact-phone')) document.getElementById('contact-phone').value = settings.contact_phone || '';
+                    if (document.getElementById('contact-email')) document.getElementById('contact-email').value = settings.contact_email || '';
+                    if (document.getElementById('whatsapp')) document.getElementById('whatsapp').value = settings.whatsapp || '';
                 }
-            } else {
-                currentSettings = {};
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                Admin.showNotification('Erreur de chargement des paramètres: ' + error.message, 'error');
             }
+        }
 
-            // Informations générales (use defaults if not set)
-            document.getElementById('parking-name').value = currentSettings.parkingName || 'AeroPark GOMA';
-            document.getElementById('parking-slogan').value = currentSettings.slogan || 'Parking Automatisé';
-            document.getElementById('parking-address').value = currentSettings.address || 'Aéroport de Goma, RDC';
+        async function saveSettings() {
+            try {
+                // Update current stored rate
+                const currentCurrency = document.getElementById('currency').value;
+                const currentRate = parseFloat(document.getElementById('hourly-rate').value) || 0;
+                storedRates[currentCurrency] = currentRate;
 
-            // Tarification - get from backend pricing if available
-            API.get('/api/v1/payment/pricing').then(function(pricing) {
-                document.getElementById('hourly-rate').value = pricing.rate_per_hour || currentSettings.ratePerHour || 1000;
-                document.getElementById('currency').value = pricing.currency || currentSettings.currency || 'FC';
-            }).catch(function() {
-                document.getElementById('hourly-rate').value = currentSettings.ratePerHour || 1000;
-                document.getElementById('currency').value = currentSettings.currency || 'FC';
-            });
-            document.getElementById('max-duration').value = currentSettings.maxDuration || 168;
+                const settings = {
+                    parking_name: document.getElementById('parking-name').value,
+                    slogan: document.getElementById('parking-slogan').value,
+                    address: document.getElementById('parking-address').value,
+                    hourly_rate: currentRate,
+                    hourly_rate_fc: storedRates['FC'],
+                    hourly_rate_usd: storedRates['USD'],
+                    max_duration: parseInt(document.getElementById('max-duration').value),
+                    currency: currentCurrency,
+                    contact_phone: document.getElementById('contact-phone').value,
+                    contact_email: document.getElementById('contact-email').value,
+                    whatsapp: document.getElementById('whatsapp').value,
+                    payment_providers: []
+                };
 
-            // Méthodes de paiement
-            var paymentMethods = currentSettings.paymentMethods || {};
-            document.getElementById('orange-enabled').checked = paymentMethods.orange !== false;
-            document.getElementById('airtel-enabled').checked = paymentMethods.airtel !== false;
-            document.getElementById('mpesa-enabled').checked = paymentMethods.mpesa !== false;
+                if (document.getElementById('orange-enabled').checked) settings.payment_providers.push('ORANGE_MONEY');
+                if (document.getElementById('airtel-enabled').checked) settings.payment_providers.push('AIRTEL_MONEY');
+                if (document.getElementById('mpesa-enabled').checked) settings.payment_providers.push('MPESA');
 
-            // Contact
-            document.getElementById('contact-phone').value = currentSettings.phone || '';
-            document.getElementById('contact-email').value = currentSettings.email || '';
-            document.getElementById('whatsapp').value = currentSettings.whatsapp || '';
+                const result = await API.updateAdminSettings(settings);
+                if (result.success) {
+                    Admin.showNotification('Paramètres enregistrés avec succès', 'success');
+                } else {
+                    Admin.showNotification('Erreur: ' + result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                Admin.showNotification('Erreur lors de l\'enregistrement', 'error');
+            }
         }
 
         function loadDataStats() {
-            // Load reservations count (extract users from reservations)
-            API.getAdminReservations()
-                .then(function(response) {
-                    var reservations = response.reservations || response || [];
-                    document.getElementById('data-reservations').textContent = reservations.length || 0;
-                    
-                    // Extract unique users from reservations
-                    var usersMap = {};
-                    for (var i = 0; i < reservations.length; i++) {
-                        var r = reservations[i];
-                        var userId = r.user_id || r.userId;
-                        if (userId) usersMap[userId] = true;
-                    }
-                    document.getElementById('data-users').textContent = Object.keys(usersMap).length;
-                })
-                .catch(function(error) {
-                    console.error('Erreur chargement reservations:', error);
-                });
+            API.getAdminReservations().then(res => {
+                document.getElementById('data-reservations').textContent = (res.reservations || res || []).length;
+            }).catch(() => { });
 
-            // Load payments count
-            API.getAdminPayments()
-                .then(function(response) {
-                    var payments = response.payments || response || [];
-                    document.getElementById('data-payments').textContent = payments.length || 0;
-                })
-                .catch(function(error) {
-                    console.error('Erreur chargement payments:', error);
-                });
+            API.getAdminUsers().then(res => {
+                document.getElementById('data-users').textContent = (res.users || res || []).length;
+            }).catch(() => { });
 
-            // Load parking status
-            API.getParkingStatus()
-                .then(function(status) {
-                    document.getElementById('data-spots').textContent = status.total || 0;
-                })
-                .catch(function(error) {
-                    console.error('Erreur chargement parking status:', error);
-                });
-        }
+            API.getAdminPayments().then(res => {
+                const payments = res.payments || res || [];
+                document.getElementById('data-payments').textContent = payments.length;
+            }).catch(() => { });
 
-        function saveSettings(newSettings) {
-            // Merge with current settings
-            for (var key in newSettings) {
-                currentSettings[key] = newSettings[key];
-            }
-            // Save to localStorage
-            localStorage.setItem('aeropark_admin_settings', JSON.stringify(currentSettings));
+            API.getParkingStatus().then(res => {
+                document.getElementById('data-spots').textContent = (res.places || []).length;
+            }).catch(() => { });
         }
 
         function initForms() {
-            // Informations générales
-            document.getElementById('general-settings-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveSettings({
-                    parkingName: document.getElementById('parking-name').value,
-                    slogan: document.getElementById('parking-slogan').value,
-                    address: document.getElementById('parking-address').value
-                });
-                Admin.showNotification('Informations enregistrées');
+            const forms = [
+                'general-settings-form',
+                'pricing-settings-form',
+                'payment-methods-form',
+                'contact-settings-form'
+            ];
+
+            forms.forEach(id => {
+                const form = document.getElementById(id);
+                if (form) {
+                    form.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        saveSettings();
+                    });
+                }
             });
 
-            // Tarification
-            document.getElementById('pricing-settings-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveSettings({
-                    ratePerHour: parseInt(document.getElementById('hourly-rate').value),
-                    maxDuration: parseInt(document.getElementById('max-duration').value),
-                    currency: document.getElementById('currency').value
-                });
-                Admin.showNotification('Tarification enregistrée (Note: les tarifs backend ne sont pas modifiés)');
-            });
-
-            // Méthodes de paiement
-            document.getElementById('payment-methods-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveSettings({
-                    paymentMethods: {
-                        orange: document.getElementById('orange-enabled').checked,
-                        airtel: document.getElementById('airtel-enabled').checked,
-                        mpesa: document.getElementById('mpesa-enabled').checked
+            // Password form - Now functional with Firebase Auth
+            const adminForm = document.getElementById('admin-settings-form');
+            if (adminForm) {
+                // Load current admin info
+                const user = Auth.getUser();
+                if (user) {
+                    if (document.getElementById('admin-email')) {
+                        document.getElementById('admin-email').value = user.email || '';
                     }
-                });
-                Admin.showNotification('Méthodes de paiement enregistrées');
-            });
-
-            // Contact
-            document.getElementById('contact-settings-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveSettings({
-                    phone: document.getElementById('contact-phone').value,
-                    email: document.getElementById('contact-email').value,
-                    whatsapp: document.getElementById('whatsapp').value
-                });
-                Admin.showNotification('Informations de contact enregistrées');
-            });
-
-            // Compte admin
-            document.getElementById('admin-settings-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                var currentPassword = document.getElementById('current-password').value;
-                var newPassword = document.getElementById('new-password').value;
-                var confirmPassword = document.getElementById('confirm-password').value;
-
-                if (!currentPassword) {
-                    Admin.showNotification('Veuillez entrer le mot de passe actuel', 'error');
-                    return;
+                    if (document.getElementById('admin-username')) {
+                        document.getElementById('admin-username').value = user.name || user.username || 'admin';
+                    }
                 }
 
-                if (newPassword && newPassword !== confirmPassword) {
+                adminForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    await handleAccountUpdate();
+                });
+            }
+
+            // Admin creation form
+            const createAdminForm = document.getElementById('create-admin-form');
+            if (createAdminForm) {
+                createAdminForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+
+                    const name = document.getElementById('new-admin-name').value;
+                    const email = document.getElementById('new-admin-email').value;
+                    const password = document.getElementById('new-admin-password').value;
+                    const confirm = document.getElementById('new-admin-confirm').value;
+
+                    if (password !== confirm) {
+                        Admin.showNotification('Les mots de passe ne correspondent pas', 'error');
+                        return;
+                    }
+
+                    if (password.length < 6) {
+                        Admin.showNotification('Le mot de passe doit contenir au moins 6 caractères', 'error');
+                        return;
+                    }
+
+                    Admin.showNotification('Création de l\'administrateur...', 'info');
+
+                    try {
+                        const result = await Auth.createAdmin(name, email, password);
+                        if (result.success) {
+                            Admin.showNotification('Administrateur créé avec succès', 'success');
+                            createAdminForm.reset();
+                        } else {
+                            Admin.showNotification(result.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Create admin error:', error);
+                        Admin.showNotification('Erreur: ' + error.message, 'error');
+                    }
+                });
+            }
+        }
+
+        async function handleAccountUpdate() {
+            const usernameInput = document.getElementById('admin-username');
+            const currentPasswordInput = document.getElementById('current-password');
+            const newPasswordInput = document.getElementById('new-password');
+            const confirmPasswordInput = document.getElementById('confirm-password');
+
+            const newUsername = usernameInput.value.trim();
+            const currentPassword = currentPasswordInput.value;
+            const newPassword = newPasswordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            let profileUpdated = false;
+            let passwordUpdated = false;
+            let errorOccurred = false;
+
+            // 1. Update Username if changed
+            const currentUser = Auth.getUser();
+            const currentName = currentUser.name || currentUser.username || 'admin';
+
+            if (newUsername && newUsername !== currentName) {
+                Admin.showNotification('Mise à jour du profil...', 'info');
+                const result = await Auth.updateProfile(newUsername);
+                if (result.success) {
+                    profileUpdated = true;
+                    // Update header name if exists
+                    if (document.getElementById('admin-name')) {
+                        document.getElementById('admin-name').textContent = newUsername;
+                    }
+                } else {
+                    Admin.showNotification(result.message, 'error');
+                    errorOccurred = true;
+                }
+            }
+
+            // 2. Update Password if fields are filled
+            if (!errorOccurred && (currentPassword || newPassword || confirmPassword)) {
+                // Validation
+                if (!currentPassword) {
+                    Admin.showNotification('Veuillez saisir votre mot de passe actuel pour changer de mot de passe', 'error');
+                    return;
+                }
+                if (!newPassword) {
+                    Admin.showNotification('Veuillez saisir un nouveau mot de passe', 'error');
+                    return;
+                }
+                if (newPassword.length < 6) {
+                    Admin.showNotification('Le mot de passe doit contenir au moins 6 caractères', 'error');
+                    return;
+                }
+                if (newPassword !== confirmPassword) {
                     Admin.showNotification('Les mots de passe ne correspondent pas', 'error');
                     return;
                 }
+                if (currentPassword === newPassword) {
+                    Admin.showNotification('Le nouveau mot de passe doit être différent de l\'ancien', 'error');
+                    return;
+                }
 
-                Admin.showNotification('La modification du mot de passe n\'est pas disponible actuellement', 'error');
+                if (!profileUpdated) Admin.showNotification('Mise à jour du mot de passe...', 'info');
 
-                // Reset form
-                document.getElementById('current-password').value = '';
-                document.getElementById('new-password').value = '';
-                document.getElementById('confirm-password').value = '';
-            });
+                const result = await Auth.updatePassword(currentPassword, newPassword);
+                if (result.success) {
+                    passwordUpdated = true;
+                    // Clear password fields
+                    currentPasswordInput.value = '';
+                    newPasswordInput.value = '';
+                    confirmPasswordInput.value = '';
+                } else {
+                    Admin.showNotification(result.message, 'error');
+                    errorOccurred = true;
+                }
+            }
+
+            if (errorOccurred) {
+                if (profileUpdated) {
+                    setTimeout(() => Admin.showNotification('Profil mis à jour, mais erreur mot de passe', 'warning'), 1500);
+                }
+                return;
+            }
+
+            if (profileUpdated && passwordUpdated) {
+                Admin.showNotification('Compte mis à jour avec succès', 'success');
+            } else if (profileUpdated) {
+                Admin.showNotification('Nom d\'utilisateur mis à jour avec succès', 'success');
+            } else if (passwordUpdated) {
+                Admin.showNotification('Mot de passe mis à jour avec succès', 'success');
+            } else if (!newUsername) {
+                Admin.showNotification('Veuillez saisir un nom d\'utilisateur', 'error');
+            } else if (!currentPassword && !newPassword && !confirmPassword) {
+                // Nothing changed
+                Admin.showNotification('Aucune modification détectée', 'info');
+            }
         }
 
         function exportAllData() {
-            var exportData = {
-                reservations: [],
-                payments: [],
-                spots: [],
-                settings: currentSettings,
-                exportDate: new Date().toISOString()
-            };
-
-            // Load all data then export
-            Promise.all([
-                API.getAdminReservations().catch(function() { return { reservations: [] }; }),
-                API.getAdminPayments().catch(function() { return { payments: [] }; }),
-                API.getParkingStatus().catch(function() { return { places: [] }; })
-            ]).then(function(results) {
-                exportData.reservations = (results[0] && results[0].reservations) || results[0] || [];
-                exportData.payments = (results[1] && results[1].payments) || results[1] || [];
-                exportData.spots = (results[2] && results[2].places) || [];
-
-                var blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-                var url = URL.createObjectURL(blob);
-                var a = document.createElement('a');
+            Admin.showNotification('Préparation de l\'export...');
+            // Simple backup of current settings as JSON
+            API.getAdminSettings().then(settings => {
+                const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
                 a.href = url;
-                a.download = 'aeropark_backup_' + new Date().toISOString().split('T')[0] + '.json';
+                a.download = 'aeropark_settings_backup.json';
                 a.click();
-                URL.revokeObjectURL(url);
-
-                Admin.showNotification('Export complet terminé');
-            }).catch(function(error) {
-                console.error('Erreur export:', error);
-                Admin.showNotification('Erreur lors de l\'export', 'error');
             });
         }
 
         function resetData() {
-            if (!confirm('⚠️ ATTENTION: Cette action n\'est pas disponible via l\'API. Les données sont gérées par le backend.')) {
-                return;
-            }
-
-            Admin.showNotification('La réinitialisation des données doit être effectuée via le backend', 'error');
+            Admin.confirm('Réinitialisation du système', '⚠️ DANGER: Êtes-vous sûr de vouloir tout effacer ?\n\n- Toutes les réservations et transactions seront supprimées.\n- Tous les utilisateurs (sauf vous) seront supprimés.\n- Les places seront remises à zéro.\n\nCette action est IRRÉVERSIBLE.', 'danger')
+                .then(function () {
+                    // Double confirmation par sécurité
+                    return Admin.confirm('Confirmation finale', 'Vraiment SÛR à 100% ?', 'danger');
+                })
+                .then(function () {
+                    Admin.showNotification('Réinitialisation en cours...', 'info');
+                    return API.resetSystem();
+                })
+                .then(function (result) {
+                    if (result.success) {
+                        Admin.showNotification('✅ Système réinitialisé avec succès !', 'success');
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        throw new Error(result.message || 'Erreur inconnue');
+                    }
+                })
+                .catch(function (error) {
+                    // Ignore cancel errors
+                    if (error && error !== 'cancelled') {
+                        console.error('Erreur reset:', error);
+                        Admin.showNotification('Erreur: ' + (error.message || error), 'error');
+                    }
+                });
         }
     </script>
 
@@ -599,11 +803,11 @@
             transition: 0.3s;
         }
 
-        .toggle-switch input:checked + .toggle-slider {
+        .toggle-switch input:checked+.toggle-slider {
             background: var(--primary-color);
         }
 
-        .toggle-switch input:checked + .toggle-slider::before {
+        .toggle-switch input:checked+.toggle-slider::before {
             transform: translateX(24px);
         }
 
@@ -648,4 +852,5 @@
         }
     </style>
 </body>
+
 </html>

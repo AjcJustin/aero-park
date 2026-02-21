@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inscription - AeroPark GOMA</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/style.css?v=2.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body class="auth-page">
     <!-- Navigation -->
     <nav class="navbar">
@@ -52,14 +54,8 @@
                     <label for="name">Nom complet</label>
                     <div class="input-icon">
                         <i class="fas fa-user"></i>
-                        <input 
-                            type="text" 
-                            id="name" 
-                            name="name" 
-                            placeholder="Votre nom complet"
-                            autocomplete="name"
-                            required
-                        >
+                        <input type="text" id="name" name="name" placeholder="Votre nom complet" autocomplete="name"
+                            required>
                     </div>
                     <span class="error-message" id="name-error"></span>
                 </div>
@@ -68,14 +64,8 @@
                     <label for="email">Adresse email</label>
                     <div class="input-icon">
                         <i class="fas fa-envelope"></i>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            name="email" 
-                            placeholder="votre@email.com"
-                            autocomplete="email"
-                            required
-                        >
+                        <input type="email" id="email" name="email" placeholder="votre@email.com" autocomplete="email"
+                            required>
                     </div>
                     <span class="error-message" id="email-error"></span>
                 </div>
@@ -84,16 +74,8 @@
                     <label for="password">Mot de passe</label>
                     <div class="input-icon">
                         <i class="fas fa-lock"></i>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            name="password" 
-                            placeholder="Minimum 6 caractères"
-                            autocomplete="new-password"
-                            required
-                            minlength="6"
-                            style="padding-right: 45px;"
-                        >
+                        <input type="password" id="password" name="password" placeholder="Minimum 6 caractères"
+                            autocomplete="new-password" required minlength="6" style="padding-right: 50px;">
                         <button type="button" class="toggle-password" onclick="togglePassword('password')">
                             <i class="fas fa-eye" id="password-eye"></i>
                         </button>
@@ -105,15 +87,9 @@
                     <label for="confirm-password">Confirmer le mot de passe</label>
                     <div class="input-icon">
                         <i class="fas fa-lock"></i>
-                        <input 
-                            type="password" 
-                            id="confirm-password" 
-                            name="confirm-password" 
-                            placeholder="Répétez votre mot de passe"
-                            autocomplete="new-password"
-                            required
-                            style="padding-right: 45px;"
-                        >
+                        <input type="password" id="confirm-password" name="confirm-password"
+                            placeholder="Répétez votre mot de passe" autocomplete="new-password" required
+                            style="padding-right: 50px;">
                         <button type="button" class="toggle-password" onclick="togglePassword('confirm-password')">
                             <i class="fas fa-eye" id="confirm-password-eye"></i>
                         </button>
@@ -135,7 +111,8 @@
 
     <!-- Footer -->
     <footer style="background: #1e293b; color: #94a3b8; padding: 1rem 0; text-align: center; font-size: 0.85rem;">
-        <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="container"
+            style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
             <i class="fas fa-plane" style="color: #2563eb;"></i>
             <span>AeroPark GOMA</span>
             <span style="opacity: 0.5;">|</span>
@@ -145,13 +122,13 @@
 
     <script src="../js/api.js"></script>
     <script src="../js/auth.js"></script>
-    
+
     <script>
         // Toggle password visibility
         function togglePassword(inputId) {
             var input = document.getElementById(inputId);
             var eyeIcon = document.getElementById(inputId + '-eye');
-            
+
             if (input.type === 'password') {
                 input.type = 'text';
                 eyeIcon.className = 'fas fa-eye-slash';
@@ -167,9 +144,9 @@
         }
 
         // Register form handler
-        document.getElementById('register-form').addEventListener('submit', async function(e) {
+        document.getElementById('register-form').addEventListener('submit', async function (e) {
             e.preventDefault();
-            
+
             clearErrors();
 
             var name = document.getElementById('name').value.trim();
@@ -205,11 +182,11 @@
 
             try {
                 var result = await Auth.register(name, email, password);
-                
+
                 if (result.success) {
                     showAlert('success', 'Inscription réussie ! Redirection...');
-                    
-                    setTimeout(function() {
+
+                    setTimeout(function () {
                         window.location.href = 'reservation.html';
                     }, 1500);
                 } else {
@@ -217,7 +194,7 @@
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> S\'inscrire';
                 }
-                
+
             } catch (error) {
                 showAlert('error', error.message || 'Erreur d\'inscription');
                 submitBtn.disabled = false;
@@ -228,7 +205,7 @@
         function showFieldError(fieldId, message) {
             var input = document.getElementById(fieldId);
             var errorSpan = document.getElementById(fieldId + '-error');
-            
+
             if (input) input.classList.add('error');
             if (errorSpan) {
                 errorSpan.textContent = message;
@@ -237,11 +214,11 @@
         }
 
         function clearErrors() {
-            document.querySelectorAll('.error-message').forEach(function(el) {
+            document.querySelectorAll('.error-message').forEach(function (el) {
                 el.textContent = '';
                 el.classList.remove('show');
             });
-            document.querySelectorAll('input').forEach(function(input) {
+            document.querySelectorAll('input').forEach(function (input) {
                 input.classList.remove('error');
             });
             hideAlert();
@@ -260,12 +237,12 @@
         }
 
         // Mobile navigation
-        (function() {
+        (function () {
             var hamburger = document.querySelector('.hamburger');
             var navLinks = document.querySelector('.nav-links');
 
             if (hamburger && navLinks) {
-                hamburger.addEventListener('click', function() {
+                hamburger.addEventListener('click', function () {
                     hamburger.classList.toggle('active');
                     navLinks.classList.toggle('active');
                 });
@@ -273,4 +250,5 @@
         })();
     </script>
 </body>
+
 </html>

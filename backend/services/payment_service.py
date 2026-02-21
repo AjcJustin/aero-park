@@ -23,7 +23,25 @@ class PaymentService:
     
     def __init__(self):
         self.db = get_db()
-        self.pricing = PricingInfo()
+    
+    async def get_current_pricing(self) -> Dict[str, Any]:
+        """Récupère les tarifs actuels depuis la configuration globale."""
+        settings = await self.db.get_system_settings()
+        currency = settings.get("currency", "USD")
+        
+        # Determine rate based on currency, prioritizing specific rates
+        if currency == "USD":
+            # Taking USD rate, fallback to generic hourly_rate, fallback to default 2
+            rate = settings.get("hourly_rate_usd", settings.get("hourly_rate", 2))
+        else:
+            # Taking FC rate, fallback to generic hourly_rate, fallback to default 1000
+            rate = settings.get("hourly_rate_fc", settings.get("hourly_rate", 1000))
+        return {
+            "rate": rate,
+            "currency": currency,
+            "daily_max": settings.get("daily_max", 30.0 if currency == "USD" else 15000),
+            "first_minutes_free": settings.get("first_minutes_free", 15)
+        }
     
     def generate_payment_id(self) -> str:
         """Génère un ID unique pour le paiement."""
@@ -57,7 +75,9 @@ class PaymentService:
             Dict avec résultat du paiement et réservation
         """
         payment_id = self.generate_payment_id()
-        amount = self.pricing.calculate_price(duration_minutes)
+        pricing = await self.get_current_pricing()
+        amount = round((duration_minutes / 60) * pricing["rate"], 2)
+        currency = pricing["currency"]
         
         # Vérifier que la place est disponible
         place = await self.db.get_place_by_id(place_id)
@@ -121,7 +141,7 @@ class PaymentService:
                 "reservation_id": reservation_id,
                 "place_id": place_id,
                 "amount": amount,
-                "currency": self.pricing.currency,
+                "currency": currency,
                 "method": method.value,
                 "status": PaymentStatus.SUCCESS.value,
                 "duration_minutes": duration_minutes,
@@ -133,6 +153,25 @@ class PaymentService:
             
             self.db.db.collection(self.COLLECTION_PAYMENTS).document(payment_id).set(payment_data)
             
+            # Notifier via WebSocket pour mise à jour LCD et dashboard immédiate
+            try:
+                from services.websocket_service import get_websocket_manager
+                ws_manager = get_websocket_manager()
+                await ws_manager.notify_reservation(
+                    place_id=place_id,
+                    action="create",
+                    updated_place_data={
+                        "place_id": place_id,
+                        "etat": "reserved",
+                        "reserved_by": user_id,
+                        "reservation_id": reservation_id,
+                        "access_code": access_code,
+                        "last_update": datetime.utcnow().isoformat()
+                    }
+                )
+            except Exception as ws_err:
+                logger.error(f"Erreur broadcast après paiement: {ws_err}")
+                
             logger.info(f"Paiement {payment_id} réussi pour place {place_id}, code: {access_code}")
             
             return {
@@ -141,7 +180,7 @@ class PaymentService:
                 "status": PaymentStatus.SUCCESS,
                 "message": "Paiement accepté, réservation confirmée",
                 "amount": amount,
-                "currency": self.pricing.currency,
+                "currency": currency,
                 "transaction_ref": payment_data["transaction_ref"],
                 "reservation_confirmed": True,
                 "access_code": access_code,
@@ -156,7 +195,7 @@ class PaymentService:
                 "user_email": user_email,
                 "place_id": place_id,
                 "amount": amount,
-                "currency": self.pricing.currency,
+                "currency": currency,
                 "method": method.value,
                 "status": PaymentStatus.FAILED.value,
                 "duration_minutes": duration_minutes,
@@ -174,7 +213,7 @@ class PaymentService:
                 "status": PaymentStatus.FAILED,
                 "message": payment_data["failure_reason"],
                 "amount": amount,
-                "currency": self.pricing.currency,
+                "currency": currency,
                 "reservation_confirmed": False
             }
     
@@ -202,14 +241,32 @@ class PaymentService:
             logger.error(f"Erreur récupération paiements utilisateur {user_id}: {e}")
             return []
     
-    async def get_all_payments(self, limit: int = 100) -> List[Dict[str, Any]]:
+    async def get_all_payments(self, status_filter: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
         """Récupère tous les paiements (admin)."""
         try:
-            docs = self.db.db.collection(self.COLLECTION_PAYMENTS)\
-                .order_by("created_at", direction="DESCENDING")\
-                .limit(limit).stream()
+            collection = self.db.db.collection(self.COLLECTION_PAYMENTS)
             
-            return [doc.to_dict() for doc in docs]
+            if status_filter:
+                query = collection.where("status", "==", status_filter).limit(limit)
+            else:
+                query = collection.limit(limit)
+                
+            docs = query.stream()
+            
+            payments = []
+            for doc in docs:
+                data = doc.to_dict()
+                data["id"] = doc.id
+                # Convertir les timestamps pour le frontend
+                for key in ["created_at", "completed_at", "paid_at", "paidAt", "refunded_at"]:
+                    if data.get(key) and hasattr(data[key], 'isoformat'):
+                        data[key] = data[key].isoformat()
+                payments.append(data)
+            
+            # Trier par date de création (décroissant) en Python
+            payments.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
+            
+            return payments
         except Exception as e:
             logger.error(f"Erreur récupération paiements: {e}")
             return []
@@ -253,6 +310,15 @@ class PaymentService:
                 "refund_id": refund_id
             })
             
+            # Notifier via WebSocket
+            try:
+                if place_id:
+                    from services.websocket_service import get_websocket_manager
+                    ws_manager = get_websocket_manager()
+                    await ws_manager.notify_reservation(place_id, "cancel")
+            except Exception as ws_err:
+                logger.error(f"Erreur broadcast après remboursement: {ws_err}")
+            
             logger.info(f"Paiement {payment_id} remboursé: {reason}")
             
             return {
@@ -272,23 +338,25 @@ class PaymentService:
     
     async def get_pricing_info(self) -> Dict[str, Any]:
         """Retourne les informations de tarification."""
+        pricing = await self.get_current_pricing()
         return {
-            "hourly_rate": self.pricing.base_rate_per_hour,
-            "daily_max": self.pricing.daily_max,
-            "first_minutes_free": self.pricing.first_minutes_free,
-            "currency": self.pricing.currency,
-            "currency_symbol": self.pricing.currency_symbol,
-            "minimum_duration_minutes": self.pricing.minimum_duration_minutes,
-            "maximum_duration_minutes": self.pricing.maximum_duration_minutes
+            "hourly_rate": pricing["rate"],
+            "daily_max": pricing["daily_max"],
+            "first_minutes_free": pricing["first_minutes_free"],
+            "currency": pricing["currency"],
+            "currency_symbol": "$" if pricing["currency"] == "USD" else "FC",
+            "minimum_duration_minutes": 15,
+            "maximum_duration_minutes": 480
         }
     
     async def calculate_amount(self, hours: float) -> float:
         """Calcule le montant pour une durée donnée."""
+        pricing = await self.get_current_pricing()
         # 15 premières minutes gratuites
         if hours <= 0.25:
             return 0.0
         billable_hours = hours - 0.25
-        return round(billable_hours * self.pricing.base_rate_per_hour, 2)
+        return round(billable_hours * pricing["rate"], 2)
     
     async def get_payment(self, payment_id: str) -> Optional[Dict[str, Any]]:
         """Récupère un paiement par son ID."""
@@ -314,34 +382,6 @@ class PaymentService:
             logger.error(f"Erreur récupération paiements réservation {reservation_id}: {e}")
             return []
     
-    async def get_all_payments(
-        self,
-        status_filter: Optional[str] = None,
-        limit: int = 100
-    ) -> List[Dict[str, Any]]:
-        """Récupère tous les paiements (admin)."""
-        try:
-            collection = self.db.db.collection(self.COLLECTION_PAYMENTS)
-            
-            if status_filter:
-                query = collection.where("status", "==", status_filter).limit(limit)
-            else:
-                query = collection.limit(limit)
-            
-            docs = query.stream()
-            
-            payments = []
-            for doc in docs:
-                data = doc.to_dict()
-                # Convertir les timestamps
-                for key in ["created_at", "completed_at", "refunded_at"]:
-                    if data.get(key) and hasattr(data[key], 'isoformat'):
-                        data[key] = data[key].isoformat()
-                payments.append(data)
-            return payments
-        except Exception as e:
-            logger.error(f"Erreur récupération paiements: {e}")
-            return []
     
     # ========== MOBILE MONEY SIMULATION ==========
     
@@ -374,6 +414,10 @@ class PaymentService:
         now = datetime.utcnow()
         phone_masked = self._mask_phone_number(phone_number)
         
+        # Récupérer la configuration actuelle pour la devise par défaut
+        pricing_info = await self.get_current_pricing()
+        default_currency = pricing_info.get("currency", "USD")
+        
         # Récupérer la réservation
         reservation = await self.db.get_reservation(reservation_id)
         if not reservation:
@@ -400,6 +444,9 @@ class PaymentService:
         
         place_id = reservation.get("place_id")
         
+        # Déterminer la devise à utiliser (Priorité: Réservation > Configuration Système)
+        currency_to_use = reservation.get("currency", default_currency)
+        
         # Simuler le traitement Mobile Money
         # 80% de chance de succès
         payment_success = random.random() < 0.80
@@ -412,15 +459,19 @@ class PaymentService:
             duration_minutes = reservation.get("duration_minutes", 60)
             expires_at = now + timedelta(minutes=duration_minutes)
             
-            # Créer le code d'accès
-            access_service = get_access_code_service()
-            access_code = await access_service.create_access_code(
-                user_id=user_id,
-                user_email=user_email or reservation.get("user_email", ""),
-                place_id=place_id,
-                reservation_id=reservation_id,
-                expires_at=expires_at
-            )
+            # Récupérer le code d'accès existant ou en créer un nouveau
+            access_code = reservation.get("access_code")
+            
+            if not access_code:
+                # Créer le code d'accès (fallback si manquant)
+                access_service = get_access_code_service()
+                access_code = await access_service.create_access_code(
+                    user_id=user_id,
+                    user_email=user_email or reservation.get("user_email", ""),
+                    place_id=place_id,
+                    reservation_id=reservation_id,
+                    expires_at=expires_at
+                )
             
             # Mettre à jour la réservation comme confirmée
             await self.db.update_reservation_status(reservation_id, "confirmed")
@@ -433,7 +484,7 @@ class PaymentService:
                 "reservation_id": reservation_id,
                 "place_id": place_id,
                 "amount": amount,
-                "currency": self.pricing.currency,
+                "currency": currency_to_use,
                 "method": PaymentMethod.MOBILE.value,
                 "provider": provider.value,
                 "phone_number": phone_number,
@@ -460,7 +511,7 @@ class PaymentService:
                 "provider": provider,
                 "phone_number_masked": phone_masked,
                 "amount": amount,
-                "currency": self.pricing.currency,
+                "currency": currency_to_use,
                 "transaction_ref": transaction_ref,
                 "reservation_status": "CONFIRMED",
                 "access_code": access_code,
@@ -492,7 +543,7 @@ class PaymentService:
                 "reservation_id": reservation_id,
                 "place_id": place_id,
                 "amount": amount,
-                "currency": self.pricing.currency,
+                "currency": currency_to_use,
                 "method": PaymentMethod.MOBILE.value,
                 "provider": provider.value,
                 "phone_number": phone_number,
@@ -517,7 +568,7 @@ class PaymentService:
                 "provider": provider,
                 "phone_number_masked": phone_masked,
                 "amount": amount,
-                "currency": self.pricing.currency,
+                "currency": currency_to_use,
                 "reservation_status": "CANCELLED",
                 "access_code": None,
                 "timestamp": now

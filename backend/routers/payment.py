@@ -86,18 +86,14 @@ async def calculate_amount(
     """
     try:
         payment_service = get_payment_service()
+        pricing = await payment_service.get_current_pricing()
         total_hours = hours + (minutes / 60)
         amount = await payment_service.calculate_amount(total_hours)
         
         return {
             "duration_hours": total_hours,
             "amount": round(amount, 2),
-            "currency": "USD",
-            "breakdown": {
-                "hourly_rate": 5.0,
-                "hours_billed": max(0, total_hours - 0.25),  # 15 min gratuites
-                "free_period_applied": total_hours <= 0.25
-            }
+            "currency": pricing["currency"]
         }
         
     except Exception as e:

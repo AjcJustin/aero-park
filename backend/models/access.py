@@ -37,9 +37,9 @@ class AccessCode(BaseModel):
 
 
 class ValidateCodeRequest(BaseModel):
-    """Requête de validation de code d'accès depuis ESP32."""
-    code: str = Field(..., min_length=3, max_length=3, description="Code à valider")
-    sensor_presence: bool = Field(..., description="Présence véhicule détectée par capteur")
+    """Requête de validation de code d'accès."""
+    code: str = Field(..., min_length=3, max_length=10, description="Code à valider")
+    sensor_presence: Optional[bool] = Field(default=None, description="Présence véhicule détectée par capteur")
     barrier_id: str = Field(default="entry", description="ID de la barrière (entry/exit)")
 
 

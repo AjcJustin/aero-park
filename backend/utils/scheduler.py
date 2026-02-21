@@ -32,7 +32,7 @@ class ReservationScheduler:
         # Add reservation expiry check job
         self.scheduler.add_job(
             self._check_expired_reservations,
-            trigger=IntervalTrigger(seconds=30),  # Check every 30 seconds
+            trigger=IntervalTrigger(minutes=1),  # Check every 1 minute for high responsiveness
             id="check_expired_reservations",
             name="Check and expire overdue reservations",
             replace_existing=True
@@ -41,7 +41,7 @@ class ReservationScheduler:
         # Add access code expiration job
         self.scheduler.add_job(
             self._cleanup_expired_access_codes,
-            trigger=IntervalTrigger(minutes=1),  # Check every minute
+            trigger=IntervalTrigger(minutes=1),  # Cleanup and free spots every minute
             id="cleanup_expired_codes",
             name="Cleanup expired access codes and free spots",
             replace_existing=True
@@ -50,7 +50,7 @@ class ReservationScheduler:
         # Add periodic status broadcast job
         self.scheduler.add_job(
             self._broadcast_status,
-            trigger=IntervalTrigger(minutes=1),  # Broadcast every minute
+            trigger=IntervalTrigger(minutes=1),  # Broadcast every minute to keep clients in sync
             id="broadcast_parking_status",
             name="Broadcast parking status updates",
             replace_existing=True
@@ -153,19 +153,22 @@ class ReservationScheduler:
             for code_doc in all_codes:
                 code_data = code_doc.to_dict()
                 code_id = code_doc.id
+                code_str = code_data.get("code", "???")
                 
                 # Check if code is active and expired
-                if code_data.get("status") not in ["ACTIVE", "active"]:
+                status = code_data.get("status", "").lower()
+                if status != "active":
                     continue
                 
-                expiry_time = code_data.get("expiry_time")
-                if not expiry_time:
+                expiry_dt = code_data.get("expires_at") or code_data.get("expiry_time")
+                
+                if not expiry_dt:
+                    logger.debug(f"Code {code_str} ({code_id}) n'a pas de date d'expiration.")
                     continue
                 
                 # Handle different datetime formats
-                if hasattr(expiry_time, 'timestamp'):
-                    expiry_dt = expiry_time
-                else:
+                if not hasattr(expiry_dt, 'timestamp'):
+                    logger.warning(f"Format date invalide pour code {code_str}")
                     continue
                 
                 # Make expiry_dt timezone aware if needed
@@ -174,40 +177,35 @@ class ReservationScheduler:
                 
                 # Check if expired
                 if now > expiry_dt:
+                    logger.info(f"⏳ EXPIRATION DÉTECTÉE: Code {code_str} (Place {code_data.get('place_id')})")
                     # Mark code as expired
                     codes_ref.document(code_id).update({
                         "status": "EXPIRED",
                         "expired_at": now
                     })
                     
-                    # Free the parking spot if reservation exists
+                    # Free the parking spot and notify
+                    place_id = code_data.get("place_id")
                     reservation_id = code_data.get("reservation_id")
-                    if reservation_id:
+                    
+                    if not place_id and reservation_id:
                         reservation = await db.get_reservation(reservation_id)
                         if reservation:
-                            spot_id = reservation.get("spot_id")
-                            if spot_id:
-                                await db.update_place_status(spot_id, "free")
-                            
-                            # Update reservation status
-                            await db.update_reservation(reservation_id, {
-                                "status": "EXPIRED",
-                                "expired_at": now.isoformat()
-                            })
+                            place_id = reservation.get("place_id") or reservation.get("spot_id")
                     
-                    # Log audit event
-                    await audit_service.log_event(
-                        event_type=AuditEventType.CODE_EXPIRED,
-                        decision=AuditDecision.INFO,
-                        barrier_id="scheduler",
-                        details={
-                            "code_id": code_id,
-                            "code": code_data.get("code", "")[:2] + "***",
-                            "reservation_id": reservation_id,
-                            "expired_at": now.isoformat(),
-                            "reason": "Automatic expiration by scheduler"
-                        }
-                    )
+                    if place_id:
+                        logger.info(f"🔓 LIBÉRATION AUTO: Place {place_id} (suite expiration code {code_str})")
+                        await db.release_place(place_id)
+                        
+                        try:
+                            from services.websocket_service import get_websocket_manager
+                            ws_manager = get_websocket_manager()
+                            await ws_manager.notify_reservation(place_id, "cancel")
+                        except Exception as ws_err:
+                            logger.error(f"Erreur broadcast cleanup {place_id}: {ws_err}")
+                    
+                    if reservation_id:
+                        await db.update_reservation_status(reservation_id, "EXPIRED")
                     
                     expired_count += 1
             

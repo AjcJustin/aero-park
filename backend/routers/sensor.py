@@ -70,6 +70,23 @@ async def sensor_update(
             f"etat={request.etat}, signal={request.force_signal}"
         )
         
+        # Notifier les clients via WebSocket pour mise à jour temps réel
+        try:
+            from services.websocket_service import get_websocket_manager
+            ws_manager = get_websocket_manager()
+            await ws_manager.notify_reservation(
+                place_id=request.place_id,
+                action="sensor_update",
+                updated_place_data={
+                    "place_id": request.place_id,
+                    "etat": result.get("etat"),
+                    "force_signal": request.force_signal,
+                    "last_update": datetime.utcnow().isoformat()
+                }
+            )
+        except Exception as ws_err:
+            logger.error(f"Erreur broadcast session: {ws_err}")
+            
         return SensorUpdateResponse(
             success=True,
             place_id=request.place_id,

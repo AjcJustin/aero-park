@@ -23,7 +23,7 @@ class TestSensorUpdate:
         Expected: Status 401 Unauthorized
         """
         payload = {
-            "place_id": "a1",
+            "place_id": "P1",
             "etat": "occupied",
             "force_signal": -55
         }
@@ -43,7 +43,7 @@ class TestSensorUpdate:
         Expected: Status 401 Unauthorized
         """
         payload = {
-            "place_id": "a1",
+            "place_id": "P1",
             "etat": "occupied",
             "force_signal": -55
         }
@@ -68,7 +68,7 @@ class TestSensorUpdate:
         """
         with patch("routers.sensor.get_db", return_value=mock_db):
             payload = {
-                "place_id": "a1",
+                "place_id": "P1",
                 "etat": "occupied",
                 "force_signal": -55
             }
@@ -99,7 +99,7 @@ class TestSensorUpdate:
         
         with patch("routers.sensor.get_db", return_value=mock_db):
             payload = {
-                "place_id": "a1",
+                "place_id": "P1",
                 "etat": "occupied",
                 "force_signal": -60
             }
@@ -113,7 +113,7 @@ class TestSensorUpdate:
             assert response.status_code == 200
             data = response.json()
             assert data["success"] is True
-            assert data["place_id"] == "a1"
+            assert data["place_id"] == "P1"
             assert data["new_etat"] == "occupied"
     
     def test_sensor_update_free_state(
@@ -130,7 +130,7 @@ class TestSensorUpdate:
         
         with patch("routers.sensor.get_db", return_value=mock_db):
             payload = {
-                "place_id": "a2",
+                "place_id": "P2",
                 "etat": "free",
                 "force_signal": -45
             }
@@ -158,7 +158,7 @@ class TestSensorUpdate:
         """
         with patch("routers.sensor.get_db", return_value=mock_db):
             payload = {
-                "place_id": "a1",
+                "place_id": "P1",
                 "etat": "occupied",
                 "force_signal": -75  # Weak signal
             }
@@ -208,7 +208,7 @@ class TestSensorUpdate:
         Expected: Status 422 Unprocessable Entity
         """
         payload = {
-            "place_id": "a1",
+            "place_id": "P1",
             "force_signal": -55
         }
         
@@ -230,7 +230,7 @@ class TestSensorUpdate:
         Expected: Status 422 Unprocessable Entity
         """
         payload = {
-            "place_id": "a1",
+            "place_id": "P1",
             "etat": "invalid_state",
             "force_signal": -55
         }
@@ -372,7 +372,7 @@ class TestSensorBusinessLogic:
         
         with patch("routers.sensor.get_db", return_value=mock_db):
             payload = {
-                "place_id": "a1",
+                "place_id": "P1",
                 "etat": "occupied",
                 "force_signal": -50
             }
@@ -387,7 +387,7 @@ class TestSensorBusinessLogic:
             
             # Verify database was called correctly
             mock_db.update_place_status.assert_called_with(
-                place_id="a1",
+                place_id="P1",
                 etat="occupied",
                 force_signal=-50
             )
@@ -406,7 +406,7 @@ class TestSensorBusinessLogic:
         
         with patch("routers.sensor.get_db", return_value=mock_db):
             payload = {
-                "place_id": "a3",
+                "place_id": "P3",
                 "etat": "free",
                 "force_signal": -40
             }
@@ -433,7 +433,7 @@ class TestSensorBusinessLogic:
         """
         with patch("routers.sensor.get_db", return_value=mock_db):
             payload = {
-                "place_id": "a1",
+                "place_id": "P1",
                 "etat": "occupied",
                 "force_signal": -55
             }

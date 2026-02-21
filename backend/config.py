@@ -76,18 +76,46 @@ class Settings(BaseSettings):
     
     def get_firebase_credentials(self) -> dict:
         """Generate Firebase credentials dictionary."""
-        return {
+        import re
+        def clean(s: str) -> str:
+            if not s: return ""
+            # Supprimer tout ce qui n'est pas alphanumérique, ponctuation de base ou markers
+            s = s.strip()
+            # Supprimer les guillemets englobants
+            s = re.sub(r'^["\']|["\']$', '', s)
+            return s.strip()
+
+        # Pour la clé privée, c'est spécial
+        pk = self.firebase_private_key or ""
+        pk = pk.strip()
+        pk = re.sub(r'^["\']|["\']$', '', pk)
+        pk = pk.replace("\\n", "\n").strip()
+        
+        # Isolation stricte entre les balises
+        if "-----BEGIN PRIVATE KEY-----" in pk:
+            parts = pk.split("-----BEGIN PRIVATE KEY-----")
+            pk = "-----BEGIN PRIVATE KEY-----" + parts[1]
+        if "-----END PRIVATE KEY-----" in pk:
+            parts = pk.split("-----END PRIVATE KEY-----")
+            pk = parts[0] + "-----END PRIVATE KEY-----"
+
+        creds = {
             "type": "service_account",
-            "project_id": self.firebase_project_id,
-            "private_key_id": self.firebase_private_key_id,
-            "private_key": self.firebase_private_key.replace("\\n", "\n"),
-            "client_email": self.firebase_client_email,
-            "client_id": self.firebase_client_id,
-            "auth_uri": self.firebase_auth_uri,
-            "token_uri": self.firebase_token_uri,
-            "auth_provider_x509_cert_url": self.firebase_auth_provider_cert_url,
-            "client_x509_cert_url": self.firebase_client_cert_url,
+            "project_id": clean(self.firebase_project_id),
+            "private_key_id": clean(self.firebase_private_key_id),
+            "private_key": pk,
+            "client_email": clean(self.firebase_client_email),
+            "client_id": clean(self.firebase_client_id),
+            "auth_uri": clean(self.firebase_auth_uri),
+            "token_uri": clean(self.firebase_token_uri),
+            "auth_provider_x509_cert_url": clean(self.firebase_auth_provider_cert_url),
+            "client_x509_cert_url": clean(self.firebase_client_cert_url),
         }
+
+        import logging
+        logger = logging.getLogger("config")
+        logger.info(f"Credentials strictly cleaned for project: {creds['project_id']}")
+        return creds
 
 
 @lru_cache()

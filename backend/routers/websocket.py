@@ -66,10 +66,20 @@ async def parking_websocket(
                         safe_place[k] = v
                 safe_places.append(safe_place)
             
+            # Calculer les stats pour l'affichage LCD initial
+            total = len(places)
+            free = sum(1 for p in places if p.get("etat") == "free")
+            reserved = sum(1 for p in places if p.get("etat") == "reserved")
+            occupied = sum(1 for p in places if p.get("etat") == "occupied")
+
             await websocket.send_json({
-                "type": "connected",
+                "type": "status_update",  # Utilise status_update pour compatibilité LCD
                 "message": "Connexion établie à AeroPark",
                 "places": safe_places,
+                "total_places": total,
+                "libres": free,
+                "reservees": reserved,
+                "occupees": occupied,
                 "timestamp": datetime.utcnow().isoformat()
             })
         except Exception as e:
@@ -127,9 +137,18 @@ async def handle_client_message(websocket: WebSocket, message: dict):
             db = get_db()
             places = await db.get_all_places()
             
+            total = len(places)
+            free = sum(1 for p in places if p.get("etat") == "free")
+            reserved = sum(1 for p in places if p.get("etat") == "reserved")
+            occupied = sum(1 for p in places if p.get("etat") == "occupied")
+            
             await websocket.send_json({
-                "type": "parking_status",
+                "type": "status_update",
                 "places": places,
+                "total_places": total,
+                "libres": free,
+                "reservees": reserved,
+                "occupees": occupied,
                 "timestamp": datetime.utcnow().isoformat()
             })
         except Exception as e:

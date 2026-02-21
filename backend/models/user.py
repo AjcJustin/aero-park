@@ -45,12 +45,19 @@ class UserReservationHistory(BaseModel):
     actual_departure: Optional[datetime] = None
 
 
+class ProfileUpdateRequest(BaseModel):
+    """Request model for updating user profile."""
+    display_name: Optional[str] = None
+    vehicle_plate: Optional[str] = None
+
+
 class UserProfileResponse(BaseModel):
     """Complete user profile response with history."""
     profile: UserProfile
     active_reservation: Optional[dict] = None
     reservation_count: int = 0
     total_parking_hours: float = 0.0
+    total_spent: float = 0.0
 
 
 class TokenPayload(BaseModel):

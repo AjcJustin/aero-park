@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional
 import logging
 
-from models.user import UserProfile, UserProfileResponse
+from models.user import UserProfile, UserProfileResponse, ProfileUpdateRequest
 from security.firebase_auth import get_current_user
 from database.firebase_db import get_db
 
@@ -47,12 +47,14 @@ async def get_my_profile(
         user_data = await db.get_user_profile(user.uid)
         reservation_count = user_data.get("reservation_count", 0) if user_data else 0
         total_hours = user_data.get("total_parking_hours", 0.0) if user_data else 0.0
+        total_spent = user_data.get("total_spent", 0.0) if user_data else 0.0
         
         return UserProfileResponse(
             profile=user,
             active_reservation=active_reservation,
             reservation_count=reservation_count,
-            total_parking_hours=total_hours
+            total_parking_hours=total_hours,
+            total_spent=total_spent
         )
         
     except Exception as e:
@@ -106,8 +108,7 @@ async def get_my_reservation(
     description="Update the current user's profile information."
 )
 async def update_my_profile(
-    display_name: Optional[str] = None,
-    vehicle_plate: Optional[str] = None,
+    request: ProfileUpdateRequest,
     user: UserProfile = Depends(get_current_user)
 ):
     """
@@ -120,10 +121,10 @@ async def update_my_profile(
         db = get_db()
         
         updates = {}
-        if display_name:
-            updates["display_name"] = display_name
-        if vehicle_plate:
-            updates["vehicle_plate"] = vehicle_plate
+        if request.display_name:
+            updates["display_name"] = request.display_name
+        if request.vehicle_plate:
+            updates["vehicle_plate"] = request.vehicle_plate
         
         if updates:
             await db.upsert_user_profile(user.uid, updates)

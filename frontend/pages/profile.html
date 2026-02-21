@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,7 +35,7 @@
             margin: 0 auto 1rem;
             font-size: 2.5rem;
             color: #2563eb;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
         }
 
         .profile-header h1 {
@@ -57,7 +58,7 @@
             background: white;
             padding: 1.5rem;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         }
 
         .profile-card h3 {
@@ -178,8 +179,15 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         .form-group {
@@ -272,13 +280,20 @@
             max-width: 420px;
             width: 90%;
             text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalSlide 0.3s ease;
         }
 
         @keyframes modalSlide {
-            from { transform: translateY(-30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            from {
+                transform: translateY(-30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         .cancel-modal-icon {
@@ -332,6 +347,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar">
@@ -393,13 +409,15 @@
                                 <i class="fas fa-clock"></i> Expire le: <span id="code-expires">-</span>
                             </p>
                         </div>
-                        
+
                         <div class="barrier-section">
                             <p style="color: #666; font-size: 0.9rem; margin: 0;">
-                                <i class="fas fa-info-circle"></i> Entrez votre code ci-dessous lorsque vous êtes devant la barrière :
+                                <i class="fas fa-info-circle"></i> Entrez votre code ci-dessous lorsque vous êtes devant
+                                la barrière :
                             </p>
                             <div class="barrier-input-group">
-                                <input type="text" id="barrier-code-input" class="form-control barrier-input" placeholder="ABC" maxlength="10">
+                                <input type="text" id="barrier-code-input" class="form-control barrier-input"
+                                    placeholder="ABC" maxlength="10">
                                 <button type="button" class="btn btn-primary" onclick="sendBarrierCode()">
                                     <i class="fas fa-door-open"></i> Ouvrir
                                 </button>
@@ -502,7 +520,8 @@
 
     <!-- Footer -->
     <footer style="background: #1e293b; color: #94a3b8; padding: 1rem 0; text-align: center; font-size: 0.85rem;">
-        <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="container"
+            style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
             <i class="fas fa-plane" style="color: #2563eb;"></i>
             <span>AeroPark GOMA</span>
             <span style="opacity: 0.5;">|</span>
@@ -510,7 +529,14 @@
         </div>
     </footer>
 
-    <script src="../js/api.js"></script>
+    <script>
+        // Safe fallback function
+        function formatPlaceId(placeId) {
+            if (!placeId) return placeId;
+            return String(placeId).replace(/^a(\d+)$/i, 'P$1');
+        }
+    </script>
+    <script src="../js/api.js?v=3"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/main.js"></script>
     <script>
@@ -521,19 +547,30 @@
             window.location.href = 'login.html';
         }
 
-        document.addEventListener('DOMContentLoaded', async function() {
+        document.addEventListener('DOMContentLoaded', async function () {
             initNavigation();
-            
+
             var logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
-                logoutBtn.addEventListener('click', function(e) {
+                logoutBtn.addEventListener('click', function (e) {
                     e.preventDefault();
                     Auth.logout();
                 });
             }
 
             document.getElementById('profile-form').addEventListener('submit', updateProfile);
-            
+
+            // Delegate event listener for cancellation button
+            document.addEventListener('click', function (e) {
+                if (e.target && e.target.closest('.btn-cancel-reservation')) {
+                    var btn = e.target.closest('.btn-cancel-reservation');
+                    var placeId = btn.getAttribute('data-place-id');
+                    console.log('[Profile] Click intercepted via delegation. Place ID:', placeId);
+                    // alert('DEBUG: Delegated click. Place ID: ' + placeId); // Keep alert for now
+                    showCancelConfirmation(placeId);
+                }
+            });
+
             await loadProfile();
             countdownInterval = setInterval(updateReservationCountdown, 1000);
         });
@@ -562,11 +599,19 @@
 
                 try {
                     var profile = await API.getProfile();
-                    
+
+                    // Récupérer la devise et le tarif depuis les paramètres AVANT de calculer totalSpent
+                    var settings = await API.getPublicSettings();
+                    var currency = (settings && settings.currency) ? settings.currency : 'FC';
+                    var hourlyRate = (settings && settings.hourly_rate) ? parseFloat(settings.hourly_rate) : 1000;
+
                     var reservationCount = profile.reservation_count || 0;
                     var totalHours = profile.total_parking_hours || 0;
-                    var totalSpent = profile.total_spent || Math.round(totalHours * 1000);
-                    
+
+                    // TOUJOURS recalculer avec le tarif actuel pour éviter les problèmes de conversion USD/FC
+                    // Ignore profile.total_spent car il peut contenir des anciennes valeurs en FC
+                    var totalSpent = Math.round(totalHours * hourlyRate);
+
                     // Sauvegarder les stats localement pour persistance
                     var savedStats = JSON.parse(localStorage.getItem('aeropark_user_stats') || '{}');
                     if (reservationCount > 0 || totalHours > 0) {
@@ -578,12 +623,13 @@
                         // Utiliser les stats sauvegardées si l'API retourne 0
                         reservationCount = savedStats.reservationCount;
                         totalHours = savedStats.totalHours;
-                        totalSpent = savedStats.totalSpent;
+                        // Recalculer totalSpent avec le tarif actuel au lieu d'utiliser l'ancien
+                        totalSpent = Math.round(totalHours * hourlyRate);
                     }
-                    
+
                     document.getElementById('stat-reservations').textContent = reservationCount;
                     document.getElementById('stat-hours').textContent = totalHours.toFixed(1) + 'h';
-                    document.getElementById('stat-total-spent').textContent = totalSpent.toLocaleString('fr-FR') + ' FC';
+                    document.getElementById('stat-total-spent').textContent = totalSpent.toLocaleString('fr-FR') + ' ' + currency;
 
                     if (profile.profile && profile.profile.vehicle_plate) {
                         document.getElementById('info-vehicle').textContent = profile.profile.vehicle_plate;
@@ -593,10 +639,18 @@
                     console.log('Profil API non disponible, utilisation des stats locales');
                     // Charger les stats depuis localStorage
                     var savedStats = JSON.parse(localStorage.getItem('aeropark_user_stats') || '{}');
+
+                    // Essayer de récupérer la devise stockée ou par défaut
+                    var currency = 'FC';
+                    try {
+                        var settings = await API.getPublicSettings();
+                        if (settings && settings.currency) currency = settings.currency;
+                    } catch (e) { }
+
                     if (savedStats.reservationCount) {
                         document.getElementById('stat-reservations').textContent = savedStats.reservationCount;
                         document.getElementById('stat-hours').textContent = (savedStats.totalHours || 0).toFixed(1) + 'h';
-                        document.getElementById('stat-total-spent').textContent = (savedStats.totalSpent || 0).toLocaleString('fr-FR') + ' FC';
+                        document.getElementById('stat-total-spent').textContent = (savedStats.totalSpent || 0).toLocaleString('fr-FR') + ' ' + currency;
                     }
                 }
 
@@ -611,12 +665,12 @@
         async function loadActiveReservation() {
             try {
                 var response = await API.getMyReservation();
-                
+
                 if (response.has_reservation && response.reservation) {
                     activeReservation = response.reservation;
                     displayActiveReservation(response.reservation);
                     document.getElementById('access-code-card').style.display = 'block';
-                    
+
                     // Afficher le code d'accès de la réservation
                     if (response.reservation.access_code) {
                         document.getElementById('access-code-display').textContent = response.reservation.access_code;
@@ -641,11 +695,38 @@
             var expiresAt = reservation.reservation_end_time || reservation.expires_at;
             var durationMinutes = reservation.reservation_duration_minutes || 60;
             var durationHours = (durationMinutes / 60).toFixed(1);
-            
+
             var remaining = calculateRemainingTime(expiresAt);
             var timerClass = (remaining && !remaining.expired && remaining.hours === 0 && remaining.minutes < 30) ? 'urgent' : '';
-            
-            document.getElementById('reservation-content').innerHTML = '<div class="reservation-active"><div class="header"><span class="place-badge">' + reservation.place_id + '</span><span style="color: #10b981; font-weight: 500;"><i class="fas fa-check-circle"></i> Active</span></div><div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;"><div><div style="font-size: 0.85rem; color: #64748b;">Durée</div><div style="font-weight: 600;">' + durationHours + 'h</div></div><div><div style="font-size: 0.85rem; color: #64748b;">Temps restant</div><div class="timer ' + timerClass + '" id="reservation-timer" data-expires="' + expiresAt + '">' + formatRemainingTime(remaining) + '</div></div></div><button class="btn btn-danger" onclick="showCancelConfirmation(\'' + reservation.place_id + '\')" style="width: 100%;"><i class="fas fa-times"></i> Annuler la réservation</button></div>';
+
+            console.log('[Profile] Displaying reservation:', reservation);
+            var rawPlaceId = reservation.place_id || reservation.spotId;
+            console.log('[Profile] Raw Place ID:', rawPlaceId);
+
+            // Ensure we never pass P-formatted ID to the cancel function logic if we can avoid it, 
+            // but for safety, we pass the raw value and let cancelReservation handle normalization.
+            var cancelId = rawPlaceId;
+
+            document.getElementById('reservation-content').innerHTML =
+                '<div class="reservation-active">' +
+                '<div class="header">' +
+                '<span class="place-badge">' + formatPlaceId(rawPlaceId) + '</span>' +
+                '<span style="color: #10b981; font-weight: 500;"><i class="fas fa-check-circle"></i> Active</span>' +
+                '</div>' +
+                '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">' +
+                '<div>' +
+                '<div style="font-size: 0.85rem; color: #64748b;">Durée</div>' +
+                '<div style="font-weight: 600;">' + durationHours + 'h</div>' +
+                '</div>' +
+                '<div>' +
+                '<div style="font-size: 0.85rem; color: #64748b;">Temps restant</div>' +
+                '<div class="timer ' + timerClass + '" id="reservation-timer" data-expires="' + expiresAt + '">' + formatRemainingTime(remaining) + '</div>' +
+                '</div>' +
+                '</div>' +
+                '<button class="btn btn-danger btn-cancel-reservation" data-place-id="' + cancelId + '" style="width: 100%;">' +
+                '<i class="fas fa-times"></i> Annuler la réservation' +
+                '</button>' +
+                '</div>';
         }
 
         function loadSavedAccessCode() {
@@ -660,18 +741,18 @@
         function updateReservationCountdown() {
             var timerEl = document.getElementById('reservation-timer');
             if (!timerEl) return;
-            
+
             var expiresAt = timerEl.dataset.expires;
             var remaining = calculateRemainingTime(expiresAt);
-            
+
             if (remaining && remaining.expired) {
                 // La réservation a expiré - libérer automatiquement la place
                 handleExpiredReservation();
                 return;
             }
-            
+
             timerEl.innerHTML = formatRemainingTime(remaining);
-            
+
             if (remaining && !remaining.expired && remaining.hours === 0 && remaining.minutes < 30) {
                 timerEl.classList.add('urgent');
             }
@@ -683,11 +764,11 @@
             var expires = new Date(expiresAt);
             var diff = expires - now;
             if (isNaN(diff) || diff <= 0) return { expired: true };
-            return { 
-                hours: Math.floor(diff / (1000 * 60 * 60)), 
-                minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)), 
-                seconds: Math.floor((diff % (1000 * 60)) / 1000), 
-                expired: false 
+            return {
+                hours: Math.floor(diff / (1000 * 60 * 60)),
+                minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+                seconds: Math.floor((diff % (1000 * 60)) / 1000),
+                expired: false
             };
         }
 
@@ -703,101 +784,136 @@
         async function sendBarrierCode() {
             var code = document.getElementById('barrier-code-input').value.trim().toUpperCase();
             var responseDiv = document.getElementById('barrier-response');
-            
+
             if (!code || code.length < 3) {
                 showNotification('Veuillez entrer un code valide.', 'error');
                 return;
             }
-            
+
             responseDiv.innerHTML = '<div style="padding: 1rem; background: #f0f9ff; border-radius: 8px; text-align: center;"><i class="fas fa-spinner fa-spin"></i> Vérification...</div>';
-            
+
             try {
-                var result = await API.request('/api/v1/access/validate-code', { method: 'POST', body: { code: code } });
-                
-                if (result.valid) {
-                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; text-align: center; color: #166534;"><i class="fas fa-check-circle"></i> <strong>Barrière ouverte !</strong></div>';
-                    showNotification('Barrière ouverte avec succès !', 'success');
+                // Pass no_open=true to the backend
+                var result = await API.request('/api/v1/access/validate-code?no_open=true', {
+                    method: 'POST',
+                    body: { code: code }
+                });
+
+                if (result.access_granted) {
+                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; text-align: center; color: #166534;"><i class="fas fa-check-circle"></i> <strong>Code validé !</strong><br>Avancez votre véhicule vers la barrière pour l\'ouverture.</div>';
+                    showNotification('Code validé avec succès !', 'success');
                 } else {
-                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; text-align: center; color: #dc2626;"><i class="fas fa-times-circle"></i> Code invalide ou expiré.</div>';
+                    responseDiv.innerHTML = '<div style="padding: 1rem; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; text-align: center; color: #dc2626;"><i class="fas fa-times-circle"></i> ' + (result.message || 'Code invalide ou expiré.') + '</div>';
                 }
             } catch (error) {
                 responseDiv.innerHTML = '<div style="padding: 1rem; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; text-align: center; color: #dc2626;"><i class="fas fa-times-circle"></i> ' + (error.message || 'Erreur') + '</div>';
             }
         }
 
-        var pendingCancelPlaceId = null;
+        // Variable pour stocker le spotId à annuler
+        var spotToCancel = null;
 
         function showCancelConfirmation(placeId) {
-            pendingCancelPlaceId = placeId;
+            console.log('[Profile] showCancelConfirmation called with:', placeId);
+            spotToCancel = placeId;
             document.getElementById('cancel-modal').classList.add('active');
-            document.getElementById('confirm-cancel-btn').onclick = function() {
-                closeCancelModal();
-                cancelReservation(pendingCancelPlaceId);
-            };
+
+            // Attacher l'événement de confirmation EXACTEMENT comme dans reservation.html
+            document.getElementById('confirm-cancel-btn').onclick = confirmCancelReservation;
         }
 
         function closeCancelModal() {
             document.getElementById('cancel-modal').classList.remove('active');
-            pendingCancelPlaceId = null;
+            spotToCancel = null;
         }
 
-        async function cancelReservation(placeId) {
+        async function confirmCancelReservation() {
+            if (!spotToCancel) return;
+
+            var btn = document.getElementById('confirm-cancel-btn');
+            var originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Annulation...';
+
+            console.log('[Profile] Attempting to cancel place:', spotToCancel);
+
+            // NORMALIZE: If placeId is "P1", convert to "a1"
+            // This is the only difference we keep because profile might have formatted IDs
+            var normalizedId = String(spotToCancel).replace(/^P(\d+)$/i, 'a$1');
+
             try {
-                await API.releasePlace(placeId);
-                showNotification('Réservation annulée.', 'success');
+                await API.releasePlace(normalizedId);
+
+                closeCancelModal();
+                showNotification('Réservation annulée avec succès.', 'success');
+
+                // Nettoyer le local storage au cas où
                 localStorage.removeItem('aeropark_last_access_code');
                 localStorage.removeItem('aeropark_last_place');
+
+                // Mettre à jour l'interface
+                activeReservation = null;
                 document.getElementById('access-code-card').style.display = 'none';
+
+                // Recharger les données complètes
                 await loadActiveReservation();
+                // Update profile stats if needed
+                await loadProfile();
+
             } catch (error) {
-                showNotification('Erreur: ' + error.message, 'error');
+                console.error('Erreur annulation:', error);
+                var errorMsg = error.message || 'Impossible d\'annuler la réservation';
+                showNotification(errorMsg, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
             }
         }
 
         // Gestion de l'expiration automatique de la réservation
         var expiredHandled = false;
-        
+
         function handleExpiredReservation() {
             // Éviter les appels multiples
             if (expiredHandled) return;
             expiredHandled = true;
-            
+
             // Arrêter le countdown
             if (countdownInterval) {
                 clearInterval(countdownInterval);
                 countdownInterval = null;
             }
-            
+
             showNotification('Votre réservation a expiré.', 'warning');
-            
+
             // Nettoyer le stockage local
             localStorage.removeItem('aeropark_last_access_code');
             localStorage.removeItem('aeropark_last_place');
-            
+
             // Masquer la section code d'accès
             document.getElementById('access-code-card').style.display = 'none';
-            
+
             // Réinitialiser l'affichage de la réservation
             activeReservation = null;
             document.getElementById('reservation-content').innerHTML = '<div class="no-reservation"><i class="fas fa-clock" style="color: #f59e0b; font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i><p style="color: #d97706; font-weight: 500;">Votre réservation a expiré</p><a href="reservation.html" class="btn btn-primary" style="margin-top: 1rem;"><i class="fas fa-plus"></i> Nouvelle réservation</a></div>';
-            
+
             // Réinitialiser après 2 secondes pour permettre de nouvelles réservations
-            setTimeout(function() {
+            setTimeout(function () {
                 expiredHandled = false;
             }, 2000);
         }
 
         async function updateProfile(e) {
             e.preventDefault();
-            
+
             var displayName = document.getElementById('edit-name').value.trim();
             var vehiclePlate = document.getElementById('edit-vehicle').value.trim().toUpperCase();
-            
+
             if (vehiclePlate) {
                 localStorage.setItem('aeropark_vehicle_plate', vehiclePlate);
                 document.getElementById('info-vehicle').textContent = vehiclePlate;
             }
-            
+
             var user = Auth.getUser();
             if (displayName) {
                 user.name = displayName;
@@ -805,13 +921,22 @@
                 document.getElementById('profile-name').textContent = displayName;
                 document.getElementById('info-name').textContent = displayName;
             }
-            
+
             try {
-                await API.request('/users/me/profile', { method: 'PUT', body: { display_name: displayName, vehicle_plate: vehiclePlate } });
-            } catch (error) {}
-            
-            showNotification('Profil mis à jour !', 'success');
+                await API.request('/users/me/profile', {
+                    method: 'PUT',
+                    body: {
+                        display_name: displayName,
+                        vehicle_plate: vehiclePlate
+                    }
+                });
+                showNotification('Profil mis à jour avec succès !', 'success');
+            } catch (error) {
+                console.error('Erreur mise à jour profil:', error);
+                showNotification('Erreur lors de la mise à jour du profil: ' + (error.message || 'Erreur inconnue'), 'error');
+            }
         }
     </script>
 </body>
+
 </html>

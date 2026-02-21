@@ -36,6 +36,11 @@ class BarrierService:
             "entry": {"status": "closed", "last_action": None, "last_action_time": None},
             "exit": {"status": "closed", "last_action": None, "last_action_time": None}
         }
+        # État des capteurs de présence (véhicules)
+        self._sensor_states = {
+            "entry": False,
+            "exit": False
+        }
     
     async def get_parking_status(self) -> Dict[str, int]:
         """Récupère le statut du parking (places disponibles)."""
@@ -63,16 +68,29 @@ class BarrierService:
         """
         parking = await self.get_parking_status()
         state = self._barrier_states.get(barrier_id, self._barrier_states["entry"])
+        sensor_presence = self._sensor_states.get(barrier_id, False)
         
         return {
             "barrier_id": barrier_id,
             "status": state["status"],
             "last_action": state["last_action"],
             "last_action_time": state["last_action_time"],
+            "sensor_presence": sensor_presence,
             "parking_available_spots": parking["free"],
             "parking_total_spots": parking["total"],
             "auto_open_allowed": parking["free"] > 0
         }
+
+    def update_sensor_state(self, barrier_id: str, presence: bool):
+        """Met à jour l'état du capteur de présence (appelé par l'ESP32)."""
+        if barrier_id in self._sensor_states:
+            if self._sensor_states[barrier_id] != presence:
+                logger.info(f"Capteur {barrier_id}: {'Véhicule détecté' if presence else 'Pas de véhicule'}")
+            self._sensor_states[barrier_id] = presence
+
+    def get_sensor_state(self, barrier_id: str) -> bool:
+        """Récupère le dernier état connu du capteur."""
+        return self._sensor_states.get(barrier_id, False)
     
     async def check_entry_access(
         self,
@@ -346,6 +364,8 @@ class BarrierService:
         # Notifier via WebSocket
         try:
             manager = get_websocket_manager()
+            
+            # 1. New standard message
             await manager.broadcast({
                 "type": "barrier_event",
                 "barrier_id": barrier_id,
@@ -354,6 +374,40 @@ class BarrierService:
                 "place_id": place_id,
                 "timestamp": now.isoformat()
             })
+            
+            # 2. Legacy/Simple command for ESP32 compatibility
+            await manager.broadcast({
+                "type": "barrier_command",
+                "command": "open",
+                "barrier": barrier_id,
+                "reason": reason
+            })
+            
+            # 3. Very legacy format mentioned in some comments
+            if place_id:
+                # Convertir a1 -> 1 pour l'ESP32 legacy
+                numeric_id = place_id
+                if isinstance(place_id, str):
+                    import re
+                    match = re.search(r'\d+', place_id)
+                    if match:
+                        try:
+                            numeric_id = int(match.group())
+                        except:
+                            pass
+                            
+                await manager.broadcast({
+                    "type": "reservation",
+                    "donnees": {
+                        "place_id": numeric_id,
+                        "action": "open"
+                    }
+                })
+                
+            # 4. Refresh full status for LCD
+            status = await self.get_parking_status()
+            await manager.broadcast_parking_status(status)
+                
         except Exception as e:
             logger.error(f"Erreur notification WebSocket: {e}")
         

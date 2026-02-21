@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion - AeroPark GOMA</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/style.css?v=2.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body class="auth-page">
     <!-- Navigation -->
     <nav class="navbar">
@@ -52,14 +54,8 @@
                     <label for="email">Adresse email</label>
                     <div class="input-icon">
                         <i class="fas fa-envelope"></i>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            name="email" 
-                            placeholder="votre@email.com"
-                            autocomplete="email"
-                            required
-                        >
+                        <input type="email" id="email" name="email" placeholder="votre@email.com" autocomplete="email"
+                            required>
                     </div>
                     <span class="error-message" id="email-error"></span>
                 </div>
@@ -68,21 +64,16 @@
                     <label for="password">Mot de passe</label>
                     <div class="input-icon">
                         <i class="fas fa-lock"></i>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            name="password" 
-                            placeholder="Votre mot de passe"
-                            autocomplete="current-password"
-                            required
-                            style="padding-right: 45px;"
-                        >
+                        <input type="password" id="password" name="password" placeholder="Votre mot de passe"
+                            autocomplete="current-password" required style="padding-right: 50px;">
                         <button type="button" class="toggle-password" onclick="togglePassword('password')">
                             <i class="fas fa-eye" id="password-eye"></i>
                         </button>
                     </div>
                     <span class="error-message" id="password-error"></span>
-                    <a href="#" id="forgot-password-link" class="forgot-password-link" style="display: none; font-size: 0.85rem; color: #2563eb; margin-top: 0.5rem;" onclick="showForgotPassword(event)">Mot de passe oublié ?</a>
+                    <a href="#" id="forgot-password-link" class="forgot-password-link"
+                        style="display: none; font-size: 0.85rem; color: #2563eb; margin-top: 0.5rem;"
+                        onclick="showForgotPassword(event)">Mot de passe oublié ?</a>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-block" id="login-btn">
@@ -99,7 +90,8 @@
 
     <!-- Footer -->
     <footer style="background: #1e293b; color: #94a3b8; padding: 1rem 0; text-align: center; font-size: 0.85rem;">
-        <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="container"
+            style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
             <i class="fas fa-plane" style="color: #2563eb;"></i>
             <span>AeroPark GOMA</span>
             <span style="opacity: 0.5;">|</span>
@@ -109,16 +101,16 @@
 
     <script src="../js/api.js"></script>
     <script src="../js/auth.js"></script>
-    
+
     <script>
         // Compteur de tentatives échouées
         var loginAttempts = 0;
-        
+
         // Toggle password visibility
         function togglePassword(inputId) {
             var input = document.getElementById(inputId);
             var eyeIcon = document.getElementById(inputId + '-eye');
-            
+
             if (input.type === 'password') {
                 input.type = 'text';
                 eyeIcon.className = 'fas fa-eye-slash';
@@ -127,7 +119,7 @@
                 eyeIcon.className = 'fas fa-eye';
             }
         }
-        
+
         // Show forgot password link
         function showForgotPassword(e) {
             e.preventDefault();
@@ -145,41 +137,41 @@
         }
 
         // Login form handler
-        document.getElementById('login-form').addEventListener('submit', async function(e) {
+        document.getElementById('login-form').addEventListener('submit', async function (e) {
             e.preventDefault();
-            
+
             clearErrors();
-            
+
             var email = document.getElementById('email').value.trim();
             var password = document.getElementById('password').value;
             var submitBtn = document.getElementById('login-btn');
-            
+
             // Validation
             if (!email) {
                 showFieldError('email', 'L\'email est requis');
                 return;
             }
-            
+
             if (!password) {
                 showFieldError('password', 'Le mot de passe est requis');
                 return;
             }
-            
+
             // Disable button
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
-            
+
             try {
                 var result = await Auth.login(email, password);
-                
+
                 if (result.success) {
                     loginAttempts = 0; // Réinitialiser le compteur
                     showAlert('success', 'Connexion réussie ! Redirection...');
-                    
-                    setTimeout(function() {
+
+                    setTimeout(function () {
                         var user = Auth.getUser();
                         var redirectUrl = sessionStorage.getItem('redirectAfterLogin');
-                        
+
                         if (redirectUrl) {
                             sessionStorage.removeItem('redirectAfterLogin');
                             window.location.href = redirectUrl;
@@ -192,16 +184,16 @@
                 } else {
                     loginAttempts++;
                     showAlert('error', result.message);
-                    
+
                     // Afficher le lien mot de passe oublié après 3 tentatives
                     if (loginAttempts >= 3) {
                         document.getElementById('forgot-password-link').style.display = 'block';
                     }
-                    
+
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
                 }
-                
+
             } catch (error) {
                 showAlert('error', error.message || 'Erreur de connexion');
                 submitBtn.disabled = false;
@@ -212,7 +204,7 @@
         function showFieldError(fieldId, message) {
             var input = document.getElementById(fieldId);
             var errorSpan = document.getElementById(fieldId + '-error');
-            
+
             if (input) input.classList.add('error');
             if (errorSpan) {
                 errorSpan.textContent = message;
@@ -221,11 +213,11 @@
         }
 
         function clearErrors() {
-            document.querySelectorAll('.error-message').forEach(function(el) {
+            document.querySelectorAll('.error-message').forEach(function (el) {
                 el.textContent = '';
                 el.classList.remove('show');
             });
-            document.querySelectorAll('input').forEach(function(input) {
+            document.querySelectorAll('input').forEach(function (input) {
                 input.classList.remove('error');
             });
             hideAlert();
@@ -244,12 +236,12 @@
         }
 
         // Mobile navigation
-        (function() {
+        (function () {
             var hamburger = document.querySelector('.hamburger');
             var navLinks = document.querySelector('.nav-links');
 
             if (hamburger && navLinks) {
-                hamburger.addEventListener('click', function() {
+                hamburger.addEventListener('click', function () {
                     hamburger.classList.toggle('active');
                     navLinks.classList.toggle('active');
                 });
@@ -257,4 +249,5 @@
         })();
     </script>
 </body>
+
 </html>

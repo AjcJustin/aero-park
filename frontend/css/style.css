@@ -11,7 +11,7 @@
     --secondary-color: #10b981;
     --accent-color: #f59e0b;
     --danger-color: #ef4444;
-    
+
     /* Couleurs neutres */
     --bg-color: #f8fafc;
     --bg-dark: #0f172a;
@@ -20,23 +20,23 @@
     --text-secondary: #64748b;
     --text-light: #94a3b8;
     --border-color: #e2e8f0;
-    
+
     /* Couleurs des places */
     --available-color: #10b981;
     --occupied-color: #ef4444;
     --reserved-color: #f59e0b;
-    
+
     /* Ombres */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    
+
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition-normal: 300ms ease;
     --transition-slow: 500ms ease;
-    
+
     /* Border radius */
     --radius-sm: 0.375rem;
     --radius-md: 0.5rem;
@@ -277,7 +277,7 @@ textarea:focus-visible {
    ======================================== */
 .hero {
     background: linear-gradient(135deg, rgba(30, 58, 95, 0.85) 0%, rgba(37, 99, 235, 0.8) 50%, rgba(14, 165, 233, 0.75) 100%),
-                url('../images/aeroport_goma.jpg');
+        url('../images/aeroport_goma.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -353,8 +353,15 @@ textarea:focus-visible {
 }
 
 @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-20px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
 }
 
 /* ========================================
@@ -534,8 +541,17 @@ textarea:focus-visible {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.1); }
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
 }
 
 .status-indicator.warning .status-light {
@@ -679,6 +695,28 @@ textarea:focus-visible {
     justify-content: center;
     font-size: 1.75rem;
     color: white;
+}
+
+.feature-icon.time {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+
+
+.feature-icon.mobile {
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+}
+
+.feature-icon.realtime {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.feature-icon.payment {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.feature-icon.support {
+    background: linear-gradient(135deg, #ec4899, #be185d);
 }
 
 .feature-card h3 {
@@ -834,24 +872,41 @@ textarea:focus-visible {
 
 .toggle-password {
     position: absolute;
-    right: 12px;
+    right: 15px;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
     cursor: pointer;
-    color: #94a3b8;
-    padding: 5px;
+    color: #64748b;
+    padding: 6px;
     z-index: 2;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    line-height: 1;
+    width: 32px;
+    height: 32px;
 }
 
 .toggle-password:hover {
-    color: #64748b;
+    color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.08);
+    transform: translateY(-50%) scale(1.05);
 }
 
 .toggle-password:focus {
     outline: none;
     color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.12);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.toggle-password i {
+    pointer-events: none;
 }
 
 .auth-form button[type="submit"] {
@@ -1122,14 +1177,31 @@ textarea:focus-visible {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }
 
 @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-2px); }
-    75% { transform: translateX(2px); }
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-2px);
+    }
+
+    75% {
+        transform: translateX(2px);
+    }
 }
 
 /* Status Badge */
@@ -1190,6 +1262,7 @@ textarea:focus-visible {
 
 /* Mobile */
 @media (max-width: 768px) {
+
     /* Navigation mobile */
     .navbar {
         padding: 0.875rem 1rem;
@@ -1597,6 +1670,7 @@ textarea:focus-visible {
 
 /* Accessibilité - réduire les animations si préféré */
 @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
@@ -1614,18 +1688,39 @@ textarea:focus-visible {
    Animations
    ======================================== */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes slideIn {
-    from { opacity: 0; transform: translateX(-20px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 @keyframes countUp {
-    from { opacity: 0; transform: scale(0.5); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .animate-fade-in {
@@ -1637,15 +1732,37 @@ textarea:focus-visible {
 }
 
 /* Staggered animations */
-.stat-card:nth-child(1) { animation-delay: 0.1s; }
-.stat-card:nth-child(2) { animation-delay: 0.2s; }
-.stat-card:nth-child(3) { animation-delay: 0.3s; }
-.stat-card:nth-child(4) { animation-delay: 0.4s; }
+.stat-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
 
-.feature-card:nth-child(1) { animation-delay: 0.1s; }
-.feature-card:nth-child(2) { animation-delay: 0.2s; }
-.feature-card:nth-child(3) { animation-delay: 0.3s; }
-.feature-card:nth-child(4) { animation-delay: 0.4s; }
+.stat-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.stat-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.stat-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.feature-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.feature-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.feature-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.feature-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
 
 /* ========================================
    Payment Section
@@ -1932,8 +2049,13 @@ textarea:focus-visible {
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .payment-modal h3 {

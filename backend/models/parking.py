@@ -51,6 +51,8 @@ class ParkingSpot(BaseModel):
     reservation_duration_minutes: Optional[int] = Field(default=None)
     force_signal: Optional[int] = Field(default=None, description="Force du signal WiFi")
     last_update: datetime = Field(default_factory=datetime.utcnow)
+    last_occupancy_duration_minutes: Optional[int] = Field(default=None, description="Durée de la dernière occupation en minutes")
+    last_occupancy_end_time: Optional[datetime] = Field(default=None, description="Quand la dernière occupation s'est terminée")
     
     class Config:
         from_attributes = True
@@ -98,12 +100,16 @@ class ReservationRequest(BaseModel):
     """Requête de réservation d'une place."""
     place_id: str = Field(..., description="ID de la place à réserver")
     duration_minutes: int = Field(
-        default=60,
-        ge=15,
-        le=480,
-        description="Durée en minutes (15 min à 8 heures)"
+        ..., 
+        ge=15, 
+        le=480, 
+        description="Durée en minutes (15 min à 8h)"
     )
     vehicle_plate: Optional[str] = Field(default=None, description="Plaque d'immatriculation")
+    
+    # Nouveaux champs pour propager les infos au paiement auto
+    phone: Optional[str] = Field(default=None, description="Numéro de téléphone pour le paiement")
+    payment_method: Optional[str] = Field(default=None, description="Méthode de paiement (ORANGE, AIRTEL...)")
 
 
 class ReservationResponse(BaseModel):
@@ -111,7 +117,9 @@ class ReservationResponse(BaseModel):
     success: bool
     message: str
     place_id: Optional[str] = None
+    reservation_id: Optional[str] = None
     reservation_end: Optional[datetime] = None
+    access_code: Optional[str] = None
 
 
 class ReleaseRequest(BaseModel):

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body class="admin-page">
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="sidebar">
@@ -169,7 +171,8 @@
                             <div class="chart-ring">
                                 <svg viewBox="0 0 200 200">
                                     <circle class="chart-bg" cx="100" cy="100" r="80"></circle>
-                                    <circle class="chart-progress" cx="100" cy="100" r="80" id="occupation-ring"></circle>
+                                    <circle class="chart-progress" cx="100" cy="100" r="80" id="occupation-ring">
+                                    </circle>
                                 </svg>
                                 <div class="chart-center">
                                     <span id="occupation-percent">0%</span>
@@ -233,10 +236,11 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
+                                    <th>Utilisateur</th>
                                     <th>Place</th>
                                     <th>Montant</th>
                                     <th>Méthode</th>
-                                    <th>Téléphone</th>
+                                    <th>Contact</th>
                                     <th>Date</th>
                                     <th>Statut</th>
                                 </tr>
@@ -285,19 +289,25 @@
     <script src="../js/admin.js"></script>
     <script>
         var cachedParkingData = null;
-        
-        document.addEventListener('DOMContentLoaded', async function() {
+        var usersMap = {};
+        var currentCurrency = 'USD';
+        var exchangeRate = 1;
+        var parkingRatio = 1000;
+
+        document.addEventListener('DOMContentLoaded', async function () {
             if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
                 window.location.href = 'login.html';
                 return;
             }
-            
+
             await initDashboard();
             Admin.initSidebar();
             updateCurrentDate();
         });
 
         async function initDashboard() {
+            await fetchCurrency(); // Load currency settings first
+            await loadUsersMap();
             await loadStats();
             await loadOccupationChart();
             await loadRecentReservations();
@@ -310,6 +320,69 @@
             }
         }
 
+        async function loadUsersMap() {
+            try {
+                const response = await API.getAdminUsers();
+                const users = response.users || response || [];
+                usersMap = {};
+                users.forEach(u => {
+                    // Store full user object for flexible display
+                    usersMap[u.id || u.uid] = u;
+                });
+            } catch (e) {
+                console.warn('Erreur chargement usersMap:', e);
+            }
+        }
+
+        async function fetchCurrency() {
+            try {
+                const settings = await API.getPublicSettings();
+                currentCurrency = settings.currency || 'USD';
+
+                // Calcul du ratio de parité parking (ex: 1000 FC / 1 USD = 1000)
+                var rateUsd = parseFloat(settings.hourly_rate_usd) || 2;
+                var rateFc = parseFloat(settings.hourly_rate_fc) || 1000;
+
+                if (settings.exchange_rate) {
+                    parkingRatio = parseFloat(settings.exchange_rate);
+                } else if (rateUsd > 0) {
+                    parkingRatio = rateFc / rateUsd;
+                } else {
+                    parkingRatio = 1000;
+                }
+                console.log('Parking Ratio loaded:', parkingRatio);
+
+                // On garde exchangeRate pour référence mais on utilise parkingRatio pour les conversions de parking
+                exchangeRate = parseFloat(settings.exchange_rate) || parkingRatio;
+
+                // Update UI currency indicators if any (Dashboard doesn't have explicit currency toggles usually)
+            } catch (e) {
+                console.error('Erreur chargement devise:', e);
+            }
+        }
+
+        function convertAmount(amount, pCurrency) {
+            var amt = parseFloat(amount || 0);
+            var cur = pCurrency || 'USD'; // Par défaut USD pour l'ancien historique
+
+            // Heuristic for legacy data: if amount is large (>= 50) and currency is USD, treat as FC
+            // Must be done BEFORE checking if conversion is needed
+            if (cur === 'USD' && amt >= 50) {
+                cur = 'FC';
+            }
+
+            // Si on veut afficher en FC mais le paiement est en USD
+            if ((currentCurrency === 'FC' || currentCurrency === 'CDF') && cur === 'USD') {
+                return Math.round(amt * parkingRatio);
+            }
+            // Si on veut afficher en USD mais le paiement est en FC ou CDF
+            if (currentCurrency === 'USD' && (cur === 'FC' || cur === 'CDF')) {
+                return (amt / parkingRatio).toFixed(2);
+            }
+            // Même devise ou pas de conversion nécessaire
+            return amt;
+        }
+
         function updateCurrentDate() {
             var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('current-date').textContent = new Date().toLocaleDateString('fr-FR', options);
@@ -319,29 +392,35 @@
             try {
                 var response = await API.getParkingStatus();
                 cachedParkingData = response;
-                
+
                 var places = response.places || [];
                 var total = places.length;
                 // Backend uses 'etat': free, reserved, occupied
-                var available = places.filter(function(p) { return (p.etat || p.status) === 'free'; }).length;
-                var reserved = places.filter(function(p) { return (p.etat || p.status) === 'reserved'; }).length;
-                var occupied = places.filter(function(p) { return (p.etat || p.status) === 'occupied'; }).length;
-                
+                var available = places.filter(function (p) { return (p.etat || p.status) === 'free'; }).length;
+                var reserved = places.filter(function (p) { return (p.etat || p.status) === 'reserved'; }).length;
+                var occupied = places.filter(function (p) { return (p.etat || p.status) === 'occupied'; }).length;
+
                 document.getElementById('stat-total-places').textContent = total;
                 document.getElementById('stat-available').textContent = available;
                 document.getElementById('stat-reserved').textContent = reserved;
                 document.getElementById('stat-occupied').textContent = occupied;
-                
+
                 try {
                     var adminStats = await API.getAdminStats();
                     // Backend returns: taux_occupation, libres, occupees, reservees
                     document.getElementById('stat-users').textContent = adminStats.users_count || '-';
-                    document.getElementById('stat-revenue').textContent = (adminStats.total_revenue || 0).toLocaleString('fr-FR') + ' FC';
+                    var totalRev = adminStats.total_revenue || 0;
+                    // Backend already returns revenue in the correct currency - just format it
+                    var formattedRev = parseFloat(totalRev).toLocaleString('fr-FR', {
+                        minimumFractionDigits: (currentCurrency === 'USD' ? 2 : 0),
+                        maximumFractionDigits: (currentCurrency === 'USD' ? 2 : 0)
+                    }) + ((currentCurrency === 'CDF' || currentCurrency === 'FC') ? ' FC' : ' $');
+                    document.getElementById('stat-revenue').textContent = formattedRev;
                 } catch (e) {
                     document.getElementById('stat-users').textContent = '-';
-                    document.getElementById('stat-revenue').textContent = '- FC';
+                    document.getElementById('stat-revenue').textContent = '-';
                 }
-                
+
             } catch (error) {
                 console.error('Erreur chargement stats:', error);
             }
@@ -352,19 +431,19 @@
                 if (!cachedParkingData) {
                     cachedParkingData = await API.getParkingStatus();
                 }
-                
+
                 var places = cachedParkingData.places || [];
                 var total = places.length;
                 // Backend uses 'etat': free, reserved, occupied
-                var available = places.filter(function(p) { return (p.etat || p.status) === 'free'; }).length;
-                var reserved = places.filter(function(p) { return (p.etat || p.status) === 'reserved'; }).length;
-                var occupied = places.filter(function(p) { return (p.etat || p.status) === 'occupied'; }).length;
+                var available = places.filter(function (p) { return (p.etat || p.status) === 'free'; }).length;
+                var reserved = places.filter(function (p) { return (p.etat || p.status) === 'reserved'; }).length;
+                var occupied = places.filter(function (p) { return (p.etat || p.status) === 'occupied'; }).length;
                 var occupationRate = total > 0 ? Math.round(((reserved + occupied) / total) * 100) : 0;
-                
+
                 var ring = document.getElementById('occupation-ring');
                 var circumference = 2 * Math.PI * 80;
                 var offset = circumference - (occupationRate / 100) * circumference;
-                
+
                 ring.style.strokeDasharray = circumference;
                 ring.style.strokeDashoffset = offset;
 
@@ -379,7 +458,7 @@
 
         async function loadRecentReservations() {
             var tbody = document.getElementById('recent-reservations');
-            
+
             try {
                 var response = await API.getAdminReservations();
                 // API returns { reservations: [...], total: n }
@@ -391,17 +470,35 @@
                     return;
                 }
 
-                tbody.innerHTML = recent.map(function(res) {
+                tbody.innerHTML = recent.map(function (res) {
                     var date = res.created_at ? new Date(res.created_at).toLocaleDateString('fr-FR') : '-';
                     var statusClass = res.status === 'active' ? 'success' : 'secondary';
                     var statusText = res.status === 'active' ? 'Active' : 'Terminée';
-                    
+
+                    var userId = res.user_id || res.userId;
+                    var userObj = usersMap[userId];
+                    var userName = 'Utilisateur';
+
+                    if (userObj) {
+                        var name = userObj.display_name || userObj.name || userObj.username;
+                        var email = userObj.email;
+                        if (name) {
+                            userName = `<strong>${name}</strong>`;
+                        } else if (email) {
+                            userName = `<strong>${email}</strong>`;
+                        }
+                    } else if (res.user_email) {
+                        userName = res.user_email;
+                    } else if (res.user_name) {
+                        userName = res.user_name;
+                    }
+
                     return '<tr>' +
-                        '<td><strong>' + (res.place_id || res.spotId || '-') + '</strong></td>' +
-                        '<td>' + (res.user_name || res.userName || 'Utilisateur') + '</td>' +
+                        '<td><strong>' + (API.formatPlaceId(res.place_id || res.spotId) || '-') + '</strong></td>' +
+                        '<td>' + userName + '</td>' +
                         '<td>' + date + '</td>' +
                         '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
-                    '</tr>';
+                        '</tr>';
                 }).join('');
             } catch (error) {
                 console.error('Error loading reservations:', error);
@@ -432,21 +529,82 @@
                     'mpesa': 'M-Pesa'
                 };
 
-                tbody.innerHTML = recent.map(function(pay) {
-                    var date = pay.paid_at || pay.paidAt ? new Date(pay.paid_at || pay.paidAt).toLocaleDateString('fr-FR') : '-';
+                tbody.innerHTML = recent.map(function (pay, index) {
+                    // Date Logic (aligned with payments.html)
+                    var dateStr = pay.created_at || pay.createdAt || pay.timestamp || pay.paid_at || pay.paidAt;
+                    var date = '-';
+                    if (dateStr) {
+                        var d = new Date(dateStr);
+                        date = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    }
+
                     var statusClass = pay.status === 'completed' || pay.status === 'success' ? 'success' : 'danger';
                     var statusText = pay.status === 'completed' || pay.status === 'success' ? 'Réussi' : 'Échoué';
-                    var method = pay.provider || pay.paymentMethod || '';
-                    
+
+                    // Method Logic (aligned with payments.html)
+                    var methodRaw = (pay.method || pay.payment_method || pay.provider || pay.paymentMethod || 'mobile').toLowerCase();
+                    var method = methodRaw;
+                    if (methodRaw.indexOf('orange') !== -1) method = 'orange';
+                    else if (methodRaw.indexOf('airtel') !== -1) method = 'airtel';
+                    else if (methodRaw.indexOf('vodacom') !== -1 || methodRaw.indexOf('mpesa') !== -1) method = 'mpesa';
+
+                    // Display Original Amount and Currency
+                    var amount = pay.amount || 0;
+                    var payCurrency = pay.currency || 'USD'; // Default to USD for legacy
+
+                    // Use convertAmount to align with system currency (like in payments.html)
+                    var finalAmount = convertAmount(amount, payCurrency);
+                    // Force display in current system currency
+                    var displaySymbol = (currentCurrency === 'CDF' || currentCurrency === 'FC') ? ' FC' : ' $';
+                    var formattedAmount = finalAmount.toLocaleString('fr-FR') + displaySymbol;
+
+                    // User Info
+                    var userId = pay.user_id || pay.userId;
+                    var userObj = usersMap[userId];
+                    var userName = 'Utilisateur';
+
+                    if (userObj) {
+                        var name = userObj.display_name || userObj.name || userObj.username;
+                        var email = userObj.email;
+                        if (name) {
+                            userName = `<strong>${name}</strong>`;
+                        } else if (email) {
+                            userName = `<strong>${email}</strong>`;
+                        }
+                    } else if (pay.user_email) {
+                        userName = pay.user_email;
+                    } else if (pay.user_name) {
+                        userName = pay.user_name;
+                    }
+
+                    // Phone/Contact
+                    var userPhone = pay.phone || pay.phone_number || pay.phoneNumber;
+                    if (!userPhone && userObj) {
+                        userPhone = userObj.phone || userObj.phone_number;
+                    }
+
+                    var contactDisplay = userPhone;
+                    var isDummy = contactDisplay && (contactDisplay.indexOf('09900000') !== -1 || contactDisplay === '0000000000');
+
+                    if (!contactDisplay || contactDisplay === '-' || isDummy) {
+                        var email = userObj ? userObj.email : (pay.user_email || '');
+                        if (email) {
+                            contactDisplay = `<span title="${userPhone || ''}">${email}</span>`;
+                        } else {
+                            contactDisplay = userPhone || '-';
+                        }
+                    }
+
                     return '<tr>' +
-                        '<td>#' + (pay.id || '').toString().slice(-6) + '</td>' +
-                        '<td><strong>' + (pay.place_id || pay.spotId || '-') + '</strong></td>' +
-                        '<td>' + (pay.amount || 0).toLocaleString('fr-FR') + ' FC</td>' +
+                        '<td>' + (index + 1) + '</td>' +
+                        '<td>' + userName + '</td>' +
+                        '<td><strong>' + (API.formatPlaceId(pay.place_id || pay.spotId) || '-') + '</strong></td>' +
+                        '<td><strong>' + formattedAmount + '</strong></td>' +
                         '<td>' + (methodNames[method] || method) + '</td>' +
-                        '<td>' + (pay.phone_number || pay.phoneNumber || '-') + '</td>' +
+                        '<td>' + contactDisplay + '</td>' +
                         '<td>' + date + '</td>' +
                         '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
-                    '</tr>';
+                        '</tr>';
                 }).join('');
             } catch (error) {
                 console.error('Error loading payments:', error);
@@ -456,19 +614,19 @@
 
         async function loadParkingOverview() {
             var container = document.getElementById('parking-overview');
-            
+
             try {
                 if (!cachedParkingData) {
                     cachedParkingData = await API.getParkingStatus();
                 }
-                
+
                 var spots = cachedParkingData.places || [];
 
-                container.innerHTML = spots.map(function(spot) {
+                container.innerHTML = spots.map(function (spot) {
                     // Backend uses 'etat': free, reserved, occupied
                     var status = spot.etat || spot.status || 'free';
                     var statusClass = status === 'free' ? 'available' : status;
-                    return '<div class="parking-spot-admin ' + statusClass + '" title="Place ' + spot.id + ' - ' + status + '">' + spot.id + '</div>';
+                    return '<div class="parking-spot-admin ' + statusClass + '" title="Place ' + API.formatPlaceId(spot.place_id || spot.id) + ' - ' + status + '">' + API.formatPlaceId(spot.place_id || spot.id) + '</div>';
                 }).join('');
             } catch (error) {
                 console.error('Error loading overview:', error);
@@ -477,7 +635,7 @@
         }
 
         // Refresh data every 30 seconds
-        setInterval(async function() {
+        setInterval(async function () {
             cachedParkingData = null;
             await loadStats();
             await loadOccupationChart();
@@ -485,4 +643,5 @@
         }, 30000);
     </script>
 </body>
+
 </html>

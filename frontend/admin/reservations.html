@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body class="admin-page">
     <!-- Sidebar -->
     <aside class="admin-sidebar" id="sidebar">
@@ -135,7 +137,8 @@
             <div class="filters-bar">
                 <div class="filter-group">
                     <label>Rechercher:</label>
-                    <input type="text" id="search-reservation" placeholder="Place ou utilisateur..." oninput="filterReservations()">
+                    <input type="text" id="search-reservation" placeholder="Place ou utilisateur..."
+                        oninput="filterReservations()">
                 </div>
                 <div class="filter-group">
                     <label>Date:</label>
@@ -202,7 +205,8 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeModal()">Fermer</button>
-                <button class="btn btn-danger" id="btn-cancel-reservation" style="display: none;" onclick="cancelCurrentReservation()">
+                <button class="btn btn-danger" id="btn-cancel-reservation" style="display: none;"
+                    onclick="cancelCurrentReservation()">
                     <i class="fas fa-times"></i> Annuler
                 </button>
             </div>
@@ -214,18 +218,27 @@
     <script src="../js/auth.js"></script>
     <script src="../js/admin.js"></script>
     <script>
-        var currentReservationId = null;
-        var allReservations = [];
-        var allUsers = [];
+        var appCurrency = 'USD'; // Default fallback
+        var exchangeRate = 2500; // Market rate (default)
+        var parkingRatio = 1000; // Parking parity rate (default 1000 FC / 1 USD)
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             if (!Auth.isLoggedIn() || !Auth.isAdmin()) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            loadStats();
-            loadReservationsTable();
+            // Correct Loading Sequence: Currency -> Users -> Stats -> Table
+            // This prevents the "Flash of USD" or stale currency display
+            fetchCurrency().then(function () {
+                return loadUsersMap();
+            }).then(function () {
+                loadStats(); // loadStats internally calls loadReservationsTable
+            }).catch(function (err) {
+                console.error("Initialization error:", err);
+                loadStats(); // Fallback
+            });
+
             Admin.initSidebar();
 
             var admin = Auth.getUser();
@@ -234,39 +247,91 @@
             }
         });
 
-        function loadStats() {
-            API.get('/admin/parking/reservations')
-                .then(function(response) {
-                    allReservations = response.reservations || response || [];
-                    
-                    // Extract users from reservations since there's no dedicated endpoint
-                    var usersMap = {};
-                    for (var i = 0; i < allReservations.length; i++) {
-                        var r = allReservations[i];
-                        var userId = r.user_id || r.userId;
-                        if (userId && !usersMap[userId]) {
-                            usersMap[userId] = {
-                                id: userId,
-                                email: r.user_email || 'utilisateur@email.com',
-                                name: r.user_name || r.user_email || 'Utilisateur'
-                            };
-                        }
+        function fetchCurrency() {
+            // Add timestamp to prevent caching
+            return API.getPublicSettings()
+                .then(function (settings) {
+                    appCurrency = settings.currency || 'USD';
+                    exchangeRate = settings.exchange_rate || 2500;
+
+                    // Calculate Parking Parity Ratio
+                    var rateUSD = parseFloat(settings.hourly_rate_usd) || 2;
+                    var rateFC = parseFloat(settings.hourly_rate_fc) || 1000;
+
+                    if (settings.exchange_rate) {
+                        parkingRatio = parseFloat(settings.exchange_rate);
+                    } else if (rateUSD > 0 && rateFC > 0) {
+                        parkingRatio = rateFC / rateUSD;
+                    } else {
+                        parkingRatio = 1000;
                     }
-                    allUsers = Object.values(usersMap);
-                    
+                })
+                .catch(function (error) {
+                    console.error('Failed to load currency:', error);
+                });
+        }
+
+        function convertAmount(amount, currency) {
+            if (!amount) return 0;
+
+            var srcCurrency = currency || 'USD';
+            var val = parseFloat(amount);
+
+            // Heuristic FIX: If currency says USD but amount is large (>= 50),
+            // it is definitively legacy FC data. Force it to FC.
+            // This MUST be done before checking if (srcCurrency === appCurrency)
+            if (srcCurrency === 'USD' && val >= 50) {
+                srcCurrency = 'FC';
+            }
+
+            if (srcCurrency === appCurrency) {
+                return val;
+            }
+
+            // Explicit Conversion Logic
+            if (srcCurrency === 'USD' && appCurrency === 'FC') {
+                return Math.ceil(val * parkingRatio);
+            }
+            if (srcCurrency === 'FC' && appCurrency === 'USD') {
+                return Math.round(val / parkingRatio * 100) / 100;
+            }
+
+            return val;
+        }
+
+        function formatCurrency(amount, currency) {
+            var val = convertAmount(amount, currency);
+            return val.toLocaleString('fr-FR') + ' ' + appCurrency;
+        }
+
+        async function loadUsersMap() {
+            try {
+                const response = await API.getAdminUsers();
+                const users = response.users || response || [];
+                allUsers = users;
+            } catch (e) {
+                console.warn('Erreur chargement usersMap:', e);
+            }
+        }
+
+        function loadStats() {
+            API.getAdminReservations()
+                .then(function (response) {
+                    allReservations = response.reservations || response || [];
+
                     var total = allReservations.length;
-                    var active = allReservations.filter(function(r) { return r.status === 'active'; }).length;
-                    var completed = allReservations.filter(function(r) { return r.status === 'completed'; }).length;
-                    var cancelled = allReservations.filter(function(r) { return r.status === 'cancelled'; }).length;
-                    
+                    var active = allReservations.filter(function (r) { return r.status === 'active'; }).length;
+                    var completed = allReservations.filter(function (r) { return r.status === 'completed'; }).length;
+                    var cancelled = allReservations.filter(function (r) { return r.status === 'cancelled'; }).length;
+
                     document.getElementById('stat-total').textContent = total;
                     document.getElementById('stat-active').textContent = active;
                     document.getElementById('stat-completed').textContent = completed;
                     document.getElementById('stat-cancelled').textContent = cancelled;
-                    
+
                     loadReservationsTable();
                 })
-                .catch(function(error) {
+                .catch(function (error) {
                     console.error('Erreur chargement stats:', error);
                 });
         }
@@ -282,7 +347,7 @@
                 return;
             }
 
-            var sortedReservations = reservations.sort(function(a, b) {
+            var sortedReservations = reservations.sort(function (a, b) {
                 return new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt);
             });
 
@@ -291,13 +356,31 @@
                 var res = sortedReservations[i];
                 var user = null;
                 for (var j = 0; j < allUsers.length; j++) {
-                    if (allUsers[j].id === res.user_id || allUsers[j].id === res.userId) {
+                    if (allUsers[j].id === res.user_id || res.userId === allUsers[j].id) {
                         user = allUsers[j];
                         break;
                     }
                 }
-                var userName = user ? (user.name || user.display_name || user.email) : (res.user_email || 'Utilisateur');
-                
+
+                // Construct User Display: Name + Email (if available)
+                var name = user ? (user.display_name || user.name || user.username) : '';
+                var email = user ? user.email : (res.user_email || '');
+                var userIdDisplay = res.user_id || 'Utilisateur';
+
+                var userName = 'Utilisateur';
+                if (name && email) {
+                    userName = `<strong>${name}</strong><br><small class="text-muted">${email}</small>`;
+                } else if (name) {
+                    userName = `<strong>${name}</strong>`;
+                } else if (email) {
+                    userName = `<strong>${email}</strong>`;
+                } else {
+                    userName = userIdDisplay;
+                }
+
+                // Use sequential ID
+                var displayId = i + 1;
+
                 var statusBadge = '';
                 if (res.status === 'active') {
                     statusBadge = '<span class="badge success">En cours</span>';
@@ -308,20 +391,25 @@
                 } else {
                     statusBadge = res.status;
                 }
-                
+
                 var spotId = res.place_id || res.spotId || '-';
                 var duration = res.duration || 1;
                 var amount = res.amount || (duration * 1000);
+                var resCurrency = res.currency || 'USD'; // Default to USD for legacy data
+
+                // Format Amount using the new robust function
+                var formattedAmount = formatCurrency(amount, resCurrency);
+
                 var resId = res.id || '';
-                
+
                 html += '<tr>';
-                html += '<td><code>#' + resId.slice(-6) + '</code></td>';
+                html += '<td><code>' + displayId + '</code></td>';
                 html += '<td>' + userName + '</td>';
-                html += '<td><strong>' + spotId + '</strong></td>';
+                html += '<td><strong>' + API.formatPlaceId(spotId) + '</strong></td>';
                 html += '<td>' + (res.vehicle_plate || res.vehiclePlate || '-') + '</td>';
                 html += '<td>' + Admin.formatDate(res.start_time || res.startTime || res.created_at || res.createdAt) + '</td>';
                 html += '<td>' + duration + 'h</td>';
-                html += '<td><strong>' + amount.toLocaleString('fr-FR') + ' FC</strong></td>';
+                html += '<td><strong>' + formattedAmount + '</strong></td>';
                 html += '<td>' + statusBadge + '</td>';
                 html += '<td>';
                 html += '<button class="btn-icon view" onclick="viewReservation(\'' + res.id + '\')" title="Voir">';
@@ -340,13 +428,13 @@
 
         function getFilteredReservations() {
             var reservations = allReservations || [];
-            
+
             var search = document.getElementById('search-reservation').value.toLowerCase();
             var date = document.getElementById('filter-date').value;
             var status = document.getElementById('filter-status').value;
 
             if (search) {
-                reservations = reservations.filter(function(r) {
+                reservations = reservations.filter(function (r) {
                     var user = null;
                     for (var j = 0; j < allUsers.length; j++) {
                         if (allUsers[j].id === r.user_id || allUsers[j].id === r.userId) {
@@ -355,23 +443,23 @@
                         }
                     }
                     var userName = user ? (user.name || user.display_name || user.email || '').toLowerCase() : '';
-                    var spotId = (r.place_id || r.spotId || '').toLowerCase();
+                    var spotId = (API.formatPlaceId(r.place_id) || r.spotId || '').toLowerCase();
                     var vehiclePlate = (r.vehicle_plate || r.vehiclePlate || '').toLowerCase();
-                    return spotId.indexOf(search) !== -1 || 
-                           userName.indexOf(search) !== -1 ||
-                           vehiclePlate.indexOf(search) !== -1;
+                    return spotId.indexOf(search) !== -1 ||
+                        userName.indexOf(search) !== -1 ||
+                        vehiclePlate.indexOf(search) !== -1;
                 });
             }
 
             if (date) {
-                reservations = reservations.filter(function(r) {
+                reservations = reservations.filter(function (r) {
                     var resDate = new Date(r.created_at || r.createdAt).toISOString().split('T')[0];
                     return resDate === date;
                 });
             }
 
             if (status !== 'all') {
-                reservations = reservations.filter(function(r) { return r.status === status; });
+                reservations = reservations.filter(function (r) { return r.status === status; });
             }
 
             return reservations;
@@ -394,7 +482,7 @@
                 Admin.showNotification('Réservation introuvable', 'error');
                 return;
             }
-            
+
             var user = null;
             for (var j = 0; j < allUsers.length; j++) {
                 if (allUsers[j].id === reservation.user_id || allUsers[j].id === reservation.userId) {
@@ -416,20 +504,22 @@
                 statusText = 'Annulée';
                 statusIcon = 'fa-times-circle';
             }
-            
+
             var spotId = reservation.place_id || reservation.spotId || '-';
             var duration = reservation.duration || 1;
             var amount = reservation.amount || (duration * 1000);
+            var resCurrency = reservation.currency || 'USD';
+            var formattedAmount = formatCurrency(amount, resCurrency);
 
             var detailsHtml = '';
             detailsHtml += '<div style="text-align: center; margin-bottom: 1.5rem;">';
             detailsHtml += '<div style="width: 80px; height: 80px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 2rem;">';
             detailsHtml += '<i class="fas fa-parking"></i>';
             detailsHtml += '</div>';
-            detailsHtml += '<h3 style="margin: 0;">Place ' + spotId + '</h3>';
+            detailsHtml += '<h3 style="margin: 0;">Place ' + API.formatPlaceId(spotId) + '</h3>';
             detailsHtml += '<span class="badge ' + statusClass + '"><i class="fas ' + statusIcon + '"></i> ' + statusText + '</span>';
             detailsHtml += '</div>';
-            
+
             detailsHtml += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">';
             detailsHtml += '<div style="background: var(--bg-color); padding: 1rem; border-radius: var(--radius-md);">';
             detailsHtml += '<p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">';
@@ -459,7 +549,7 @@
 
             detailsHtml += '<div style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); padding: 1.5rem; border-radius: var(--radius-md); color: white; text-align: center; margin-bottom: 1.5rem;">';
             detailsHtml += '<p style="margin: 0 0 0.5rem; opacity: 0.9;">Montant</p>';
-            detailsHtml += '<h2 style="margin: 0; font-size: 2rem;">' + amount.toLocaleString('fr-FR') + ' FC</h2>';
+            detailsHtml += '<h2 style="margin: 0; font-size: 2rem;">' + formattedAmount + '</h2>';
             detailsHtml += '</div>';
 
             if (reservation.access_code) {
@@ -471,7 +561,7 @@
             document.getElementById('reservation-details').innerHTML = detailsHtml;
 
             // Afficher le bouton d'annulation si réservation active
-            document.getElementById('btn-cancel-reservation').style.display = 
+            document.getElementById('btn-cancel-reservation').style.display =
                 reservation.status === 'active' ? 'inline-flex' : 'none';
 
             document.getElementById('reservation-modal').classList.add('active');
@@ -490,18 +580,19 @@
                     break;
                 }
             }
-            var spotId = reservation ? (reservation.place_id || reservation.spotId) : reservationId;
-            if (confirm('Voulez-vous annuler la réservation de la place ' + spotId + ' ?')) {
-                API.post('/admin/reservations/' + reservationId + '/cancel', {})
-                    .then(function() {
-                        loadStats();
-                        Admin.showNotification('Réservation annulée');
-                    })
-                    .catch(function(error) {
-                        console.error('Erreur annulation:', error);
-                        Admin.showNotification('Erreur lors de l\'annulation', 'error');
-                    });
-            }
+            var spotId = reservation ? (API.formatPlaceId(reservation.place_id) || reservation.spotId) : reservationId;
+            Admin.confirm('Annuler la réservation', 'Voulez-vous annuler la réservation de la place <strong>' + spotId + '</strong> ?', 'danger')
+                .then(function () {
+                    API.cancelAdminReservation(reservationId)
+                        .then(function () {
+                            loadStats();
+                            Admin.showNotification('Réservation annulée');
+                        })
+                        .catch(function (error) {
+                            console.error('Erreur annulation:', error);
+                            Admin.showNotification('Erreur lors de l\'annulation', 'error');
+                        });
+                });
         }
 
         function cancelCurrentReservation() {
@@ -519,11 +610,12 @@
                     break;
                 }
             }
-            var spotId = reservation ? (reservation.place_id || reservation.spotId) : reservationId;
-            if (confirm('Marquer la réservation de la place ' + spotId + ' comme terminée ?')) {
-                // Pour l'instant, on utilise cancelReservation car l'API n'a pas de complete
-                Admin.showNotification('Fonctionnalité en cours de développement', 'error');
-            }
+            var spotId = reservation ? (API.formatPlaceId(reservation.place_id) || reservation.spotId) : reservationId;
+            Admin.confirm('Terminer la réservation', 'Marquer la réservation de la place <strong>' + spotId + '</strong> comme terminée ?', 'warning')
+                .then(function () {
+                    // Pour l'instant, on utilise cancelReservation car l'API n'a pas de complete
+                    Admin.showNotification('Fonctionnalité en cours de développement', 'error');
+                });
         }
 
         function exportReservations() {
@@ -546,4 +638,5 @@
         }
     </script>
 </body>
+
 </html>

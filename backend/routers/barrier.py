@@ -3,7 +3,8 @@ AeroPark Smart System - Barrier Control Router
 Endpoints pour le contrôle des barrières d'entrée/sortie.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from typing import Optional
 import logging
 from datetime import datetime
 
@@ -33,6 +34,7 @@ router = APIRouter(
 )
 async def get_barrier_status(
     barrier_id: str = "entry",
+    sensor_presence: Optional[bool] = Query(None),
     sensor_auth: dict = Depends(verify_sensor_api_key)
 ):
     """
@@ -45,6 +47,11 @@ async def get_barrier_status(
     """
     try:
         barrier_service = get_barrier_service()
+        
+        # Mettre à jour l'état du capteur si fourni par l'ESP32
+        if sensor_presence is not None:
+            barrier_service.update_sensor_state(barrier_id, sensor_presence)
+            
         status_data = await barrier_service.get_barrier_status(barrier_id)
         
         return BarrierStatusResponse(

@@ -46,15 +46,20 @@ async def get_parking_status():
         db = get_db()
         places = await db.get_all_places()
         
-        free = sum(1 for p in places if p.get("etat") == "free")
-        reserved = sum(1 for p in places if p.get("etat") == "reserved")
-        occupied = sum(1 for p in places if p.get("etat") == "occupied")
+        total_places = len(places)
+        free_count = sum(1 for p in places if p.get("etat") == "free")
+        reserved_count = sum(1 for p in places if p.get("etat") == "reserved")
+        occupied_count = sum(1 for p in places if p.get("etat") == "occupied")
         
         return {
-            "total": len(places),
-            "free": free,
-            "reserved": reserved,
-            "occupied": occupied,
+            "total": total_places,
+            "free_count": free_count,
+            "occupied_count": occupied_count,
+            "reserved_count": reserved_count,
+            # For frontend compatibility
+            "free": free_count,
+            "occupied": occupied_count,
+            "reserved": reserved_count,
             "places": places,
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -176,19 +181,72 @@ async def reserve_place(
             place_id=request.place_id,
             user_id=user.uid,
             user_email=user.email,
-            duration_minutes=request.duration_minutes
+            duration_minutes=request.duration_minutes,
+            vehicle_plate=request.vehicle_plate,
+            phone=request.phone,
+            payment_method=request.payment_method
         )
         
-        # Notifier l'ESP32 via WebSocket
-        await ws_manager.notify_reservation(request.place_id, "create")
+        # Générer et sauvegarder le code d'accès
+        access_code = None
+        try:
+            from services.access_code_service import get_access_code_service
+            access_service = get_access_code_service()
+            
+            reservation_id = result.get("reservation_id")
+            
+            # Créer le code
+            access_code = await access_service.create_access_code(
+                user_id=user.uid,
+                user_email=user.email,
+                place_id=request.place_id,
+                reservation_id=reservation_id,
+                expires_at=result.get("reservation_end_time")
+            )
+            
+            # Mettre à jour la place avec le code
+            # Note: Idéalement cela devrait être fait dans la transaction de réservation
+            await db.db.collection(db.COLLECTION_PLACES).document(request.place_id).update({
+                "access_code": access_code
+            })
+            
+            # Invalider le cache pour afficher le code
+            from database.firebase_cache import get_firebase_cache
+            cache = get_firebase_cache()
+            cache.invalidate(f"parking:place:{request.place_id}")
+            cache.invalidate("parking:all_places")
+            
+        except Exception as e:
+            logger.error(f"Erreur génération code d'accès: {e}")
+            # On ne bloque pas la réservation pour ça, mais c'est problématique
+        
+        # Préparer les données manuelles pour le broadcast immédiat (fix LCD delay)
+        updated_place_data = {
+            "place_id": request.place_id,
+            "id": request.place_id,
+            "etat": "reserved",
+            "reserved_by": user.uid,
+            "reserved_by_email": user.email,
+            "vehicle_plate": request.vehicle_plate,
+            "reservation_id": result.get("reservation_id"),
+            "access_code": access_code,
+            "reservation_start_time": result.get("reservation_start_time").isoformat() + "Z" if result.get("reservation_start_time") else None,
+            "reservation_end_time": result.get("reservation_end_time").isoformat() + "Z" if result.get("reservation_end_time") else None,
+            "last_update": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        # Notifier l'ESP32 via WebSocket avec les données manuelles
+        await ws_manager.notify_reservation(request.place_id, "create", updated_place_data)
         
         logger.info(f"Réservation créée: {request.place_id} pour {user.email}")
         
         return ReservationResponse(
             success=True,
-            message=f"Place {request.place_id} réservée avec succès",
+            message=f"Place {request.place_id} réservée avec succès. Code: {access_code}" if access_code else f"Place {request.place_id} réservée avec succès",
             place_id=request.place_id,
-            reservation_end=result.get("reservation_end_time")
+            reservation_id=reservation_id,
+            reservation_end=result.get("reservation_end_time"),
+            access_code=access_code 
         )
         
     except ValueError as e:
@@ -248,6 +306,19 @@ async def release_place(
         # Libérer la place
         await db.release_place(place_id)
         
+        # Invalider le code d'accès associé
+        try:
+            from services.access_code_service import get_access_code_service
+            access_service = get_access_code_service()
+            # Chercher le code actif pour cette place
+            codes = await access_service.get_all_codes(status_filter="active")
+            for c in codes:
+                if c.get("place_id") == place_id:
+                    await access_service.invalidate_code(c["code"], "CANCELLED")
+                    logger.info(f"Code {c['code']} invalidé suite à libération de {place_id}")
+        except Exception as access_err:
+            logger.error(f"Erreur invalidation code pour {place_id}: {access_err}")
+            
         # Notifier l'ESP32
         await ws_manager.notify_reservation(place_id, "cancel")
         
@@ -298,3 +369,66 @@ async def get_my_reservation(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erreur récupération réservation"
         )
+
+
+@router.get(
+    "/settings",
+    summary="Paramètres Publics",
+    description="Récupère les paramètres publics du système (Nom, Slogan, Contact...)."
+)
+async def get_public_settings():
+    """
+    Récupère les paramètres publics du système.
+    Accessible sans authentification pour l'affichage frontend.
+    """
+    try:
+        db = get_db()
+        settings = await db.get_settings()
+        
+        # Déterminer le tarif selon la devise
+        currency = settings.get("currency", "USD")
+        
+        # Determine rate based on currency, prioritizing specific rates
+        if currency == "USD":
+            # Taking USD rate, fallback to generic hourly_rate, fallback to default 2
+            rate = settings.get("hourly_rate_usd", settings.get("hourly_rate", 2))
+        else:
+            # Taking FC rate, fallback to generic hourly_rate, fallback to default 1000
+            rate = settings.get("hourly_rate_fc", settings.get("hourly_rate", 1000))
+
+        # FORCE ALIGNMENT: The "generic" hourly_rate IS the rate for the active currency.
+        # This fixes the issue where updating the rate in Admin (generic) doesn't update the specific field.
+        active_rate_fc = settings.get("hourly_rate_fc", 1000)
+        active_rate_usd = settings.get("hourly_rate_usd", 2)
+        generic_rate = settings.get("hourly_rate")
+        
+        if generic_rate:
+            if currency in ["FC", "CDF"]:
+                active_rate_fc = generic_rate
+            elif currency == "USD":
+                active_rate_usd = generic_rate
+
+        # Filtrer pour ne renvoyer que les infos publiques
+        public_settings = {
+            "parking_name": settings.get("parking_name", "AeroPark GOMA"),
+            "slogan": settings.get("slogan", "Parking Automatisé"),
+            "hourly_rate": rate,
+            "hourly_rate_usd": active_rate_usd,
+            "hourly_rate_fc": active_rate_fc,
+            "exchange_rate": settings.get("exchange_rate", 2500),
+            "currency": currency,
+            "contact_phone": settings.get("contact_phone", ""),
+            "contact_email": settings.get("contact_email", ""),
+            "whatsapp": settings.get("whatsapp", ""),
+            "payment_providers": settings.get("payment_providers", ["ORANGE_MONEY", "AIRTEL_MONEY", "MPESA"])
+        }
+        
+        return public_settings
+        
+    except Exception as e:
+        logger.error(f"Erreur récupération paramètres publics: {e}")
+        # En cas d'erreur, on renvoie des valeurs par défaut pour ne pas casser le front
+        return {
+            "parking_name": "AeroPark GOMA",
+            "slogan": "Parking Automatisé"
+        }

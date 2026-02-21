@@ -40,6 +40,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Force reload triggers
+
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -128,8 +131,8 @@ settings = get_settings()
 # Configurer CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

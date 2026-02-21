@@ -83,21 +83,21 @@ def mock_db():
     
     # Default parking places
     mock.get_all_places = AsyncMock(return_value=[
-        {"place_id": "a1", "etat": "free", "reserved_by": None},
-        {"place_id": "a2", "etat": "free", "reserved_by": None},
-        {"place_id": "a3", "etat": "occupied", "reserved_by": None},
-        {"place_id": "a4", "etat": "reserved", "reserved_by": "user123"},
-        {"place_id": "a5", "etat": "free", "reserved_by": None},
-        {"place_id": "a6", "etat": "free", "reserved_by": None},
+        {"place_id": "P1", "etat": "free", "reserved_by": None},
+        {"place_id": "P2", "etat": "free", "reserved_by": None},
+        {"place_id": "P3", "etat": "occupied", "reserved_by": None},
+        {"place_id": "P4", "etat": "reserved", "reserved_by": "user123"},
+        {"place_id": "P5", "etat": "free", "reserved_by": None},
+        {"place_id": "P6", "etat": "free", "reserved_by": None},
     ])
     
     mock.get_place_by_id = AsyncMock(side_effect=lambda place_id: {
-        "a1": {"place_id": "a1", "etat": "free", "reserved_by": None},
-        "a2": {"place_id": "a2", "etat": "free", "reserved_by": None},
-        "a3": {"place_id": "a3", "etat": "occupied", "reserved_by": None},
-        "a4": {"place_id": "a4", "etat": "reserved", "reserved_by": "user123"},
-        "a5": {"place_id": "a5", "etat": "free", "reserved_by": None},
-        "a6": {"place_id": "a6", "etat": "free", "reserved_by": None},
+        "P1": {"place_id": "P1", "etat": "free", "reserved_by": None},
+        "P2": {"place_id": "P2", "etat": "free", "reserved_by": None},
+        "P3": {"place_id": "P3", "etat": "occupied", "reserved_by": None},
+        "P4": {"place_id": "P4", "etat": "reserved", "reserved_by": "user123"},
+        "P5": {"place_id": "P5", "etat": "free", "reserved_by": None},
+        "P6": {"place_id": "P6", "etat": "free", "reserved_by": None},
     }.get(place_id))
     
     mock.update_place_status = AsyncMock(return_value={"etat": "occupied"})

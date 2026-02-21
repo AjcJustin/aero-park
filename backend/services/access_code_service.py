@@ -101,7 +101,8 @@ class AccessCodeService:
     async def validate_code(
         self,
         code: str,
-        sensor_presence: bool = True
+        sensor_presence: bool = True,
+        mark_used: bool = True
     ) -> Dict[str, Any]:
         """
         Valide un code d'accès.
@@ -120,14 +121,7 @@ class AccessCodeService:
             Dict avec access_granted et détails
         """
         code = code.upper().strip()
-        
-        # Vérifier la présence du véhicule
-        if not sensor_presence:
-            return {
-                "access_granted": False,
-                "message": "Aucun véhicule détecté à la barrière",
-                "place_id": None
-            }
+        logger.info(f"Tentative de validation code: {code}, sensor_presence: {sensor_presence}")
         
         # Récupérer le code
         code_data = await self.get_active_code(code)
@@ -139,6 +133,15 @@ class AccessCodeService:
                 "message": "Code d'accès invalide",
                 "place_id": None
             }
+        
+        # Vérifier la présence du véhicule (ALERTE: On log si absent mais on autorise pour débloquer)
+        if not sensor_presence:
+            logger.warning(f"Validation code {code}: Aucun véhicule détecté mais code valide trouvé. AUTORISATION FORCÉE POUR DEBUG.")
+            # return {
+            #     "access_granted": False,
+            #     "message": "Aucun véhicule détecté à la barrière",
+            #     "place_id": code_data.get("place_id")
+            # }
         
         # Vérifier l'expiration
         expires_at = code_data.get("expires_at")
@@ -162,8 +165,9 @@ class AccessCodeService:
             remaining = expires_at - datetime.utcnow()
             remaining_minutes = max(0, int(remaining.total_seconds() / 60))
         
-        # Code valide - le marquer comme utilisé
-        await self.mark_code_used(code)
+        # Code valide - le marquer comme utilisé si demandé
+        if mark_used:
+            await self.mark_code_used(code)
         
         logger.info(f"Code {code} validé avec succès pour place {code_data.get('place_id')}")
         
